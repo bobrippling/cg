@@ -1,9 +1,5 @@
-#ifndef ISN_PRIVATE_H
-#define ISN_PRIVATE_H
-
-#include "val_internal.h"
-
-typedef struct isn isn;
+#ifndef ISN_STRUCT_H
+#define ISN_STRUCT_H
 
 struct isn
 {
@@ -55,7 +51,5 @@ struct isn
 
 	bool skip;
 };
-
-isn *isn_head(void);
 
 #endif

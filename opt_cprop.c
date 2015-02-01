@@ -5,7 +5,8 @@
 #include "opt_cprop.h"
 
 #include "val_internal.h"
-#include "isn_private.h"
+#include "isn_internal.h"
+#include "isn_struct.h"
 
 
 static val *resolve_val(val *initial, dynmap *stores2rvals)

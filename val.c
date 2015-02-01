@@ -7,46 +7,10 @@
 
 #include "val.h"
 #include "val_internal.h"
+#include "val_struct.h"
 
 #include "isn.h"
 #include "op.h"
-
-struct val
-{
-	enum val_type
-	{
-		INT,
-		INT_PTR,
-		NAME,
-		NAME_LVAL,
-		ALLOCA
-	} type;
-
-	union
-	{
-		int i;
-		struct
-		{
-			union
-			{
-				char *name;
-				struct
-				{
-					unsigned bytesz;
-					int idx;
-				} alloca;
-			} u;
-			struct val_idxpair
-			{
-				val *val;
-				unsigned idx;
-				struct val_idxpair *next;
-			} *idxpair;
-			/* val* => val*
-			 * where .first is a INT */
-		} addr;
-	} u;
-};
 
 enum val_to
 {
