@@ -78,8 +78,8 @@ void isn_dump()
 			case ISN_STORE:
 			{
 				printf("\tstore %s, %s\n",
-							val_str(i->u.load.lval),
-							val_str(i->u.load.to));
+							val_str(i->u.store.lval),
+							val_str(i->u.store.from));
 				break;
 			}
 
