@@ -1,5 +1,6 @@
-OBJ = val.o main.o mem.o isn.o op.o \
-      dynmap.o opt_cprop.o \
+OBJ = val.o main.o mem.o op.o \
+      dynmap.o opt_cprop.o opt_storeprop.o \
+      isn.o \
       x86.o
 
 HEADERS = backend.h dyn.h dynmap.h \

@@ -5,6 +5,7 @@
 #include "opt_cprop.h"
 
 #include "val_internal.h"
+#include "val_struct.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
 
