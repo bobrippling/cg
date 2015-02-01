@@ -36,10 +36,10 @@ static const char *x86_val_str(
 			break;
 		case NAME:
 			assert(!dereference);
-			snprintf(buf, sizeof buf1, "$%s", val->u.addr.u.name);
+			snprintf(buf, sizeof buf1, "%%%s", val->u.addr.u.name);
 			break;
 		case NAME_LVAL:
-			snprintf(buf, sizeof buf1, "%s%s%s",
+			snprintf(buf, sizeof buf1, "%s%%%s%s",
 					dereference ? "(" : "",
 					val->u.addr.u.name,
 					dereference ? ")" : "");
