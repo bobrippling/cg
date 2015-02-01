@@ -58,7 +58,7 @@ unsigned val_hash(val *v)
 			break;
 		case NAME_LVAL:
 		case NAME:
-			h ^= dynmap_strhash(v->u.addr.u.name);
+			h ^= dynmap_strhash(v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
 			break;
@@ -135,7 +135,7 @@ char *val_str(val *v)
 			break;
 		case NAME:
 		case NAME_LVAL:
-			snprintf(buf, sizeof buf, "%s", v->u.addr.u.name);
+			snprintf(buf, sizeof buf, "%s", v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
 			snprintf(buf, sizeof buf, "alloca.%d", v->u.addr.u.alloca.idx);
@@ -162,7 +162,8 @@ static val *val_name_new_lval_(bool lval)
 
 	snprintf(buf, sizeof buf, "tmp.%d", n++);
 
-	v->u.addr.u.name = xstrdup(buf);
+	v->u.addr.u.name.spel = xstrdup(buf);
+	v->u.addr.u.name.reg = -1;
 
 	return v;
 }

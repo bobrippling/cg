@@ -2,16 +2,37 @@
 #include <assert.h>
 #include <stdint.h>
 
+#include "countof.h"
+
 #include "dynmap.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
+#include "isn_reg.h"
+
+static const char *const regs[] = {
+	"eax",
+	"ebx",
+	"ecx",
+	"edx",
+	"edi",
+	"esi",
+};
 
 static int alloca_offset(dynmap *alloca2stack, val *val)
 {
 	intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
 	assert(off);
 	return off;
+}
+
+static const char *name_str(val *val)
+{
+	if(val->u.addr.u.name.reg == -1)
+		return val->u.addr.u.name.spel;
+
+	assert(val->u.addr.u.name.reg < (int)countof(regs));
+	return regs[val->u.addr.u.name.reg];
 }
 
 static const char *x86_val_str(
@@ -36,12 +57,12 @@ static const char *x86_val_str(
 			break;
 		case NAME:
 			assert(!dereference);
-			snprintf(buf, sizeof buf1, "%%%s", val->u.addr.u.name);
+			snprintf(buf, sizeof buf1, "%%%s", name_str(val));
 			break;
 		case NAME_LVAL:
 			snprintf(buf, sizeof buf1, "%s%%%s%s",
 					dereference ? "(" : "",
-					val->u.addr.u.name,
+					name_str(val),
 					dereference ? ")" : "");
 			break;
 		case ALLOCA:
@@ -124,6 +145,8 @@ void x86_out()
 				break;
 		}
 	}
+
+	isn_regalloc(head, countof(regs));
 
 	printf("\tsub $%ld, %%rsp\n", alloca);
 

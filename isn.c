@@ -66,6 +66,42 @@ void isn_alloca(unsigned sz, val *v)
 	isn->u.alloca.out = v;
 }
 
+void isn_on_vals(isn *isn, void fn(val *, void *), void *ctx)
+{
+	switch(isn->type){
+		case ISN_STORE:
+			fn(isn->u.store.lval, ctx);
+			fn(isn->u.store.from, ctx);
+			break;
+
+		case ISN_LOAD:
+			fn(isn->u.load.to, ctx);
+			fn(isn->u.load.lval, ctx);
+			break;
+
+		case ISN_ALLOCA:
+			fn(isn->u.alloca.out, ctx);
+			break;
+
+		case ISN_ELEM:
+			fn(isn->u.elem.res, ctx);
+			fn(isn->u.elem.lval, ctx);
+			fn(isn->u.elem.add, ctx);
+			break;
+
+		case ISN_OP:
+			fn(isn->u.op.res, ctx);
+			fn(isn->u.op.lhs, ctx);
+			fn(isn->u.op.rhs, ctx);
+			break;
+
+		case ISN_COPY:
+			fn(isn->u.copy.to, ctx);
+			fn(isn->u.copy.from, ctx);
+			break;
+	}
+}
+
 void isn_dump()
 {
 	isn *i;

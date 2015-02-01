@@ -19,7 +19,11 @@ struct val
 		{
 			union
 			{
-				char *name;
+				struct
+				{
+					char *spel;
+					int reg;
+				} name;
 				struct
 				{
 					unsigned bytesz;
@@ -36,6 +40,10 @@ struct val
 			 * where .first is a INT */
 		} addr;
 	} u;
+
+	void *pass_data;
 };
+
+#define VAL_IS_NAME(v) ((v)->type == NAME || (v)->type == NAME_LVAL)
 
 #endif
