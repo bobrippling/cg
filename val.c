@@ -87,6 +87,43 @@ bool val_op_maybe_val(enum op op, val *l, val *r, val **res)
 	return true;
 }
 
+val *val_op_symbolic(enum op op, val *l, val *r)
+{
+	val *res;
+
+	if(!val_op_maybe_val(op, l, r, &res))
+		return res; /* fully integral */
+
+	/* one side must be numeric */
+	val *num = NULL;
+	if(l->type == INT)
+		num = l;
+	if(r->type == INT)
+		num = r;
+	if(!num)
+		assert(0 && "symbolic op needs an int");
+
+	val *sym = (num == l ? r : l);
+	switch(sym->type){
+		case INT:
+			assert(0 && "unreachable");
+
+		case INT_PTR:
+			return val_new_ptr_from_int(sym->u.i + num->u.i);
+
+		case ALLOCA:
+		{
+			val *alloca = val_new(ALLOCA);
+			alloca->u.addr.u.alloca.idx = sym->u.addr.u.alloca.idx + num->u.i;
+			return alloca;
+		}
+
+		case NAME:
+		case NAME_LVAL:
+			assert(0 && "can't add to name vals");
+	}
+}
+
 char *val_str(val *v)
 {
 	/* XXX: memleak */
