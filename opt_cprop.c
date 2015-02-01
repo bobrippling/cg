@@ -71,16 +71,14 @@ void opt_cprop()
 			{
 				val *solved_lhs = resolve_val(i->u.op.lhs, stores2rvals);
 				val *solved_rhs = resolve_val(i->u.op.rhs, stores2rvals);
-				int res;
+				val *synth_add;
 
 				if(!solved_lhs)
 					solved_lhs = i->u.op.lhs;
 				if(!solved_rhs)
 					solved_rhs = i->u.op.rhs;
 
-				if(val_maybe_op(i->u.op.op, solved_lhs, solved_rhs, &res)){
-					val *synth_add = val_new_i(res);
-
+				if(val_op_maybe_val(i->u.op.op, solved_lhs, solved_rhs, &synth_add)){
 					dynmap_set(val *, val *,
 							stores2rvals,
 							i->u.op.res, synth_add);

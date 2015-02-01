@@ -5,6 +5,7 @@
 #include "val.h"
 #include "op.h"
 
-bool val_maybe_op(enum op, val *, val *, int *res);
+bool val_op_maybe(enum op, val *, val *, int *res);
+bool val_op_maybe_val(enum op, val *, val *, val **res);
 
 #endif

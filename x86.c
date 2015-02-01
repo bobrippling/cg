@@ -69,7 +69,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 		{
 			val *intptr = i->u.elem.lval;
 
-			if(!val_maybe_op(op_add, i->u.elem.add, intptr, &add_total)){
+			if(!val_op_maybe(op_add, i->u.elem.add, intptr, &add_total)){
 				assert(0 && "couldn't add operands");
 			}
 			break;

@@ -12,6 +12,8 @@
 #include "isn.h"
 #include "op.h"
 
+static val *val_new(enum val_type k);
+
 enum val_to
 {
 	LITERAL  = 1 << 0,
@@ -65,13 +67,23 @@ unsigned val_hash(val *v)
 	return h;
 }
 
-bool val_maybe_op(enum op op, val *l, val *r, int *res)
+bool val_op_maybe(enum op op, val *l, val *r, int *res)
 {
 	if(l->type != INT || r->type != INT)
 		return false;
 
 	*res = op_exe(op, l->u.i, r->u.i);
 
+	return true;
+}
+
+bool val_op_maybe_val(enum op op, val *l, val *r, val **res)
+{
+	int i;
+	if(!val_op_maybe(op, l, r, &i))
+		return false;
+
+	*res = val_new_i(i);
 	return true;
 }
 
