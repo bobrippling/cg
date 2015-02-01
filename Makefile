@@ -3,7 +3,7 @@ OBJ = val.o main.o mem.o isn.o op.o \
 
 SRC = ${OBJ:.o=.c}
 
-CFLAGS = -g
+CFLAGS = -g -Wall -Wextra
 LDFLAGS = -g
 
 all: tags val
