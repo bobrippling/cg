@@ -1,5 +1,6 @@
 OBJ = val.o main.o mem.o isn.o op.o \
-      dynmap.o opt_cprop.o
+      dynmap.o opt_cprop.o \
+      x86.o
 
 SRC = ${OBJ:.o=.c}
 

@@ -7,6 +7,7 @@
 #include "isn.h"
 
 #include "opt_cprop.h"
+#include "x86.h"
 
 static void eg(bool opt)
 {
@@ -53,6 +54,10 @@ static void eg(bool opt)
 	}
 
 	isn_dump();
+
+	printf("x86:\n");
+
+	x86_out();
 }
 
 static void usage(const char *arg0)
