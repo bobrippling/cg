@@ -7,3 +7,10 @@ int op_exe(enum op op, int l, int r)
 			return l + r;
 	}
 }
+
+const char *op_to_cmd(enum op op)
+{
+	switch(op){
+		case op_add: return "add";
+	}
+}

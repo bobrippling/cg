@@ -187,7 +187,7 @@ void isn_dump(bool optimise)
 
 				printf("\t%s = %s %s, %s\n",
 						val_str(i->u.op.res),
-						"+",
+						op_to_cmd(i->u.op.op),
 						val_str(solved_lhs),
 						val_str(solved_rhs));
 
