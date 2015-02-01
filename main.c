@@ -6,6 +6,8 @@
 #include "backend.h"
 #include "isn.h"
 
+#include "opt_cprop.h"
+
 static void eg(bool opt)
 {
 	val *a = val_new_i(3);
@@ -46,7 +48,11 @@ static void eg(bool opt)
 	val_add(val_load(alloca_p), val_new_i(33));
 	// 9 + 33 = 42
 
-	isn_dump(opt);
+	if(opt){
+		opt_cprop();
+	}
+
+	isn_dump();
 }
 
 static void usage(const char *arg0)

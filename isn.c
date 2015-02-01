@@ -1,58 +1,18 @@
 #include <stdio.h>
 
 #include "mem.h"
-#include "dynmap.h"
 
 #include "backend.h"
 #include "val_internal.h"
 #include "isn.h"
-
-typedef struct isn isn;
-
-struct isn
-{
-	enum isn_type
-	{
-		ISN_LOAD,
-		ISN_STORE,
-		ISN_ALLOCA,
-		ISN_OP,
-		ISN_ELEM
-	} type;
-
-	union
-	{
-		struct
-		{
-			val *lval, *to;
-		} load;
-		struct
-		{
-			val *lval, *from;
-		} store;
-
-		struct
-		{
-			enum op op;
-			val *lhs, *rhs, *res;
-		} op;
-
-		struct
-		{
-			val *lval, *add, *res;
-		} elem;
-
-		struct
-		{
-			unsigned sz;
-			val *out;
-		} alloca;
-	} u;
-
-	isn *next;
-};
+#include "isn_private.h"
 
 static isn *head, **tail = &head;
+
+isn *isn_head(void)
+{
+	return head;
+}
 
 static isn *isn_new(enum isn_type t)
 {
@@ -105,55 +65,31 @@ void isn_alloca(unsigned sz, val *v)
 	isn->u.alloca.out = v;
 }
 
-static val *resolve_val(val *initial, dynmap *stores2rvals)
+void isn_dump()
 {
-	val *resolved = dynmap_get(val *, val *, stores2rvals, initial);
-
-	if(resolved){
-		printf("# resolved %s -> %s\n", val_str(initial), val_str(resolved));
-		return resolved;
-	}
-	return initial;
-}
-
-static val *ret_val(val *initial, dynmap *stores2rvals)
-{
-	return initial;
-}
-
-void isn_dump(bool optimise)
-{
-	dynmap *stores2rvals = dynmap_new(val *, /*ref*/NULL, val_hash);
-	val *(*const resolve)(val *, dynmap *) = optimise ? resolve_val : ret_val;
 	isn *i;
 
 	for(i = head; i; i = i->next){
+		if(i->skip)
+			continue;
+
 		switch(i->type){
 			case ISN_STORE:
 			{
-				val *resolved_rval = resolve(i->u.store.from, stores2rvals);
-
-				dynmap_set(val *, val *,
-						stores2rvals,
-						i->u.store.lval, resolved_rval);
-
 				printf("\tstore %s, %s\n",
 							val_str(i->u.load.lval),
-							val_str(resolved_rval));
+							val_str(i->u.load.to));
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				val *rval = resolve(i->u.load.lval, stores2rvals);
+				val *rval = i->u.load.lval;
 
 				printf("\t%s = load %s\n",
 						val_str(i->u.load.to),
 						val_str(rval));
 
-				dynmap_set(val *, val *,
-						stores2rvals,
-						i->u.load.to, rval);
 				break;
 			}
 
@@ -167,37 +103,28 @@ void isn_dump(bool optimise)
 
 			case ISN_ELEM:
 			{
-				val *solved_lval = i->u.elem.lval;
-				/* ^ lval - doesn't resolve since we don't want the value inside it */
-				val *solved_add = resolve(i->u.elem.add, stores2rvals);
-				int res;
-
 				printf("\t%s = elem %s, %s\n",
 							val_str(i->u.elem.res),
-							val_str(solved_lval),
-							val_str(solved_add));
+							val_str(i->u.elem.lval),
+							val_str(i->u.elem.add));
 				break;
 			}
 
 			case ISN_OP:
 			{
-				val *solved_lhs = resolve(i->u.op.lhs, stores2rvals);
-				val *solved_rhs = resolve(i->u.op.rhs, stores2rvals);
-				int res;
-
 				printf("\t%s = %s %s, %s\n",
 						val_str(i->u.op.res),
 						op_to_cmd(i->u.op.op),
-						val_str(solved_lhs),
-						val_str(solved_rhs));
+						val_str(i->u.op.lhs),
+						val_str(i->u.op.rhs));
+				break;
+			}
 
-				if(val_maybe_op(i->u.op.op, solved_lhs, solved_rhs, &res)){
-					val *synth_add = val_new_i(res);
-
-					dynmap_set(val *, val *,
-							stores2rvals,
-							i->u.op.res, synth_add);
-				}
+			case ISN_COPY:
+			{
+				printf("\t%s = %s\n",
+						val_str(i->u.copy.to),
+						val_str(i->u.copy.from));
 				break;
 			}
 		}
