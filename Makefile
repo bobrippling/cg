@@ -6,7 +6,7 @@ SRC = ${OBJ:.o=.c}
 CFLAGS = -g
 LDFLAGS = -g
 
-all: val tags
+all: tags val
 
 val: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
@@ -16,5 +16,10 @@ tags: ${SRC}
 
 clean:
 	rm -f val ${OBJ}
+
+Makefile.dep: ${SRC}
+	${CC} -MM ${SRC} > $@
+
+-include Makefile.dep
 
 .PHONY: clean all
