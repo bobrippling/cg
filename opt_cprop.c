@@ -93,4 +93,6 @@ void opt_cprop()
 			}
 		}
 	}
+
+	dynmap_free(stores2rvals);
 }
