@@ -7,6 +7,13 @@
 #include "isn_struct.h"
 #include "val_struct.h"
 
+static int alloca_offset(dynmap *alloca2stack, val *val)
+{
+	intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
+	assert(off);
+	return off;
+}
+
 static const char *x86_val_str(
 		val *val, int bufchoice,
 		dynmap *alloca2stack,
@@ -32,20 +39,61 @@ static const char *x86_val_str(
 			snprintf(buf, sizeof buf1, "$%s", val->u.addr.u.name);
 			break;
 		case NAME_LVAL:
-			assert(dereference);
-			snprintf(buf, sizeof buf1, "%s", val->u.addr.u.name);
+			snprintf(buf, sizeof buf1, "%s%s%s",
+					dereference ? "(" : "",
+					val->u.addr.u.name,
+					dereference ? ")" : "");
 			break;
 		case ALLOCA:
 		{
-			intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
-			assert(off);
-			assert(dereference);
-			snprintf(buf, sizeof buf1, "-%d(%%rbp)", (int)off);
+			int off = alloca_offset(alloca2stack, val);
+			/*assert(!dereference);*/
+			snprintf(buf, sizeof buf1, "%d(%%rbp)", (int)off);
 			break;
 		}
 	}
 
 	return buf;
+}
+
+static void emit_elem(isn *i, dynmap *alloca2stack)
+{
+	int add_total;
+
+	switch(i->u.elem.lval->type){
+		case INT:
+		case NAME:
+			assert(0);
+
+		case INT_PTR:
+		{
+			val *intptr = i->u.elem.lval;
+
+			if(!val_maybe_op(op_add, i->u.elem.add, intptr, &add_total)){
+				assert(0 && "couldn't add operands");
+			}
+			break;
+		}
+
+		case NAME_LVAL:
+		{
+			assert(0 && "TODO: add name_lval");
+		}
+
+		case ALLOCA:
+		{
+			assert(i->u.elem.add->type == INT);
+
+			add_total = op_exe(op_add,
+					alloca_offset(alloca2stack, i->u.elem.lval),
+					i->u.elem.add->u.i);
+			break;
+		}
+	}
+
+	printf("\tlea %d(%%rbp), %s\n",
+			add_total,
+			x86_val_str(i->u.elem.res, 0, alloca2stack, 0));
 }
 
 void x86_out()
@@ -67,7 +115,7 @@ void x86_out()
 
 				dynmap_set(val *, intptr_t,
 						alloca2stack,
-						i->u.alloca.out, alloca);
+						i->u.alloca.out, -alloca);
 
 				break;
 			}
@@ -107,13 +155,8 @@ void x86_out()
 			}
 
 			case ISN_ELEM:
-			{
-				printf("\tlea %s(%s), %s\n",
-							x86_val_str(i->u.elem.lval, 0, alloca2stack, 0),
-							x86_val_str(i->u.elem.add, 1, alloca2stack, 0),
-							x86_val_str(i->u.elem.res, 2, alloca2stack, 0));
+				emit_elem(i, alloca2stack);
 				break;
-			}
 
 			case ISN_OP:
 			{
