@@ -11,7 +11,7 @@ HEADERS = backend.h dyn.h dynmap.h \
 
 SRC = ${OBJ:.o=.c}
 
-CFLAGS = -g -Wall -Wextra ${CFLAGS_CONFIGURE}
+CFLAGS = -std=c89 -g -Wall -Wextra ${CFLAGS_CONFIGURE}
 LDFLAGS = -g
 
 all: tags val

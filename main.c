@@ -16,10 +16,10 @@ static void eg(bool opt)
 	val *b = val_new_i(5);
 	val *store = val_new_ptr_from_int(0);
 
-	// store = 3
+	/* store = 3 */
 	val_store(a, store);
 
-	// loaded = 3
+	/* loaded = 3 */
 	val *loaded = val_load(store);
 
 	val *other_store = val_alloca(2, 4);
@@ -27,14 +27,14 @@ static void eg(bool opt)
 	val_store(val_new_i(7), other_store);
 	val_store(val_new_i(9), val_element(other_store, 1, 4));
 
-	// other_store = { 7, 9 }
+	/* other_store = { 7, 9 } */
 
 	val *added = val_add(b,
 			val_add(
 				val_load(other_store),
 				loaded));
 
-	// added = 5 + (7 + 3) = 15
+	/* added = 5 + (7 + 3) = 15 */
 
 	val *add_again =
 		val_add(
@@ -43,12 +43,12 @@ static void eg(bool opt)
 					val_load(other_store)),
 				added);
 
-	// add_again = (3 + 7) + 15 = 25
+	/* add_again = (3 + 7) + 15 = 25 */
 
 	val *alloca_p = val_element(other_store, 1, 4);
 
 	val_add(val_load(alloca_p), add_again);
-	// 9 + 25 = 34
+	/* 9 + 25 = 34 */
 
 	if(opt){
 		opt_cprop();
@@ -71,8 +71,9 @@ static void usage(const char *arg0)
 int main(int argc, char *argv[])
 {
 	bool opt = false;
+	int i;
 
-	for(int i = 1; i < argc; i++){
+	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-O")){
 			opt = true;
 		}else{

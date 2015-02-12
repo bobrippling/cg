@@ -227,9 +227,11 @@ val *val_load(val *v)
 
 static val *val_alloca_idx(val *lval, unsigned idx)
 {
+	struct val_idxpair *pair;
+
 	lval = VAL_NEED(lval, ADDRESSABLE);
 
-	for(struct val_idxpair *pair = lval->u.addr.idxpair;
+	for(pair = lval->u.addr.idxpair;
 			pair;
 			pair = pair->next)
 	{
