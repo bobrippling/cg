@@ -47,8 +47,10 @@ static void eg(bool opt)
 
 	val *alloca_p = val_element(other_store, 1, 4);
 
-	val_add(val_load(alloca_p), add_again);
+	val *final = val_add(val_load(alloca_p), add_again);
 	/* 9 + 25 = 34 */
+
+	val_ret(final);
 
 	if(opt){
 		opt_cprop();
