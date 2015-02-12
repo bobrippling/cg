@@ -148,6 +148,7 @@ void x86_out()
 
 	isn_regalloc(head, countof(regs));
 
+	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", alloca);
 
 	for(i = head; i; i = i->next){
