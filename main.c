@@ -8,6 +8,7 @@
 
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
+#include "opt_dse.h"
 #include "x86.h"
 
 static void eg(bool opt)
@@ -55,6 +56,7 @@ static void eg(bool opt)
 	if(opt){
 		opt_cprop();
 		opt_storeprop();
+		opt_dse();
 	}
 
 	isn_dump();
