@@ -1,3 +1,4 @@
 Makefile.dep
+Makefile.cfg
 val
 *.o

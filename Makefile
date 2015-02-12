@@ -11,7 +11,7 @@ HEADERS = backend.h dyn.h dynmap.h \
 
 SRC = ${OBJ:.o=.c}
 
-CFLAGS = -g -Wall -Wextra
+CFLAGS = -g -Wall -Wextra ${CFLAGS_CONFIGURE}
 LDFLAGS = -g
 
 all: tags val
@@ -29,5 +29,6 @@ Makefile.dep: ${SRC}
 	${CC} -MM ${SRC} > $@
 
 -include Makefile.dep
+-include Makefile.cfg
 
 .PHONY: clean all

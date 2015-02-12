@@ -1,0 +1,33 @@
+#!/bin/sh
+
+try_cflag(){
+	flag="$1"
+
+	printf 'checking whether compiler accepts %s... ' "$flag"
+	echo "typedef int abc;" > "$ctmp"
+
+	if $CC "$flag" -c -o /dev/null "$ctmp" >/dev/null 2>&1
+	then
+		echo yes
+		echo "CFLAGS_CONFIGURE += $flag" >> Makefile.cfg
+	else
+		echo no
+	fi
+}
+
+if [ -z "$TMPDIR" ]
+then
+	TMPDIR=tmp/
+	mkdir -p "$TMPDIR" || exit $?
+fi
+
+if [ -z "$CC" ]
+then
+	CC=cc
+fi
+
+ctmp="$TMPDIR"/1.c
+
+echo > Makefile.cfg
+
+try_cflag -Wno-missing-field-initializers
