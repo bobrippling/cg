@@ -1,5 +1,5 @@
 OBJ = val.o main.o mem.o op.o \
-      dynmap.o opt_cprop.o opt_storeprop.o \
+      dynmap.o opt_cprop.o opt_storeprop.o opt_dse.o \
       isn.o isn_reg.o \
       x86.o
 
