@@ -159,6 +159,15 @@ void x86_out()
 			case ISN_ALLOCA:
 				break;
 
+			case ISN_RET:
+			{
+				/* XXX: hard coded eax */
+				printf("\tmov %s, %%eax\n",
+						x86_val_str(i->u.ret, 0, alloca2stack, 0));
+				printf("\tleave\n\tret\n");
+				break;
+			}
+
 			case ISN_STORE:
 			{
 				printf("\tmov %s, %s\n",

@@ -16,6 +16,8 @@ val *val_add(val *, val *);
 
 char *val_str(val *);
 
+void val_ret(val *);
+
 unsigned val_hash(val *);
 
 #endif

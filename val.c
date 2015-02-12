@@ -287,3 +287,8 @@ val *val_add(val *a, val *b)
 
 	return named;
 }
+
+void val_ret(val *r)
+{
+	isn_ret(r);
+}

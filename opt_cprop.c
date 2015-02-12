@@ -37,6 +37,16 @@ void opt_cprop()
 				break;
 			}
 
+			case ISN_RET:
+			{
+				val *ret = resolve_val(i->u.ret, stores2rvals);
+
+				if(ret && ret != i->u.ret){
+					i->u.ret = ret;
+				}
+				break;
+			}
+
 			case ISN_LOAD:
 			{
 				val *rval = resolve_val(i->u.load.lval, stores2rvals);

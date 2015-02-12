@@ -10,7 +10,8 @@ struct isn
 		ISN_ALLOCA,
 		ISN_OP,
 		ISN_ELEM,
-		ISN_COPY
+		ISN_COPY,
+		ISN_RET
 	} type;
 
 	union
@@ -45,6 +46,8 @@ struct isn
 		{
 			val *from, *to;
 		} copy;
+
+		val *ret;
 	} u;
 
 	isn *next;

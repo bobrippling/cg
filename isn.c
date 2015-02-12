@@ -66,6 +66,12 @@ void isn_alloca(unsigned sz, val *v)
 	isn->u.alloca.out = v;
 }
 
+void isn_ret(val *r)
+{
+	isn *isn = isn_new(ISN_RET);
+	isn->u.ret = r;
+}
+
 void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 {
 	switch(current->type){
@@ -98,6 +104,10 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 		case ISN_COPY:
 			fn(current->u.copy.to, current, ctx);
 			fn(current->u.copy.from, current, ctx);
+			break;
+
+		case ISN_RET:
+			fn(current->u.ret, current, ctx);
 			break;
 	}
 }
@@ -162,6 +172,12 @@ void isn_dump()
 				printf("\t%s = %s\n",
 						val_str(i->u.copy.to),
 						val_str(i->u.copy.from));
+				break;
+			}
+
+			case ISN_RET:
+			{
+				printf("\tret %s\n", val_str(i->u.ret));
 				break;
 			}
 		}

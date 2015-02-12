@@ -55,6 +55,7 @@ void opt_storeprop()
 			case ISN_ALLOCA:
 			case ISN_COPY:
 			case ISN_OP:
+			case ISN_RET:
 				break;
 		}
 	}
