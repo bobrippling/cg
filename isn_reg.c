@@ -22,9 +22,10 @@ static void init_regalloc_data(val *v)
 	v->pass_data = xmalloc(sizeof(struct lifetime));
 }
 
-static void free_regalloc_data1(val *v, void *ctx)
+static void free_regalloc_data1(val *v, isn *isn, void *ctx)
 {
 	(void)ctx;
+	(void)isn;
 	free(v->pass_data);
 	v->pass_data = NULL;
 }
@@ -35,10 +36,12 @@ static void free_regalloc_data(isn *head)
 		isn_on_vals(head, free_regalloc_data1, NULL);
 }
 
-static void assign_lifetime(val *v, void *ctx)
+static void assign_lifetime(val *v, isn *isn, void *ctx)
 {
 	const unsigned isn_count = *(unsigned *)ctx;
 	struct lifetime *lt = v->pass_data;
+
+	(void)isn;
 
 	if(!VAL_IS_NAME(v))
 		return;
@@ -69,10 +72,12 @@ struct greedy_ctx
 	unsigned isn_num;
 };
 
-static void regalloc_greedy1(val *v, void *vctx)
+static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	const struct lifetime *lt = v->pass_data;
 	const struct greedy_ctx *ctx = vctx;
+
+	(void)isn;
 
 	if(!lt)
 		return; /* not something we need to regalloc */

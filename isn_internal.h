@@ -7,6 +7,6 @@ typedef struct isn isn;
 
 isn *isn_head(void);
 
-void isn_on_vals(isn *, void (val *, void *), void *);
+void isn_on_vals(isn *, void (val *, isn *, void *), void *);
 
 #endif

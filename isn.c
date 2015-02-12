@@ -66,38 +66,38 @@ void isn_alloca(unsigned sz, val *v)
 	isn->u.alloca.out = v;
 }
 
-void isn_on_vals(isn *isn, void fn(val *, void *), void *ctx)
+void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 {
-	switch(isn->type){
+	switch(current->type){
 		case ISN_STORE:
-			fn(isn->u.store.lval, ctx);
-			fn(isn->u.store.from, ctx);
+			fn(current->u.store.lval, current, ctx);
+			fn(current->u.store.from, current, ctx);
 			break;
 
 		case ISN_LOAD:
-			fn(isn->u.load.to, ctx);
-			fn(isn->u.load.lval, ctx);
+			fn(current->u.load.to, current, ctx);
+			fn(current->u.load.lval, current, ctx);
 			break;
 
 		case ISN_ALLOCA:
-			fn(isn->u.alloca.out, ctx);
+			fn(current->u.alloca.out, current, ctx);
 			break;
 
 		case ISN_ELEM:
-			fn(isn->u.elem.res, ctx);
-			fn(isn->u.elem.lval, ctx);
-			fn(isn->u.elem.add, ctx);
+			fn(current->u.elem.res, current, ctx);
+			fn(current->u.elem.lval, current, ctx);
+			fn(current->u.elem.add, current, ctx);
 			break;
 
 		case ISN_OP:
-			fn(isn->u.op.res, ctx);
-			fn(isn->u.op.lhs, ctx);
-			fn(isn->u.op.rhs, ctx);
+			fn(current->u.op.res, current, ctx);
+			fn(current->u.op.lhs, current, ctx);
+			fn(current->u.op.rhs, current, ctx);
 			break;
 
 		case ISN_COPY:
-			fn(isn->u.copy.to, ctx);
-			fn(isn->u.copy.from, ctx);
+			fn(current->u.copy.to, current, ctx);
+			fn(current->u.copy.from, current, ctx);
 			break;
 	}
 }
