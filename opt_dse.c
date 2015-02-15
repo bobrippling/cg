@@ -58,6 +58,10 @@ static void discard_dead_stores(isn *head)
 			case ISN_COPY:
 				use_val = head->u.copy.to;
 				break;
+
+			case ISN_ELEM:
+				use_val = head->u.elem.res;
+				break;
 		}
 
 		assert(use_val->pass_data);
