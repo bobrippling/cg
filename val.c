@@ -35,6 +35,7 @@ static bool val_in(val *v, enum val_to to)
 		case ALLOCA:
 			return to & ADDRESSABLE;
 	}
+	assert(0);
 }
 
 static val *val_need(val *v, enum val_to to, const char *from)
@@ -122,6 +123,7 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 		case NAME_LVAL:
 			assert(0 && "can't add to name vals");
 	}
+	assert(0);
 }
 
 char *val_str(val *v)

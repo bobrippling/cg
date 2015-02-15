@@ -134,7 +134,7 @@ void x86_out()
 			{
 				alloca += i->u.alloca.sz;
 
-				dynmap_set(val *, intptr_t,
+				(void)dynmap_set(val *, intptr_t,
 						alloca2stack,
 						i->u.alloca.out, -alloca);
 

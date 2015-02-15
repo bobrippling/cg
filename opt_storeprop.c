@@ -43,7 +43,7 @@ void opt_storeprop()
 				if(i->u.elem.add->type == INT){
 					val *elem = val_element(i->u.elem.lval, i->u.elem.add->u.i, 1);
 
-					dynmap_set(val *, val *,
+					(void)dynmap_set(val *, val *,
 							lval_entries,
 							i->u.elem.res,
 							elem);

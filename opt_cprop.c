@@ -29,7 +29,7 @@ void opt_cprop()
 				if(!resolved_rval)
 					resolved_rval = i->u.store.from;
 
-				dynmap_set(val *, val *,
+				(void)dynmap_set(val *, val *,
 						stores2rvals,
 						i->u.store.lval, resolved_rval);
 
@@ -52,7 +52,7 @@ void opt_cprop()
 				val *rval = resolve_val(i->u.load.lval, stores2rvals);
 
 				if(rval){
-					dynmap_set(val *, val *,
+					(void)dynmap_set(val *, val *,
 							stores2rvals,
 							i->u.load.to, rval);
 
@@ -90,7 +90,7 @@ void opt_cprop()
 					solved_rhs = i->u.op.rhs;
 
 				if(val_op_maybe_val(i->u.op.op, solved_lhs, solved_rhs, &synth_add)){
-					dynmap_set(val *, val *,
+					(void)dynmap_set(val *, val *,
 							stores2rvals,
 							i->u.op.res, synth_add);
 
