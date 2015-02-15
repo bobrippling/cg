@@ -6,6 +6,7 @@
 #include "backend.h"
 #include "isn.h"
 #include "block.h"
+#include "branch.h"
 
 #include "isn_internal.h" /* isn_dump() */
 #include "block_internal.h" /* block_first_isn() */
@@ -62,15 +63,17 @@ static void eg1(block *const entry)
 
 static void egjmp(block *const entry)
 {
-	/*
 	val *arg = val_new_i(5);
 
-	val *cmp = val_cmp(arg, val_new_i(3));
+	val *cmp = val_equal(entry, arg, val_new_i(3));
 
 	block *btrue = block_new(), *bfalse = block_new();
 
-	branch_cond(cmp, btrue, bfalse);
-	*/
+	branch_cond(cmp, entry, btrue, bfalse);
+
+	val_ret(btrue, arg);
+
+	val_ret(bfalse, val_new_i(0));
 }
 
 static void usage(const char *arg0)
@@ -104,7 +107,7 @@ int main(int argc, char *argv[])
 		opt_dse(entry);
 	}
 
-	isn_dump(block_first_isn(entry));
+	block_dump(entry);
 
 	printf("x86:\n");
 

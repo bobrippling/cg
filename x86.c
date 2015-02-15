@@ -8,8 +8,15 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
-#include "isn_reg.h"
+#include "blk_reg.h"
 #include "block_internal.h"
+#include "block_struct.h"
+
+struct x86_alloca_ctx
+{
+	dynmap *alloca2stack;
+	long alloca;
+};
 
 static const char *const regs[] = {
 	"eax",
@@ -118,39 +125,10 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			x86_val_str(i->u.elem.res, 0, alloca2stack, 0));
 }
 
-void x86_out(block *const entry)
+static void x86_out_block1(block *blk, dynmap *alloca2stack)
 {
-	isn *const head = block_first_isn(entry);
-	dynmap *alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
-	long alloca = 0;
+	isn *head = block_first_isn(blk);
 	isn *i;
-
-	/* gather allocas */
-	for(i = head; i; i = i->next){
-		if(i->skip)
-			continue;
-
-		switch(i->type){
-			case ISN_ALLOCA:
-			{
-				alloca += i->u.alloca.sz;
-
-				(void)dynmap_set(val *, intptr_t,
-						alloca2stack,
-						i->u.alloca.out, -alloca);
-
-				break;
-			}
-
-			default:
-				break;
-		}
-	}
-
-	isn_regalloc(head, countof(regs));
-
-	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
-	printf("\tsub $%ld, %%rsp\n", alloca);
 
 	for(i = head; i; i = i->next){
 		if(i->skip)
@@ -221,4 +199,67 @@ void x86_out(block *const entry)
 			}
 		}
 	}
+}
+
+static void x86_out_block(block *const blk, dynmap *alloca2stack)
+{
+	x86_out_block1(blk, alloca2stack);
+	switch(blk->type){
+		case BLK_UNKNOWN:
+			assert(0);
+		case BLK_ENTRY:
+		case BLK_EXIT:
+			break;
+		case BLK_BRANCH:
+			printf("TODO: BRANCH B-TRUE %p\n", blk);
+			x86_out_block(blk->u.branch.t, alloca2stack);
+			printf("      BRANCH B-FALS %p\n", blk);
+			x86_out_block(blk->u.branch.f, alloca2stack);
+	}
+}
+
+static void x86_sum_alloca(block *blk, void *vctx)
+{
+	struct x86_alloca_ctx *const ctx = vctx;
+	isn *const head = block_first_isn(blk);
+	isn *i;
+
+	for(i = head; i; i = i->next){
+		if(i->skip)
+			continue;
+
+		switch(i->type){
+			case ISN_ALLOCA:
+			{
+				ctx->alloca += i->u.alloca.sz;
+
+				(void)dynmap_set(val *, intptr_t,
+						ctx->alloca2stack,
+						i->u.alloca.out, -ctx->alloca);
+
+				break;
+			}
+
+			default:
+				break;
+		}
+	}
+}
+
+void x86_out(block *const entry)
+{
+	struct x86_alloca_ctx ctx = { 0 };
+	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
+
+	/* gather allocas */
+	blocks_iterate(entry, x86_sum_alloca, &ctx);
+
+	blk_regalloc(entry, countof(regs));
+
+	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
+	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
+
+	x86_out_block(entry, ctx.alloca2stack);
+
+	dynmap_free(ctx.alloca2stack);
 }

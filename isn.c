@@ -8,6 +8,7 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "block_internal.h"
+#include "block_struct.h"
 
 static isn *isn_new(enum isn_type t, block *blk)
 {
@@ -87,6 +88,7 @@ void isn_ret(block *blk, val *r)
 {
 	isn *isn = isn_new(ISN_RET, blk);
 	isn->u.ret = r;
+	block_set_type(blk, BLK_EXIT);
 }
 
 void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
