@@ -26,6 +26,20 @@ static isn *isn_new(enum isn_type t)
 	return isn;
 }
 
+const char *isn_type_to_str(enum isn_type t)
+{
+	switch(t){
+		case ISN_STORE:  return "store";
+		case ISN_LOAD:   return "load";
+		case ISN_ALLOCA: return "alloca";
+		case ISN_ELEM:   return "elem";
+		case ISN_OP:     return "op";
+		case ISN_COPY:   return "copy";
+		case ISN_RET:    return "ret";
+	}
+	return NULL;
+}
+
 void isn_load(val *to, val *lval)
 {
 	isn *isn = isn_new(ISN_LOAD);

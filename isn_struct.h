@@ -55,4 +55,6 @@ struct isn
 	bool skip;
 };
 
+const char *isn_type_to_str(enum isn_type);
+
 #endif
