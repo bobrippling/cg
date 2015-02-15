@@ -194,7 +194,7 @@ void x86_out()
 			case ISN_OP:
 			{
 				printf("\t%s %s, %s ===> %s\n",
-						op_to_cmd(i->u.op.op),
+						op_to_str(i->u.op.op),
 						x86_val_str(i->u.op.lhs, 0, alloca2stack, 0),
 						x86_val_str(i->u.op.rhs, 1, alloca2stack, 0),
 						x86_val_str(i->u.op.res, 2, alloca2stack, 0));

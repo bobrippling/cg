@@ -175,7 +175,7 @@ void isn_dump()
 			{
 				printf("\t%s = %s %s, %s\n",
 						val_str(i->u.op.res),
-						op_to_cmd(i->u.op.op),
+						op_to_str(i->u.op.op),
 						val_str(i->u.op.lhs),
 						val_str(i->u.op.rhs));
 				break;
