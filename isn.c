@@ -27,6 +27,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_ALLOCA: return "alloca";
 		case ISN_ELEM:   return "elem";
 		case ISN_OP:     return "op";
+		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
 		case ISN_RET:    return "ret";
 	}
@@ -56,6 +57,15 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 	isn->u.op.lhs = lhs;
 	isn->u.op.rhs = rhs;
 	isn->u.op.res = res;
+}
+
+void isn_cmp(block *blk, val *lhs, val *rhs, val *res)
+{
+	isn *isn = isn_new(ISN_CMP, blk);
+	isn->u.cmp.cmp = op_cmp_eq;
+	isn->u.cmp.lhs = lhs;
+	isn->u.cmp.rhs = rhs;
+	isn->u.cmp.res = res;
 }
 
 void isn_elem(block *blk, val *lval, val *add, val *res)
@@ -106,6 +116,12 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 			fn(current->u.op.res, current, ctx);
 			fn(current->u.op.lhs, current, ctx);
 			fn(current->u.op.rhs, current, ctx);
+			break;
+
+		case ISN_CMP:
+			fn(current->u.cmp.res, current, ctx);
+			fn(current->u.cmp.lhs, current, ctx);
+			fn(current->u.cmp.rhs, current, ctx);
 			break;
 
 		case ISN_COPY:
@@ -161,6 +177,16 @@ void isn_dump(isn *const head)
 							val_str(i->u.elem.res),
 							val_str(i->u.elem.lval),
 							val_str(i->u.elem.add));
+				break;
+			}
+
+			case ISN_CMP:
+			{
+				printf("\t%s = %s %s, %s\n",
+						val_str(i->u.cmp.res),
+						op_cmp_to_str(i->u.cmp.cmp),
+						val_str(i->u.cmp.lhs),
+						val_str(i->u.cmp.rhs));
 				break;
 			}
 

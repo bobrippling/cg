@@ -16,6 +16,7 @@ void val_store(block *, val *rval, val *lval);
 val *val_load(block *, val *);
 
 val *val_add(block *, val *, val *);
+val *val_equal(block *, val *, val *);
 
 void val_ret(block *, val *);
 

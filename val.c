@@ -296,6 +296,15 @@ val *val_add(block *blk, val *a, val *b)
 	return named;
 }
 
+val *val_equal(block *blk, val *lhs, val *rhs)
+{
+	val *eq = val_name_new();
+
+	isn_cmp(blk, lhs, rhs, eq);
+
+	return eq;
+}
+
 void val_ret(block *blk, val *r)
 {
 	isn_ret(blk, r);

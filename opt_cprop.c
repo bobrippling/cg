@@ -101,6 +101,11 @@ void opt_cprop(block *entry)
 				}
 				break;
 			}
+
+			case ISN_CMP:
+			{
+				break;
+			}
 		}
 	}
 

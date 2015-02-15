@@ -18,3 +18,11 @@ const char *op_to_str(enum op op)
 	}
 	assert(0);
 }
+
+const char *op_cmp_to_str(enum op_cmp cmp)
+{
+	switch(cmp){
+		case op_cmp_eq: return "equal";
+	}
+	assert(0);
+}

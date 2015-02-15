@@ -9,6 +9,7 @@ struct isn
 		ISN_STORE,
 		ISN_ALLOCA,
 		ISN_OP,
+		ISN_CMP,
 		ISN_ELEM,
 		ISN_COPY,
 		ISN_RET
@@ -30,6 +31,12 @@ struct isn
 			enum op op;
 			val *lhs, *rhs, *res;
 		} op;
+
+		struct
+		{
+			enum op_cmp cmp;
+			val *lhs, *rhs, *res;
+		} cmp;
 
 		struct
 		{

@@ -202,6 +202,16 @@ void x86_out(block *const entry)
 				break;
 			}
 
+			case ISN_CMP:
+			{
+				printf("\t%s %s, %s ===> %s\n",
+						op_cmp_to_str(i->u.cmp.cmp),
+						x86_val_str(i->u.cmp.lhs, 0, alloca2stack, 0),
+						x86_val_str(i->u.cmp.rhs, 1, alloca2stack, 0),
+						x86_val_str(i->u.cmp.res, 2, alloca2stack, 0));
+				break;
+			}
+
 			case ISN_COPY:
 			{
 				printf("\tmov %s, %s\n",

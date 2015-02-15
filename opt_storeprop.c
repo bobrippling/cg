@@ -61,6 +61,7 @@ void opt_storeprop(block *const entry)
 			case ISN_ALLOCA:
 			case ISN_COPY:
 			case ISN_OP:
+			case ISN_CMP:
 			case ISN_RET:
 				break;
 		}
