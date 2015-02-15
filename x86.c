@@ -9,6 +9,7 @@
 #include "isn_struct.h"
 #include "val_struct.h"
 #include "isn_reg.h"
+#include "block_internal.h"
 
 static const char *const regs[] = {
 	"eax",
@@ -117,9 +118,9 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			x86_val_str(i->u.elem.res, 0, alloca2stack, 0));
 }
 
-void x86_out()
+void x86_out(block *const entry)
 {
-	isn *head = isn_head();
+	isn *const head = block_first_isn(entry);
 	dynmap *alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 	long alloca = 0;
 	isn *i;

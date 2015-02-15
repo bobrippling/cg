@@ -7,20 +7,13 @@
 #include "isn.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
+#include "block_internal.h"
 
-static isn *head, **tail = &head;
-
-isn *isn_head(void)
-{
-	return head;
-}
-
-static isn *isn_new(enum isn_type t)
+static isn *isn_new(enum isn_type t, block *blk)
 {
 	isn *isn = xcalloc(1, sizeof *isn);
 
-	*tail = isn;
-	tail = &isn->next;
+	block_add_isn(blk, isn);
 
 	isn->type = t;
 	return isn;
@@ -40,49 +33,49 @@ const char *isn_type_to_str(enum isn_type t)
 	return NULL;
 }
 
-void isn_load(val *to, val *lval)
+void isn_load(block *blk, val *to, val *lval)
 {
-	isn *isn = isn_new(ISN_LOAD);
+	isn *isn = isn_new(ISN_LOAD, blk);
 
 	isn->u.load.lval = lval;
 	isn->u.load.to = to;
 }
 
-void isn_store(val *from, val *lval)
+void isn_store(block *blk, val *from, val *lval)
 {
-	isn *isn = isn_new(ISN_STORE);
+	isn *isn = isn_new(ISN_STORE, blk);
 
 	isn->u.store.lval = lval;
 	isn->u.store.from = from;
 }
 
-void isn_op(enum op op, val *lhs, val *rhs, val *res)
+void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 {
-	isn *isn = isn_new(ISN_OP);
+	isn *isn = isn_new(ISN_OP, blk);
 	isn->u.op.op = op;
 	isn->u.op.lhs = lhs;
 	isn->u.op.rhs = rhs;
 	isn->u.op.res = res;
 }
 
-void isn_elem(val *lval, val *add, val *res)
+void isn_elem(block *blk, val *lval, val *add, val *res)
 {
-	isn *isn = isn_new(ISN_ELEM);
+	isn *isn = isn_new(ISN_ELEM, blk);
 	isn->u.elem.lval = lval;
 	isn->u.elem.add = add;
 	isn->u.elem.res = res;
 }
 
-void isn_alloca(unsigned sz, val *v)
+void isn_alloca(block *blk, unsigned sz, val *v)
 {
-	isn *isn = isn_new(ISN_ALLOCA);
+	isn *isn = isn_new(ISN_ALLOCA, blk);
 	isn->u.alloca.sz = sz;
 	isn->u.alloca.out = v;
 }
 
-void isn_ret(val *r)
+void isn_ret(block *blk, val *r)
 {
-	isn *isn = isn_new(ISN_RET);
+	isn *isn = isn_new(ISN_RET, blk);
 	isn->u.ret = r;
 }
 
@@ -126,7 +119,7 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 	}
 }
 
-void isn_dump()
+void isn_dump(isn *const head)
 {
 	isn *i;
 

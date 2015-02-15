@@ -194,14 +194,14 @@ val *val_new_ptr_from_int(int i)
 	return p;
 }
 
-val *val_alloca(int n, unsigned elemsz)
+val *val_alloca(block *blk, int n, unsigned elemsz)
 {
 	/* XXX: static */
 	static int idx;
 	const unsigned bytesz = n * elemsz;
 	val *v = val_new(ALLOCA);
 
-	isn_alloca(bytesz, v);
+	isn_alloca(blk, bytesz, v);
 
 	v->u.addr.u.alloca.bytesz = bytesz;
 	v->u.addr.u.alloca.idx = idx++;
@@ -209,21 +209,21 @@ val *val_alloca(int n, unsigned elemsz)
 	return v;
 }
 
-void val_store(val *rval, val *lval)
+void val_store(block *blk, val *rval, val *lval)
 {
 	lval = VAL_NEED(lval, ADDRESSABLE);
 	rval = VAL_NEED(rval, LITERAL | NAMED);
 
-	isn_store(rval, lval);
+	isn_store(blk, rval, lval);
 }
 
-val *val_load(val *v)
+val *val_load(block *blk, val *v)
 {
 	val *named = val_name_new();
 
 	v = VAL_NEED(v, ADDRESSABLE);
 
-	isn_load(named, v);
+	isn_load(blk, named, v);
 
 	return named;
 }
@@ -263,7 +263,7 @@ static void val_alloca_idx_set(val *lval, unsigned idx, val *elemptr)
 	newpair->idx = idx;
 }
 
-val *val_element(val *lval, int i, unsigned elemsz)
+val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 {
 	const unsigned byteidx = i * elemsz;
 
@@ -274,23 +274,29 @@ val *val_element(val *lval, int i, unsigned elemsz)
 	val *named = val_name_new_lval();
 	val *vidx = val_new_i(byteidx);
 
-	isn_elem(lval, vidx, named);
+	if(blk) /* else noop */
+		isn_elem(blk, lval, vidx, named);
 
 	val_alloca_idx_set(lval, byteidx, named);
 
 	return named;
 }
 
-val *val_add(val *a, val *b)
+val *val_element_noop(val *lval, int i, unsigned elemsz)
+{
+	return val_element(NULL, lval, i, elemsz);
+}
+
+val *val_add(block *blk, val *a, val *b)
 {
 	val *named = val_name_new();
 
-	isn_op(op_add, a, b, named);
+	isn_op(blk, op_add, a, b, named);
 
 	return named;
 }
 
-void val_ret(val *r)
+void val_ret(block *blk, val *r)
 {
-	isn_ret(r);
+	isn_ret(blk, r);
 }

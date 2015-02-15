@@ -5,70 +5,77 @@
 
 #include "backend.h"
 #include "isn.h"
+#include "block.h"
+
+#include "isn_internal.h" /* isn_dump() */
+#include "block_internal.h" /* block_first_isn() */
 
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
 #include "opt_dse.h"
 #include "x86.h"
 
-static void eg(bool opt)
+static void eg1(block *const entry)
 {
 	val *a = val_new_i(3);
 	val *b = val_new_i(5);
 	val *store = val_new_ptr_from_int(0);
 
 	/* store = 3 */
-	val_store(a, store);
+	val_store(entry, a, store);
 
 	/* loaded = 3 */
-	val *loaded = val_load(store);
+	val *loaded = val_load(entry, store);
 
-	val *other_store = val_alloca(2, 4);
+	val *other_store = val_alloca(entry, 2, 4);
 
-	val_store(val_new_i(7), other_store);
-	val_store(val_new_i(9), val_element(other_store, 1, 4));
+	val_store(entry, val_new_i(7), other_store);
+	val_store(entry, val_new_i(9), val_element(entry, other_store, 1, 4));
 
 	/* other_store = { 7, 9 } */
 
-	val *added = val_add(b,
+	val *added = val_add(entry,
+			b,
 			val_add(
-				val_load(other_store),
+				entry,
+				val_load(entry, other_store),
 				loaded));
 
 	/* added = 5 + (7 + 3) = 15 */
 
 	val *add_again =
-		val_add(
-				val_add(
-					val_load(store),
-					val_load(other_store)),
+		val_add(entry,
+				val_add(entry,
+					val_load(entry, store),
+					val_load(entry, other_store)),
 				added);
 
 	/* add_again = (3 + 7) + 15 = 25 */
 
-	val *alloca_p = val_element(other_store, 1, 4);
+	val *alloca_p = val_element(entry, other_store, 1, 4);
 
-	val *final = val_add(val_load(alloca_p), add_again);
+	val *final = val_add(entry, val_load(entry, alloca_p), add_again);
 	/* 9 + 25 = 34 */
 
-	val_ret(final);
+	val_ret(entry, final);
+}
 
-	if(opt){
-		opt_cprop();
-		opt_storeprop();
-		opt_dse();
-	}
+static void egjmp(block *const entry)
+{
+	/*
+	val *arg = val_new_i(5);
 
-	isn_dump();
+	val *cmp = val_cmp(arg, val_new_i(3));
 
-	printf("x86:\n");
+	block *btrue = block_new(), *bfalse = block_new();
 
-	x86_out();
+	branch_cond(cmp, btrue, bfalse);
+	*/
 }
 
 static void usage(const char *arg0)
 {
-	fprintf(stderr, "Usage: %s [-O]\n", arg0);
+	fprintf(stderr, "Usage: %s [-O] [jmp]\n", arg0);
 	exit(1);
 }
 
@@ -76,16 +83,32 @@ int main(int argc, char *argv[])
 {
 	bool opt = false;
 	int i;
+	void (*eg)(block *) = eg1;
+	block *entry = block_new_entry();
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-O")){
 			opt = true;
+		}else if(!strcmp(argv[i], "jmp")){
+			eg = egjmp;
 		}else{
 			usage(*argv);
 		}
 	}
 
-	eg(opt);
+	eg(entry);
+
+	if(opt){
+		opt_cprop(entry);
+		opt_storeprop(entry);
+		opt_dse(entry);
+	}
+
+	isn_dump(block_first_isn(entry));
+
+	printf("x86:\n");
+
+	x86_out(entry);
 
 	return 0;
 }

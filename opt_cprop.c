@@ -9,18 +9,19 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 
+#include "block_internal.h"
 
 static val *resolve_val(val *initial, dynmap *stores2rvals)
 {
 	return dynmap_get(val *, val *, stores2rvals, initial);
 }
 
-void opt_cprop()
+void opt_cprop(block *entry)
 {
 	dynmap *stores2rvals = dynmap_new(val *, /*ref*/NULL, val_hash);
 	isn *i;
 
-	for(i = isn_head(); i; i = i->next){
+	for(i = block_first_isn(entry); i; i = i->next){
 		switch(i->type){
 			case ISN_STORE:
 			{

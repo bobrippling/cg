@@ -1,6 +1,8 @@
 #ifndef OPT_STOREPROP_H
 #define OPT_STOREPROP_H
 
-void opt_storeprop(void);
+#include "block.h"
+
+void opt_storeprop(block *);
 
 #endif

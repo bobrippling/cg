@@ -9,12 +9,14 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 
-void opt_storeprop()
+#include "block_internal.h"
+
+void opt_storeprop(block *const entry)
 {
 	dynmap *lval_entries = dynmap_new(val *, /*ref*/NULL, val_hash);
 	isn *i;
 
-	for(i = isn_head(); i; i = i->next){
+	for(i = block_first_isn(entry); i; i = i->next){
 		switch(i->type){
 			case ISN_STORE:
 			{
@@ -41,12 +43,16 @@ void opt_storeprop()
 			case ISN_ELEM:
 			{
 				if(i->u.elem.add->type == INT){
-					val *elem = val_element(i->u.elem.lval, i->u.elem.add->u.i, 1);
+					/* XXX: insert into right spot??? */
+					val *elem = val_element_noop(
+							i->u.elem.lval, i->u.elem.add->u.i, 1);
 
-					(void)dynmap_set(val *, val *,
-							lval_entries,
-							i->u.elem.res,
-							elem);
+					if(elem){
+						(void)dynmap_set(val *, val *,
+								lval_entries,
+								i->u.elem.res,
+								elem);
+					}
 				}
 				break;
 			}

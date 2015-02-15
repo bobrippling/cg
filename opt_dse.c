@@ -8,6 +8,7 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
+#include "block_internal.h"
 
 struct last_access
 {
@@ -74,10 +75,10 @@ static void discard_dead_stores(isn *head)
 	}
 }
 
-void opt_dse(void)
+void opt_dse(block *const entry)
 {
 	unsigned isn_count = 0;
-	isn *const head = isn_head();
+	isn *const head = block_first_isn(entry);
 	isn *i;
 
 	for(i = head; i; i = i->next, isn_count++)

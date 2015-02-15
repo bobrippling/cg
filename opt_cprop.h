@@ -1,6 +1,8 @@
 #ifndef CPROP_H
 #define CPROP_H
 
-void opt_cprop(void);
+#include "block.h"
+
+void opt_cprop(block *);
 
 #endif
