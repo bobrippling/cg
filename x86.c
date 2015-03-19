@@ -155,6 +155,41 @@ static void x86_op(
 			x86_val_str(res, 1, alloca2stack, 0));
 }
 
+static const char *x86_cmp_str(enum op_cmp cmp)
+{
+	switch(cmp){
+		case cmp_eq: return "e";
+		case cmp_ne: return "ne";
+		case cmp_gt: return "gt";
+		case cmp_ge: return "ge";
+		case cmp_lt: return "lt";
+		case cmp_le: return "le";
+	}
+	assert(0);
+}
+
+static void x86_cmp(
+		enum op_cmp cmp,
+		val *lhs, val *rhs, val *res,
+		dynmap *alloca2stack)
+{
+	val *zero;
+
+	printf("\tcmp %s, %s\n",
+			x86_val_str(lhs, 0, alloca2stack, 0),
+			x86_val_str(rhs, 1, alloca2stack, 0));
+
+	zero = val_new_i(0);
+
+	x86_mov(zero, res, alloca2stack);
+
+	printf("\tset%s %s\n",
+			x86_cmp_str(cmp),
+			x86_val_str(res, 0, alloca2stack, 0));
+
+	val_free(zero);
+}
+
 static void x86_out_block1(block *blk, dynmap *alloca2stack)
 {
 	isn *head = block_first_isn(blk);
@@ -205,14 +240,10 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 				break;
 
 			case ISN_CMP:
-			{
-				printf("\t%s %s, %s ===> %s\n",
-						op_cmp_to_str(i->u.cmp.cmp),
-						x86_val_str(i->u.cmp.lhs, 0, alloca2stack, 0),
-						x86_val_str(i->u.cmp.rhs, 1, alloca2stack, 0),
-						x86_val_str(i->u.cmp.res, 2, alloca2stack, 0));
+				x86_cmp(i->u.cmp.cmp,
+						i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
+						alloca2stack);
 				break;
-			}
 
 			case ISN_COPY:
 			{

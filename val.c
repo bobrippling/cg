@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 
@@ -147,6 +148,11 @@ static val *val_new(enum val_type k)
 	val *v = xcalloc(1, sizeof *v);
 	v->type = k;
 	return v;
+}
+
+void val_free(val *v)
+{
+	free(v);
 }
 
 static val *val_name_new_lval_(bool lval)

@@ -5,6 +5,8 @@
 
 typedef struct val val;
 
+void val_free(val *);
+
 val *val_new_i(int);
 val *val_new_ptr_from_int(int);
 
