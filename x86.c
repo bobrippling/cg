@@ -84,6 +84,13 @@ static const char *x86_val_str(
 	return buf;
 }
 
+static void x86_mov(val *from, val *to, dynmap *alloca2stack)
+{
+	printf("\tmov %s, %s\n",
+			x86_val_str(from, 0, alloca2stack, 0),
+			x86_val_str(to, 1, alloca2stack, 0));
+}
+
 static void emit_elem(isn *i, dynmap *alloca2stack)
 {
 	int add_total;
@@ -135,6 +142,19 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			x86_val_str(i->u.elem.res, 0, alloca2stack, 0));
 }
 
+static void x86_op(
+		enum op op, val *lhs, val *rhs,
+		val *res, dynmap *alloca2stack)
+{
+	/* no instruction selection / register merging. just this for now */
+	x86_mov(lhs, res, alloca2stack);
+
+	printf("\t%s %s, %s\n",
+			op_to_str(op),
+			x86_val_str(rhs, 0, alloca2stack, 0),
+			x86_val_str(res, 1, alloca2stack, 0));
+}
+
 static void x86_out_block1(block *blk, dynmap *alloca2stack)
 {
 	isn *head = block_first_isn(blk);
@@ -181,14 +201,8 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 				break;
 
 			case ISN_OP:
-			{
-				printf("\t%s %s, %s ===> %s\n",
-						op_to_str(i->u.op.op),
-						x86_val_str(i->u.op.lhs, 0, alloca2stack, 0),
-						x86_val_str(i->u.op.rhs, 1, alloca2stack, 0),
-						x86_val_str(i->u.op.res, 2, alloca2stack, 0));
+				x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, alloca2stack);
 				break;
-			}
 
 			case ISN_CMP:
 			{
@@ -202,9 +216,7 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_COPY:
 			{
-				printf("\tmov %s, %s\n",
-						x86_val_str(i->u.copy.from, 0, alloca2stack, 0),
-						x86_val_str(i->u.copy.to, 1, alloca2stack, 0));
+				x86_mov(i->u.copy.from, i->u.copy.to, alloca2stack);
 				break;
 			}
 		}
