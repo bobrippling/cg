@@ -156,11 +156,9 @@ void isn_dump(isn *const head)
 
 			case ISN_LOAD:
 			{
-				val *rval = i->u.load.lval;
-
 				printf("\t%s = load %s\n",
 						val_str(i->u.load.to),
-						val_str(rval));
+						val_str(i->u.load.lval));
 
 				break;
 			}
