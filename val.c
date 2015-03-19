@@ -136,7 +136,7 @@ char *val_str(val *v)
 			snprintf(buf, sizeof buf, "%s", v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
-			snprintf(buf, sizeof buf, "alloca.%d", v->u.addr.u.alloca.idx);
+			snprintf(buf, sizeof buf, "alloca_%d", v->u.addr.u.alloca.idx);
 			break;
 	}
 	return xstrdup(buf);
@@ -163,7 +163,7 @@ static val *val_name_new_lval_(bool lval)
 
 	val *v = val_new(lval ? NAME_LVAL : NAME);
 
-	snprintf(buf, sizeof buf, "tmp.%d", n++);
+	snprintf(buf, sizeof buf, "tmp_%d", n++);
 
 	v->u.addr.u.name.spel = xstrdup(buf);
 	v->u.addr.u.name.reg = -1;
