@@ -91,8 +91,9 @@ static void egjmp(block *const entry)
 	}
 }
 
-static void read_and_parse(const char *fname, block *entry, bool dump_tok)
+static int read_and_parse(const char *fname, block *entry, bool dump_tok)
 {
+	int err = 0;
 	FILE *f;
 	tokeniser *tok;
 	int ferr;
@@ -116,14 +117,17 @@ static void read_and_parse(const char *fname, block *entry, bool dump_tok)
 			printf("token %s\n", token_to_str(ct));
 		}
 	}else{
-		parse_code(tok, entry);
+		parse_code(tok, entry, &err);
 	}
 
 	token_fin(tok, &ferr);
 	if(ferr){
 		errno = ferr;
 		die("read %s:", fname);
+		err = 1;
 	}
+
+	return err;
 }
 
 static void usage(const char *arg0)
@@ -139,6 +143,7 @@ int main(int argc, char *argv[])
 	const char *fname = NULL;
 	block *entry = block_new_entry();
 	int i;
+	int parse_err = 0;
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-O")){
@@ -157,7 +162,7 @@ int main(int argc, char *argv[])
 	}else if(fname && !strcmp(fname, "--eg-jmp")){
 		egjmp(entry);
 	}else{
-		read_and_parse(fname, entry, dump_tok);
+		parse_err = read_and_parse(fname, entry, dump_tok);
 		if(dump_tok)
 			return 0;
 	}
@@ -169,6 +174,9 @@ int main(int argc, char *argv[])
 	}
 
 	block_dump(entry);
+
+	if(parse_err)
+		return 1;
 
 	printf("x86:\n");
 

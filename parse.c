@@ -15,6 +15,7 @@ typedef struct {
 	tokeniser *tok;
 	block *entry;
 	dynmap *names2vals;
+	int err;
 } parse;
 
 enum val_opts
@@ -36,6 +37,8 @@ static void parse_error(parse *p, const char *fmt, ...)
 
 	token_curline(p->tok, buf, sizeof buf);
 	fprintf(stderr, "at: '%s'\n", buf);
+
+	p->err = 1;
 }
 
 static val *uniq_val(
@@ -128,7 +131,7 @@ static void parse_ret(parse *p)
 				0));
 }
 
-void parse_code(tokeniser *tok, block *entry)
+void parse_code(tokeniser *tok, block *entry, int *const err)
 {
 	parse state = { 0 };
 
@@ -154,5 +157,6 @@ void parse_code(tokeniser *tok, block *entry)
 		}
 	}
 
-fin:;
+fin:
+	*err = state.err;
 }
