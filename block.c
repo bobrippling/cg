@@ -44,7 +44,7 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 
 	switch(blk->type){
 		case BLK_UNKNOWN:
-			assert(0);
+			assert(0 && "unknown block");
 		case BLK_ENTRY:
 		case BLK_EXIT:
 			break;
@@ -66,7 +66,7 @@ void block_dump(block *blk)
 
 	switch(blk->type){
 		case BLK_UNKNOWN:
-			assert(0);
+			assert(0 && "unknown block");
 		case BLK_ENTRY:
 		case BLK_EXIT:
 			break;

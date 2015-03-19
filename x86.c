@@ -92,7 +92,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 	switch(i->u.elem.lval->type){
 		case INT:
 		case NAME:
-			assert(0);
+			assert(0 && "element of INT/NAME");
 
 		case INT_PTR:
 		{
@@ -206,7 +206,7 @@ static void x86_out_block(block *const blk, dynmap *alloca2stack)
 	x86_out_block1(blk, alloca2stack);
 	switch(blk->type){
 		case BLK_UNKNOWN:
-			assert(0);
+			assert(0 && "unknown block type");
 		case BLK_ENTRY:
 		case BLK_EXIT:
 			break;
