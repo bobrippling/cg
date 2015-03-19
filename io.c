@@ -12,10 +12,12 @@ char *read_line(FILE *f)
 	size_t off = 0;
 
 	for(;;){
-		char *nl;
+		char *nl, *got;
 		size_t nr;
 
-		nr = fread(buf + off, 1, l - off, f);
+		got = fgets(buf + off, l - off, f);
+		nr = strlen(buf + off);
+
 		if(nr == 0){
 			const int e = errno;
 			free(buf);
