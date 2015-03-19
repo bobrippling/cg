@@ -31,7 +31,9 @@ static const struct
 } keywords[] = {
 #define KW(t) { #t, tok_ ## t },
 #define OTHER(t)
+#define PUNCT(t, s)
 	TOKENS
+#undef PUNCT
 #undef OTHER
 #undef KW
 };
@@ -68,9 +70,11 @@ const char *token_to_str(enum token t)
 	switch(t){
 #define OTHER(x) case tok_ ## x: return #x;
 #define KW(x) case tok_ ## x: return "tok_" #x;
+#define PUNCT(x, p) case tok_ ## x: return #p;
 		TOKENS
 #undef OTHER
 #undef KW
+#undef PUNCT
 	}
 	assert(0);
 }
@@ -101,6 +105,17 @@ enum token token_next(tokeniser *t)
 	}
 
 	for(; isspace(*t->linep); t->linep++);
+
+	switch(*t->linep++){
+		case '(': return tok_lparen;
+		case ')': return tok_rparen;
+		case '.': return tok_dot;
+		case ',': return tok_comma;
+		case '=': return tok_equal;
+
+		default:
+			t->linep--;
+	}
 
 	if('0' <= *t->linep && *t->linep <= '9'){
 		char *end;

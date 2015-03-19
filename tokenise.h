@@ -4,16 +4,21 @@
 #include <stdio.h>
 #include "macros.h"
 
-#define TOKENS   \
-	OTHER(int)     \
-	OTHER(ident)   \
-	OTHER(eof)     \
-	OTHER(unknown) \
-	KW(load)       \
-	KW(store)      \
-	KW(alloca)     \
-	KW(elem)       \
-	KW(add)        \
+#define TOKENS        \
+	OTHER(int)          \
+	OTHER(ident)        \
+	OTHER(eof)          \
+	OTHER(unknown)      \
+	PUNCT(lparen, '(')  \
+	PUNCT(rparen, ')')  \
+	PUNCT(dot, '.')     \
+	PUNCT(comma, ',')   \
+	PUNCT(equal, '=')   \
+	KW(load)            \
+	KW(store)           \
+	KW(alloca)          \
+	KW(elem)            \
+	KW(add)             \
 	KW(ret)
 
 typedef struct tokeniser tokeniser;
@@ -22,7 +27,9 @@ enum token
 {
 #define KW(t) tok_ ## t,
 #define OTHER KW
+#define PUNCT(t, c) tok_ ## t,
 	TOKENS
+#undef PUNCT
 #undef OTHER
 #undef KW
 };
