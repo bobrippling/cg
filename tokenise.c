@@ -84,6 +84,9 @@ static int consume_word(tokeniser *t, const char *word)
 	if(!str_beginswith(t->linep, word))
 		return 0;
 
+	if(isident(t->linep[strlen(word)], 1))
+		return 0;
+
 	t->linep += strlen(word);
 	return 1;
 }
