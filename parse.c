@@ -104,7 +104,7 @@ static val *parse_lval(parse *p)
 			return val_new_ptr_from_int(token_last_int(p->tok));
 
 		case tok_ident:
-			return uniq_val(p, token_last_ident(p->tok), VAL_LVAL);
+			return uniq_val(p, token_last_ident(p->tok), 0);
 
 		default:
 			parse_error(p, "memory operand expected, got %s", token_to_str(t));
