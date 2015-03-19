@@ -42,6 +42,8 @@ const char *token_to_str(enum token);
 enum token token_next(tokeniser *);
 
 int token_last_int(tokeniser *);
-const char *token_last_ident(tokeniser *);
+char *token_last_ident(tokeniser *);
+
+void token_curline(tokeniser *, char *out, size_t len);
 
 #endif

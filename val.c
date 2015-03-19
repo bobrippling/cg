@@ -170,12 +170,12 @@ static val *val_name_new_lval_(bool lval)
 	return v;
 }
 
-static val *val_name_new(void)
+val *val_name_new(void)
 {
 	return val_name_new_lval_(false);
 }
 
-static val *val_name_new_lval(void)
+val *val_name_new_lval(void)
 {
 	return val_name_new_lval_(true);
 }

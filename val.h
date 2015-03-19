@@ -20,6 +20,12 @@ val *val_equal(block *, val *, val *);
 
 void val_ret(block *, val *);
 
+/* anonymous */
+val *val_name_new_lval(void);
+val *val_name_new(void);
+
+/* util */
+
 char *val_str(val *);
 unsigned val_hash(val *);
 

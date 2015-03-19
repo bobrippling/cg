@@ -162,12 +162,32 @@ enum token token_next(tokeniser *t)
 	return tok_unknown;
 }
 
+void token_curline(tokeniser *t, char *out, size_t len)
+{
+	const char *src = t->line;
+	size_t off;
+
+	if(!src){
+		snprintf(out, len, "[eof]");
+		return;
+	}
+
+	off = t->linep - src;
+
+	if(off > len / 2)
+		src = t->linep - len / 2;
+
+	for(; len > 1 && *src && *src != '\n'; src++, out++, len--)
+		*out = *src;
+	*out = '\0';
+}
+
 int token_last_int(tokeniser *t)
 {
 	return t->lastint;
 }
 
-const char *token_last_ident(tokeniser *t)
+char *token_last_ident(tokeniser *t)
 {
 	t->free_lastident = 0;
 	return t->lastident;

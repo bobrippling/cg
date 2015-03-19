@@ -116,7 +116,7 @@ static void read_and_parse(const char *fname, block *entry, bool dump_tok)
 			printf("token %s\n", token_to_str(ct));
 		}
 	}else{
-		parse(tok, entry);
+		parse_code(tok, entry);
 	}
 
 	token_fin(tok, &ferr);
@@ -124,7 +124,6 @@ static void read_and_parse(const char *fname, block *entry, bool dump_tok)
 		errno = ferr;
 		die("read %s:", fname);
 	}
-	exit(3);
 }
 
 static void usage(const char *arg0)
