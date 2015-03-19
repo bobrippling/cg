@@ -70,13 +70,18 @@ static void egjmp(block *const entry)
 	block *btrue = block_new(), *bfalse = block_new();
 
 	branch_cond(cmp, entry, btrue, bfalse);
+
+	val *escaped_bad;
+
 	{
 		val *added = val_add(btrue, cmp, val_new_i(1));
 		val_ret(btrue, added);
+
+		escaped_bad = added;
 	}
 
 	{
-		val_ret(bfalse, val_new_i(0));
+		val_ret(bfalse, escaped_bad); /*val_new_i(0));*/
 	}
 }
 
