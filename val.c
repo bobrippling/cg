@@ -8,18 +8,12 @@
 #include "val.h"
 #include "val_internal.h"
 #include "val_struct.h"
+#include "val_allocas.h"
 
 #include "isn.h"
 #include "op.h"
 
 static val *val_new(enum val_type k);
-
-enum val_to
-{
-	LITERAL  = 1 << 0,
-	NAMED = 1 << 1,
-	ADDRESSABLE = 1 << 2,
-};
 
 static bool val_in(val *v, enum val_to to)
 {
@@ -38,7 +32,7 @@ static bool val_in(val *v, enum val_to to)
 	assert(0);
 }
 
-static val *val_need(val *v, enum val_to to, const char *from)
+val *val_need(val *v, enum val_to to, const char *from)
 {
 	if(val_in(v, to))
 		return v;
@@ -46,7 +40,6 @@ static val *val_need(val *v, enum val_to to, const char *from)
 	fprintf(stderr, "%s: val_need(): don't have 0x%x\n", from, to);
 	assert(0);
 }
-#define VAL_NEED(v, t) val_need(v, t, __func__)
 
 unsigned val_hash(val *v)
 {
@@ -228,46 +221,11 @@ val *val_load(block *blk, val *v)
 	return named;
 }
 
-static val *val_alloca_idx(val *lval, unsigned idx)
-{
-	struct val_idxpair *pair;
-
-	lval = VAL_NEED(lval, ADDRESSABLE);
-
-	for(pair = lval->u.addr.idxpair;
-			pair;
-			pair = pair->next)
-	{
-		if(pair->idx == idx)
-			return pair->val;
-	}
-
-	return NULL;
-}
-
-static void val_alloca_idx_set(val *lval, unsigned idx, val *elemptr)
-{
-	lval = VAL_NEED(lval, ADDRESSABLE);
-
-	struct val_idxpair **next;
-	for(next = &lval->u.addr.idxpair;
-			*next;
-			next = &(*next)->next)
-	{
-		assert((*next)->idx == idx);
-	}
-
-	struct val_idxpair *newpair = xcalloc(1, sizeof *newpair);
-	*next = newpair;
-	newpair->val = elemptr;
-	newpair->idx = idx;
-}
-
 val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 {
 	const unsigned byteidx = i * elemsz;
 
-	val *pre_existing = val_alloca_idx(lval, byteidx);
+	val *pre_existing = val_alloca_idx_get(lval, byteidx);
 	if(pre_existing)
 		return pre_existing;
 
