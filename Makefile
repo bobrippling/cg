@@ -19,16 +19,16 @@ SRC = ${OBJ:.o=.c}
 CFLAGS = -std=c89 -g -Wall -Wextra ${CFLAGS_CONFIGURE}
 LDFLAGS = -g
 
-all: tags val
+all: tags ir
 
-val: ${OBJ}
+ir: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 tags: ${SRC}
 	ctags ${SRC} ${HEADERS}
 
 clean:
-	rm -f val ${OBJ}
+	rm -f ir ${OBJ}
 
 Makefile.dep: ${SRC}
 	${CC} -MM ${SRC} > $@

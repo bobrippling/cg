@@ -1,5 +1,5 @@
 Makefile.dep
 Makefile.cfg
-val
+ir
 *.o
 tags
