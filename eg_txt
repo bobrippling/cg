@@ -1,0 +1,22 @@
+store 0, 3
+
+tmp.0 = load 0
+
+alloca.0 = alloca 8
+store alloca.0, 7
+
+tmp.1 = elem alloca.0, 4
+store tmp.1, 9
+
+tmp.2 = load alloca.0
+tmp.3 = add tmp.2, tmp.0
+tmp.4 = add 5, tmp.3
+
+tmp.5 = load 0
+tmp.6 = load alloca.0
+tmp.7 = add tmp.5, tmp.6
+tmp.8 = add tmp.7, tmp.4
+tmp.9 = load tmp.1
+tmp.10 = add tmp.9, tmp.8
+
+ret tmp.10
