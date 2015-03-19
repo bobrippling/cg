@@ -193,6 +193,18 @@ static void parse_ret(parse *p)
 	isn_ret(p->entry, parse_rval(p));
 }
 
+static void parse_store(parse *p)
+{
+	val *lval = parse_lval(p);
+	val *rval;
+
+	eat(p, "store", tok_comma);
+
+	rval = parse_rval(p);
+
+	isn_store(p->entry, rval, lval);
+}
+
 void parse_code(tokeniser *tok, block *entry, int *const err)
 {
 	parse state = { 0 };
@@ -217,6 +229,10 @@ void parse_code(tokeniser *tok, block *entry, int *const err)
 
 			case tok_ident:
 				parse_ident(&state);
+				break;
+
+			case tok_store:
+				parse_store(&state);
 				break;
 		}
 	}
