@@ -65,7 +65,7 @@ static val *map_val(parse *p, const char *name, val *v)
 }
 
 static val *uniq_val(
-		parse *p, const char *name, enum val_opts opts)
+		parse *p, const char *name, int size, enum val_opts opts)
 {
 	val *v;
 
@@ -86,7 +86,8 @@ static val *uniq_val(
 
 		v = val_alloca();
 	}else{
-		v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)();
+		assert(size >= 0);
+		v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)(size);
 	}
 
 	return map_val(p, name, v);
@@ -111,7 +112,7 @@ static val *parse_lval(parse *p)
 			return val_new_ptr_from_int(token_last_int(p->tok));
 
 		case tok_ident:
-			return uniq_val(p, token_last_ident(p->tok), 0);
+			return uniq_val(p, token_last_ident(p->tok), -1, 0);
 
 		default:
 			parse_error(p, "memory operand expected, got %s", token_to_str(t));
@@ -119,20 +120,33 @@ static val *parse_lval(parse *p)
 	}
 }
 
-static val *parse_rval(parse *p)
+static int parse_dot_size(parse *p)
+{
+	eat(p, "dot-size", tok_dot);
+	eat(p, "dot-size", tok_int);
+	return token_last_int(p->tok);
+}
+
+static val *parse_rval(parse *p, unsigned size)
 {
 	enum token t = token_next(p->tok);
 
 	switch(t){
 		case tok_int:
-			return val_new_i(token_last_int(p->tok));
+		{
+			int i = token_last_int(p->tok);
+			return val_new_i(i, size);
+		}
 
 		case tok_ident:
-			return uniq_val(p, token_last_ident(p->tok), 0);
+		{
+			char *ident = token_last_ident(p->tok);
+			return uniq_val(p, ident, size, 0);
+		}
 
 		default:
 			parse_error(p, "rvalue operand expected, got %s", token_to_str(t));
-			return val_new_i(0);
+			return val_new_i(0, size);
 	}
 }
 
@@ -141,13 +155,18 @@ static void parse_ident(parse *p)
 	/* x = load y */
 	const char *lhs = token_last_ident(p->tok);
 	enum token tok;
+	unsigned isn_sz;
 
 	eat(p, "assignment", tok_equal);
 
-	switch((tok = token_next(p->tok))){
+	tok = token_next(p->tok);
+
+	isn_sz = parse_dot_size(p);
+
+	switch(tok){
 		case tok_load:
 		{
-			val *vlhs = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
+			val *vlhs = uniq_val(p, lhs, isn_sz, VAL_CREATE | VAL_LVAL);
 			isn_load(p->entry, vlhs, parse_lval(p));
 			break;
 		}
@@ -160,7 +179,7 @@ static void parse_ident(parse *p)
 			eat(p, "alloca", tok_int);
 			amt = token_last_int(p->tok);
 
-			vlhs = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL | VAL_ALLOCA);
+			vlhs = uniq_val(p, lhs, isn_sz, VAL_CREATE | VAL_LVAL | VAL_ALLOCA);
 
 			isn_alloca(p->entry, amt, vlhs);
 			break;
@@ -180,7 +199,7 @@ static void parse_ident(parse *p)
 
 			map_val(p, lhs, vlhs);
 
-			isn_elem(p->entry, index_into, val_new_i(idx), vlhs);
+			isn_elem(p->entry, index_into, val_new_i(idx, isn_sz), vlhs);
 			break;
 		}
 
@@ -192,9 +211,9 @@ static void parse_ident(parse *p)
 
 			if(token_is_op(tok, &op) || (is_cmp = 1, token_is_cmp(tok, &cmp))){
 				/* x = add a, b */
-				val *vlhs = parse_rval(p);
-				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p));
-				val *vres = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
+				val *vlhs = parse_rval(p, isn_sz);
+				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p, isn_sz));
+				val *vres = uniq_val(p, lhs, isn_sz, VAL_CREATE | VAL_LVAL);
 
 				if(is_cmp)
 					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
@@ -211,17 +230,20 @@ static void parse_ident(parse *p)
 
 static void parse_ret(parse *p)
 {
-	isn_ret(p->entry, parse_rval(p));
+	isn_ret(p->entry, parse_rval(p, parse_dot_size(p)));
 }
 
 static void parse_store(parse *p)
 {
-	val *lval = parse_lval(p);
+	val *lval;
 	val *rval;
+	unsigned isn_sz;
 
+	isn_sz = parse_dot_size(p);
+
+	lval = parse_lval(p);
 	eat(p, "store", tok_comma);
-
-	rval = parse_rval(p);
+	rval = parse_rval(p, isn_sz);
 
 	isn_store(p->entry, rval, lval);
 }

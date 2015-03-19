@@ -22,22 +22,32 @@
 #include "opt_dse.h"
 #include "x86.h"
 
+enum
+{
+	INT_SIZE = 4
+};
+
 static void eg1(block *const entry)
 {
-	val *a = val_new_i(3);
-	val *b = val_new_i(5);
+	val *a = val_new_i(3, INT_SIZE);
+	val *b = val_new_i(5, INT_SIZE);
 	val *store = val_new_ptr_from_int(0);
 
 	/* store = 3 */
 	val_store(entry, a, store);
 
 	/* loaded = 3 */
-	val *loaded = val_load(entry, store);
+	val *loaded = val_load(entry, store, INT_SIZE);
 
-	val *other_store = val_make_alloca(entry, 2, 4);
+	val *other_store = val_make_alloca(entry, 2, INT_SIZE);
 
-	val_store(entry, val_new_i(7), other_store);
-	val_store(entry, val_new_i(9), val_element(entry, other_store, 1, 4));
+	val_store(entry,
+			val_new_i(7, INT_SIZE),
+			other_store);
+
+	val_store(entry,
+			val_new_i(9, INT_SIZE),
+			val_element(entry, other_store, 1, INT_SIZE));
 
 	/* other_store = { 7, 9 } */
 
@@ -45,7 +55,7 @@ static void eg1(block *const entry)
 			b,
 			val_add(
 				entry,
-				val_load(entry, other_store),
+				val_load(entry, other_store, INT_SIZE),
 				loaded));
 
 	/* added = 5 + (7 + 3) = 15 */
@@ -53,15 +63,15 @@ static void eg1(block *const entry)
 	val *add_again =
 		val_add(entry,
 				val_add(entry,
-					val_load(entry, store),
-					val_load(entry, other_store)),
+					val_load(entry, store, INT_SIZE),
+					val_load(entry, other_store, INT_SIZE)),
 				added);
 
 	/* add_again = (3 + 7) + 15 = 25 */
 
 	val *alloca_p = val_element(entry, other_store, 1, 4);
 
-	val *final = val_add(entry, val_load(entry, alloca_p), add_again);
+	val *final = val_add(entry, val_load(entry, alloca_p, INT_SIZE), add_again);
 	/* 9 + 25 = 34 */
 
 	val_ret(entry, final);
@@ -69,9 +79,9 @@ static void eg1(block *const entry)
 
 static void egjmp(block *const entry)
 {
-	val *arg = val_new_i(5);
+	val *arg = val_new_i(5, INT_SIZE);
 
-	val *cmp = val_equal(entry, arg, val_new_i(3));
+	val *cmp = val_equal(entry, arg, val_new_i(3, INT_SIZE));
 
 	block *btrue = block_new(), *bfalse = block_new();
 
@@ -80,7 +90,7 @@ static void egjmp(block *const entry)
 	val *escaped_bad;
 
 	{
-		val *added = val_add(btrue, cmp, val_new_i(1));
+		val *added = val_add(btrue, cmp, val_new_i(1, INT_SIZE));
 		val_ret(btrue, added);
 
 		escaped_bad = added;

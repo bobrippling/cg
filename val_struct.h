@@ -5,16 +5,20 @@ struct val
 {
 	enum val_type
 	{
-		INT,
+		INT,       /* sized */
 		INT_PTR,
-		NAME,
-		NAME_LVAL,
+		NAME,      /* sized */
+		NAME_LVAL, /* sized */
 		ALLOCA
 	} type;
 
 	union
 	{
-		int i;
+		struct
+		{
+			int i;
+			int val_size;
+		} i;
 		struct
 		{
 			union
@@ -23,6 +27,7 @@ struct val
 				{
 					char *spel;
 					int reg;
+					int val_size;
 				} name;
 				struct
 				{

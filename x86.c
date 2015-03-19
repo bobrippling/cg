@@ -18,13 +18,13 @@ struct x86_alloca_ctx
 	long alloca;
 };
 
-static const char *const regs[] = {
-	"eax",
-	"ebx",
-	"ecx",
-	"edx",
-	"edi",
-	"esi",
+static const char *const regs[][4] = {
+	{  "al", "ax", "eax", "rax" },
+	{  "bl", "bx", "ebx", "rbx" },
+	{  "cl", "cx", "ecx", "rcx" },
+	{  "dl", "dx", "edx", "rdx" },
+	{ "dil", "di", "edi", "rdi" },
+	{ "sil", "si", "esi", "rsi" },
 };
 
 static int alloca_offset(dynmap *alloca2stack, val *val)
@@ -36,11 +36,27 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 
 static const char *name_str(val *val)
 {
+	int sz_idx;
+
 	if(val->u.addr.u.name.reg == -1)
 		return val->u.addr.u.name.spel;
 
 	assert(val->u.addr.u.name.reg < (int)countof(regs));
-	return regs[val->u.addr.u.name.reg];
+
+	switch(val->u.addr.u.name.val_size){
+		case 0:
+			/* FIXME: word size */
+			sz_idx = 3;
+			break;
+
+		case 1: sz_idx = 0; break;
+		case 2: sz_idx = 1; break;
+		case 4: sz_idx = 2; break;
+		case 8: sz_idx = 3; break;
+		default: assert(0);
+	}
+
+	return regs[val->u.addr.u.name.reg][sz_idx];
 }
 
 static const char *x86_val_str(
@@ -56,11 +72,11 @@ static const char *x86_val_str(
 	switch(val->type){
 		case INT:
 			assert(!dereference);
-			snprintf(buf, sizeof bufs[0], "$%d", val->u.i);
+			snprintf(buf, sizeof bufs[0], "$%d", val->u.i.i);
 			break;
 		case INT_PTR:
 			assert(dereference);
-			snprintf(buf, sizeof bufs[0], "%d", val->u.i);
+			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
 			break;
 		case NAME:
 			assert(!dereference);
@@ -116,7 +132,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			assert(i->u.elem.add->type == INT);
 
 			printf("\tlea %d(%s), %s ; NAME_LVAL\n",
-					i->u.elem.add->u.i,
+					i->u.elem.add->u.i.i,
 					x86_val_str(i->u.elem.lval, 1, alloca2stack, 0),
 					x86_val_str(i->u.elem.res,  2, alloca2stack, 0));
 
@@ -130,7 +146,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 
 			add_total = op_exe(op_add,
 					alloca_offset(alloca2stack, i->u.elem.lval),
-					i->u.elem.add->u.i, &err);
+					i->u.elem.add->u.i.i, &err);
 
 			assert(!err);
 			break;
@@ -179,7 +195,7 @@ static void x86_cmp(
 			x86_val_str(lhs, 0, alloca2stack, 0),
 			x86_val_str(rhs, 1, alloca2stack, 0));
 
-	zero = val_new_i(0);
+	zero = val_new_i(0, val_size(lhs));
 
 	x86_mov(zero, res, alloca2stack);
 

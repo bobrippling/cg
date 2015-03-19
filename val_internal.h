@@ -19,4 +19,6 @@ enum val_to
 val *val_need(val *v, enum val_to to, const char *from);
 #define VAL_NEED(v, t) val_need(v, t, __func__)
 
+int val_size(val *);
+
 #endif

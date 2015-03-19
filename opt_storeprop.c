@@ -45,7 +45,7 @@ void opt_storeprop(block *const entry)
 				if(i->u.elem.add->type == INT){
 					/* XXX: insert into right spot??? */
 					val *elem = val_element_noop(
-							i->u.elem.lval, i->u.elem.add->u.i, 1);
+							i->u.elem.lval, i->u.elem.add->u.i.i, 1);
 
 					if(elem){
 						(void)dynmap_set(val *, val *,

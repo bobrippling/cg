@@ -42,6 +42,21 @@ val *val_need(val *v, enum val_to to, const char *from)
 	assert(0);
 }
 
+int val_size(val *v)
+{
+	switch(v->type){
+		case INT_PTR:
+		case ALLOCA:
+			return 0;
+		case INT:
+			return v->u.i.val_size;
+		case NAME:
+		case NAME_LVAL:
+			return v->u.addr.u.name.val_size;
+	}
+	assert(0);
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->type;
@@ -49,7 +64,7 @@ unsigned val_hash(val *v)
 	switch(v->type){
 		case INT:
 		case INT_PTR:
-			h ^= v->u.i;
+			h ^= v->u.i.i;
 			break;
 		case NAME_LVAL:
 		case NAME:
@@ -69,7 +84,9 @@ bool val_op_maybe(enum op op, val *l, val *r, int *res)
 	if(l->type != INT || r->type != INT)
 		return false;
 
-	*res = op_exe(op, l->u.i, r->u.i, &err);
+	assert(l->u.i.val_size == r->u.i.val_size);
+
+	*res = op_exe(op, l->u.i.i, r->u.i.i, &err);
 
 	return !err;
 }
@@ -80,7 +97,8 @@ bool val_op_maybe_val(enum op op, val *l, val *r, val **res)
 	if(!val_op_maybe(op, l, r, &i))
 		return false;
 
-	*res = val_new_i(i);
+	assert(l->type == INT);
+	*res = val_new_i(i, l->u.i.val_size);
 	return true;
 }
 
@@ -106,12 +124,12 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 			assert(0 && "unreachable");
 
 		case INT_PTR:
-			return val_new_ptr_from_int(sym->u.i + num->u.i);
+			return val_new_ptr_from_int(sym->u.i.i + num->u.i.i);
 
 		case ALLOCA:
 		{
 			val *alloca = val_new(ALLOCA);
-			alloca->u.addr.u.alloca.idx = sym->u.addr.u.alloca.idx + num->u.i;
+			alloca->u.addr.u.alloca.idx = sym->u.addr.u.alloca.idx + num->u.i.i;
 			return alloca;
 		}
 
@@ -129,7 +147,7 @@ char *val_str(val *v)
 	switch(v->type){
 		case INT:
 		case INT_PTR:
-			snprintf(buf, sizeof buf, "%d", v->u.i);
+			snprintf(buf, sizeof buf, "%d", v->u.i.i);
 			break;
 		case NAME:
 		case NAME_LVAL:
@@ -155,7 +173,7 @@ void val_free(val *v)
 	free(v);
 }
 
-static val *val_name_new_lval_(bool lval)
+static val *val_name_new_lval_(bool lval, unsigned sz)
 {
 	/* XXX: static */
 	static int n;
@@ -167,30 +185,32 @@ static val *val_name_new_lval_(bool lval)
 
 	v->u.addr.u.name.spel = xstrdup(buf);
 	v->u.addr.u.name.reg = -1;
+	v->u.addr.u.name.val_size = sz;
 
 	return v;
 }
 
-val *val_name_new(void)
+val *val_name_new(unsigned sz)
 {
-	return val_name_new_lval_(false);
+	return val_name_new_lval_(false, sz);
 }
 
-val *val_name_new_lval(void)
+val *val_name_new_lval(unsigned sz)
 {
-	return val_name_new_lval_(true);
+	return val_name_new_lval_(true, sz);
 }
 
-val *val_new_i(int i)
+val *val_new_i(int i, unsigned sz)
 {
 	val *p = val_new(INT);
-	p->u.i = i;
+	p->u.i.i = i;
+	p->u.i.val_size = sz;
 	return p;
 }
 
 val *val_new_ptr_from_int(int i)
 {
-	val *p = val_new_i(i);
+	val *p = val_new_i(i, 0);
 	p->type = INT_PTR;
 	return p;
 }
@@ -223,9 +243,9 @@ void val_store(block *blk, val *rval, val *lval)
 	isn_store(blk, rval, lval);
 }
 
-val *val_load(block *blk, val *v)
+val *val_load(block *blk, val *v, unsigned size)
 {
-	val *named = val_name_new();
+	val *named = val_name_new(size);
 
 	v = VAL_NEED(v, ADDRESSABLE);
 
@@ -242,8 +262,8 @@ val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 	if(pre_existing)
 		return pre_existing;
 
-	val *named = val_name_new_lval();
-	val *vidx = val_new_i(byteidx);
+	val *named = val_name_new_lval(elemsz);
+	val *vidx = val_new_i(byteidx, 0);
 
 	if(blk) /* else noop */
 		isn_elem(blk, lval, vidx, named);
@@ -260,7 +280,14 @@ val *val_element_noop(val *lval, int i, unsigned elemsz)
 
 val *val_add(block *blk, val *a, val *b)
 {
-	val *named = val_name_new();
+	int sz_a = val_size(a);
+	int sz_b = val_size(b);
+	val *named;
+
+	assert(sz_a != -1 && sz_b != -1);
+	assert(sz_a == sz_b);
+
+	named = val_name_new(sz_a);
 
 	isn_op(blk, op_add, a, b, named);
 
@@ -269,7 +296,7 @@ val *val_add(block *blk, val *a, val *b)
 
 val *val_equal(block *blk, val *lhs, val *rhs)
 {
-	val *eq = val_name_new();
+	val *eq = val_name_new(1);
 
 	isn_cmp(blk, cmp_eq, lhs, rhs, eq);
 
