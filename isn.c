@@ -148,7 +148,8 @@ void isn_dump(isn *const head)
 		switch(i->type){
 			case ISN_STORE:
 			{
-				printf("\tstore %s, %s\n",
+				printf("\tstore.%u %s, %s\n",
+						val_size(i->u.store.from),
 						val_str(i->u.store.lval),
 						val_str(i->u.store.from));
 				break;
@@ -156,8 +157,9 @@ void isn_dump(isn *const head)
 
 			case ISN_LOAD:
 			{
-				printf("\t%s = load %s\n",
+				printf("\t%s = load.%u %s\n",
 						val_str(i->u.load.to),
+						val_size(i->u.load.to),
 						val_str(i->u.load.lval));
 
 				break;
@@ -192,9 +194,10 @@ void isn_dump(isn *const head)
 
 			case ISN_OP:
 			{
-				printf("\t%s = %s %s, %s\n",
+				printf("\t%s = %s.%u %s, %s\n",
 						val_str(i->u.op.res),
 						op_to_str(i->u.op.op),
+						val_size(i->u.op.lhs),
 						val_str(i->u.op.lhs),
 						val_str(i->u.op.rhs));
 				break;
@@ -210,7 +213,9 @@ void isn_dump(isn *const head)
 
 			case ISN_RET:
 			{
-				printf("\tret %s\n", val_str(i->u.ret));
+				printf("\tret.%u %s\n",
+						val_size(i->u.ret),
+						val_str(i->u.ret));
 				break;
 			}
 		}
