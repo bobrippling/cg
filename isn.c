@@ -60,10 +60,10 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 	isn->u.op.res = res;
 }
 
-void isn_cmp(block *blk, val *lhs, val *rhs, val *res)
+void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 {
 	isn *isn = isn_new(ISN_CMP, blk);
-	isn->u.cmp.cmp = op_cmp_eq;
+	isn->u.cmp.cmp = cmp;
 	isn->u.cmp.lhs = lhs;
 	isn->u.cmp.rhs = rhs;
 	isn->u.cmp.res = res;

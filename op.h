@@ -16,6 +16,14 @@
 	X(shiftr)   \
 	X(shiftra)
 
+#define CMPS \
+	X(eq)      \
+	X(ne)      \
+	X(gt)      \
+	X(ge)      \
+	X(lt)      \
+	X(le)
+
 enum op
 {
 #define X(op) op_ ## op,
@@ -25,7 +33,9 @@ enum op
 
 enum op_cmp
 {
-	op_cmp_eq
+#define X(cmp) cmp_ ## cmp,
+	CMPS
+#undef X
 };
 
 int op_exe(enum op, int l, int r, int *div0);

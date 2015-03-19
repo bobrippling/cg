@@ -186,14 +186,20 @@ static void parse_ident(parse *p)
 
 		default:
 		{
+			int is_cmp = 0;
 			enum op op;
-			if(token_is_op(tok, &op)){
+			enum op_cmp cmp;
+
+			if(token_is_op(tok, &op) || (is_cmp = 1, token_is_cmp(tok, &cmp))){
 				/* x = add a, b */
 				val *vlhs = parse_rval(p);
 				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p));
 				val *vres = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
 
-				isn_op(p->entry, op, vlhs, vrhs, vres);
+				if(is_cmp)
+					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
+				else
+					isn_op(p->entry, op, vlhs, vrhs, vres);
 
 			}else{
 				parse_error(p, "expected load, alloca, elem or operator");

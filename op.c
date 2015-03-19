@@ -44,7 +44,9 @@ const char *op_to_str(enum op op)
 const char *op_cmp_to_str(enum op_cmp cmp)
 {
 	switch(cmp){
-		case op_cmp_eq: return "equal";
+#define X(cmp) case cmp_ ## cmp: return #cmp;
+		CMPS
+#undef X
 	}
 	assert(0);
 }

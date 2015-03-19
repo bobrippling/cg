@@ -265,7 +265,7 @@ val *val_equal(block *blk, val *lhs, val *rhs)
 {
 	val *eq = val_name_new();
 
-	isn_cmp(blk, lhs, rhs, eq);
+	isn_cmp(blk, cmp_eq, lhs, rhs, eq);
 
 	return eq;
 }

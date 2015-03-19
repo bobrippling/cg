@@ -32,7 +32,13 @@
 	OP(and_sc)          \
 	OP(shiftl)          \
 	OP(shiftr)          \
-	OP(shiftra)
+	OP(shiftra)         \
+	CMP(eq)             \
+	CMP(ne)             \
+	CMP(gt)             \
+	CMP(ge)             \
+	CMP(lt)             \
+	CMP(le)
 
 typedef struct tokeniser tokeniser;
 
@@ -42,7 +48,9 @@ enum token
 #define OTHER KW
 #define PUNCT(t, c) tok_ ## t,
 #define OP(t) tok_ ## t,
+#define CMP(t) tok_ ## t,
 	TOKENS
+#undef CMP
 #undef OP
 #undef PUNCT
 #undef OTHER
@@ -62,5 +70,6 @@ char *token_last_ident(tokeniser *);
 void token_curline(tokeniser *, char *out, size_t len);
 
 int token_is_op(enum token, enum op *);
+int token_is_cmp(enum token, enum op_cmp *);
 
 #endif
