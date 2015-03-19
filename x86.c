@@ -48,8 +48,7 @@ static const char *x86_val_str(
 		dynmap *alloca2stack,
 		bool dereference)
 {
-	static char buf1[256], buf2[256], buf3[256];
-	static char (*bufs[]) = { buf1, buf2, buf3 };
+	static char bufs[3][256];
 
 	assert(0 <= bufchoice && bufchoice <= 2);
 	char *buf = bufs[bufchoice];
@@ -57,18 +56,18 @@ static const char *x86_val_str(
 	switch(val->type){
 		case INT:
 			assert(!dereference);
-			snprintf(buf, sizeof buf1, "$%d", val->u.i);
+			snprintf(buf, sizeof bufs[0], "$%d", val->u.i);
 			break;
 		case INT_PTR:
 			assert(dereference);
-			snprintf(buf, sizeof buf1, "%d", val->u.i);
+			snprintf(buf, sizeof bufs[0], "%d", val->u.i);
 			break;
 		case NAME:
 			assert(!dereference);
-			snprintf(buf, sizeof buf1, "%%%s", name_str(val));
+			snprintf(buf, sizeof bufs[0], "%%%s", name_str(val));
 			break;
 		case NAME_LVAL:
-			snprintf(buf, sizeof buf1, "%s%%%s%s",
+			snprintf(buf, sizeof bufs[0], "%s%%%s%s",
 					dereference ? "(" : "",
 					name_str(val),
 					dereference ? ")" : "");
@@ -77,7 +76,7 @@ static const char *x86_val_str(
 		{
 			int off = alloca_offset(alloca2stack, val);
 			/*assert(!dereference);*/
-			snprintf(buf, sizeof buf1, "%d(%%rbp)", (int)off);
+			snprintf(buf, sizeof bufs[0], "%d(%%rbp)", (int)off);
 			break;
 		}
 	}
