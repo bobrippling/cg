@@ -63,6 +63,18 @@ void token_fin(tokeniser *t, int *const err)
 	free(t);
 }
 
+const char *token_to_str(enum token t)
+{
+	switch(t){
+#define OTHER(x) case tok_ ## x: return #x;
+#define KW(x) case tok_ ## x: return "tok_" #x;
+		TOKENS
+#undef OTHER
+#undef KW
+	}
+	assert(0);
+}
+
 static int consume_word(tokeniser *t, const char *word)
 {
 	if(!str_beginswith(t->linep, word))
