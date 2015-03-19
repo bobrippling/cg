@@ -106,6 +106,14 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 		case NAME_LVAL:
 		{
 			assert(0 && "TODO: add name_lval");
+			assert(i->u.elem.add->type == INT);
+
+			printf("\tlea %d(%s), %s ; NAME_LVAL\n",
+					i->u.elem.add->u.i,
+					x86_val_str(i->u.elem.lval, 1, alloca2stack, 0),
+					x86_val_str(i->u.elem.res,  2, alloca2stack, 0));
+
+			return;
 		}
 
 		case ALLOCA:
