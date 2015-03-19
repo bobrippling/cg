@@ -30,4 +30,6 @@ ctmp="$TMPDIR"/1.c
 
 echo > Makefile.cfg
 
+echo "CC = $CC" >> Makefile.cfg
+
 try_cflag -Wno-missing-field-initializers
