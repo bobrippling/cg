@@ -128,6 +128,10 @@ enum token token_next(tokeniser *t)
 		case ',': return tok_comma;
 		case '=': return tok_equal;
 
+		case '#':
+			for(; *t->linep && *t->linep != '\n'; t->linep++);
+			return token_next(t);
+
 		default:
 			t->linep--;
 	}
