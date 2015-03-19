@@ -149,8 +149,8 @@ void isn_dump(isn *const head)
 			case ISN_STORE:
 			{
 				printf("\tstore %s, %s\n",
-							val_str(i->u.store.lval),
-							val_str(i->u.store.from));
+						val_str(i->u.store.lval),
+						val_str(i->u.store.from));
 				break;
 			}
 
@@ -176,9 +176,9 @@ void isn_dump(isn *const head)
 			case ISN_ELEM:
 			{
 				printf("\t%s = elem %s, %s\n",
-							val_str(i->u.elem.res),
-							val_str(i->u.elem.lval),
-							val_str(i->u.elem.add));
+						val_str(i->u.elem.res),
+						val_str(i->u.elem.lval),
+						val_str(i->u.elem.add));
 				break;
 			}
 
