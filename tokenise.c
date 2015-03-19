@@ -165,6 +165,7 @@ enum token token_next(tokeniser *t)
 void token_curline(tokeniser *t, char *out, size_t len)
 {
 	const char *src = t->line;
+	const char *i, *anchor = NULL;
 	size_t off;
 
 	if(!src){
@@ -176,6 +177,14 @@ void token_curline(tokeniser *t, char *out, size_t len)
 
 	if(off > len / 2)
 		src = t->linep - len / 2;
+
+	/* ensure we're not before linep's line */
+	for(i = src; i < t->linep; i++)
+		if(*i == '\n')
+			anchor = i + 1;
+
+	if(anchor)
+		src = anchor;
 
 	for(; len > 1 && *src && *src != '\n'; src++, out++, len--)
 		*out = *src;
