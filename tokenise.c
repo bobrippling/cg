@@ -136,12 +136,12 @@ enum token token_next(tokeniser *t)
 		if(consume_word(t, keywords[i].kw))
 			return keywords[i].tok;
 
-	if(isalpha(*t->linep)){
+	if(isident(*t->linep, 0)){
 		char *end;
 		char *buf;
 		size_t len;
 
-		for(end = t->linep + 1; isalnum(*end); end++);
+		for(end = t->linep + 1; isident(*end, 1); end++);
 
 		len = end - t->linep + 1;
 		buf = xmalloc(len);
