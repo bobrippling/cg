@@ -141,7 +141,7 @@ enum token token_next(tokeniser *t)
 		char *buf;
 		size_t len;
 
-		for(end = t->linep + 1; isalpha(*end); end++);
+		for(end = t->linep + 1; isalnum(*end); end++);
 
 		len = end - t->linep + 1;
 		buf = xmalloc(len);
