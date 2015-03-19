@@ -91,7 +91,7 @@ static void egjmp(block *const entry)
 	}
 }
 
-static void read_and_parse(const char *fname, block *entry)
+static void read_and_parse(const char *fname, block *entry, bool dump_tok)
 {
 	FILE *f;
 	tokeniser *tok;
@@ -108,7 +108,16 @@ static void read_and_parse(const char *fname, block *entry)
 
 	tok = token_init(f);
 
-	parse(tok, entry);
+	if(dump_tok){
+		for(;;){
+			enum token ct = token_next(tok);
+			if(ct == tok_eof)
+				break;
+			printf("token %s\n", token_to_str(ct));
+		}
+	}else{
+		parse(tok, entry);
+	}
 
 	token_fin(tok, &ferr);
 	if(ferr){
@@ -127,6 +136,7 @@ static void usage(const char *arg0)
 int main(int argc, char *argv[])
 {
 	bool opt = false;
+	bool dump_tok = false;
 	const char *fname = NULL;
 	block *entry = block_new_entry();
 	int i;
@@ -134,6 +144,8 @@ int main(int argc, char *argv[])
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-O")){
 			opt = true;
+		}else if(!strcmp(argv[i], "--dump-tokens")){
+			dump_tok = true;
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -141,12 +153,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(fname && !strcmp(fname, "--eg"))
+	if(fname && !strcmp(fname, "--eg")){
 		eg1(entry);
-	else if(fname && !strcmp(fname, "--eg-jmp"))
+	}else if(fname && !strcmp(fname, "--eg-jmp")){
 		egjmp(entry);
-	else
-		read_and_parse(fname, entry);
+	}else{
+		read_and_parse(fname, entry, dump_tok);
+		if(dump_tok)
+			return 0;
+	}
 
 	if(opt){
 		opt_cprop(entry);
