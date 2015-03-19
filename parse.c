@@ -114,7 +114,7 @@ static void parse_ret(parse *p)
 			uniq_val(
 				p,
 				token_last_ident(p->tok),
-				VAL_CREATE));
+				0));
 }
 
 void parse_code(tokeniser *tok, block *entry)
