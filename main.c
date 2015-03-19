@@ -115,6 +115,7 @@ static void read_and_parse(const char *fname, block *entry)
 		errno = ferr;
 		die("read %s:", fname);
 	}
+	exit(3);
 }
 
 static void usage(const char *arg0)
