@@ -1,0 +1,4 @@
+a = load 0
+b = load a
+c = load b
+ret c
