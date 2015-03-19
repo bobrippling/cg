@@ -99,8 +99,7 @@ enum token token_next(tokeniser *t)
 {
 	size_t i;
 
-	if(t->linep)
-		for(; isspace(*t->linep); t->linep++);
+	t->linep = skipspace(t->linep);
 
 	if(!t->linep || !*t->linep){
 		if(t->eof)
@@ -118,6 +117,8 @@ enum token token_next(tokeniser *t)
 			fclose(t->f);
 			return tok_eof;
 		}
+
+		t->linep = skipspace(t->linep);
 	}
 
 	switch(*t->linep++){

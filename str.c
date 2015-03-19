@@ -14,3 +14,12 @@ int isident(char ch, int digit)
 		return 1;
 	return digit ? isalnum(ch) : isalpha(ch);
 }
+
+char *skipspace(const char *s)
+{
+	if(!s)
+		return NULL;
+
+	for(; isspace(*s); s++);
+	return (char *)s;
+}
