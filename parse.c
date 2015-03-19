@@ -99,14 +99,22 @@ static void parse_ident(parse *p)
 	/* x = load y */
 	const char *to = token_last_ident(p->tok);
 	val *vto = uniq_val(p, to, VAL_CREATE | VAL_LVAL);
-	val *vfrom;
 
-	eat(p, "load", tok_equal);
-	eat(p, "load", tok_load);
+	eat(p, "assignment", tok_equal);
 
-	vfrom = parse_lval(p);
+	switch(token_next(p->tok)){
+		case tok_load:
+			isn_load(p->entry, vto, parse_lval(p));
+			break;
 
-	isn_load(p->entry, vto, vfrom);
+		case tok_alloca:
+			eat(p, "alloca", tok_int);
+			isn_alloca(p->entry, token_last_int(p->tok), vto);
+			break;
+
+		default:
+			parse_error(p, "expected load or alloca");
+	}
 }
 
 static void parse_ret(parse *p)
