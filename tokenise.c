@@ -92,6 +92,9 @@ enum token token_next(tokeniser *t)
 {
 	size_t i;
 
+	if(t->linep)
+		for(; isspace(*t->linep); t->linep++);
+
 	if(!t->linep || !*t->linep){
 		if(t->eof)
 			return tok_eof;
@@ -109,8 +112,6 @@ enum token token_next(tokeniser *t)
 			return tok_eof;
 		}
 	}
-
-	for(; isspace(*t->linep); t->linep++);
 
 	switch(*t->linep++){
 		case '(': return tok_lparen;
