@@ -2,11 +2,17 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+
+#include "die.h"
 
 #include "backend.h"
 #include "isn.h"
 #include "block.h"
 #include "branch.h"
+
+#include "tokenise.h"
+#include "parse.h"
 
 #include "isn_internal.h" /* isn_dump() */
 #include "block_internal.h" /* block_first_isn() */
@@ -85,30 +91,61 @@ static void egjmp(block *const entry)
 	}
 }
 
+static void read_and_parse(const char *fname, block *entry)
+{
+	FILE *f;
+	tokeniser *tok;
+	int ferr;
+
+	if(fname){
+		f = fopen(fname, "r");
+		if(!f)
+			die("open %s:", fname);
+	}else{
+		fname = "<stdin>";
+		f = stdin;
+	}
+
+	tok = token_init(f);
+
+	parse(tok, entry);
+
+	token_fin(tok, &ferr);
+	if(ferr){
+		errno = ferr;
+		die("read %s:", fname);
+	}
+}
+
 static void usage(const char *arg0)
 {
-	fprintf(stderr, "Usage: %s [-O] [jmp]\n", arg0);
+	fprintf(stderr, "Usage: %s [-O] [file | --eg[-jmp]]\n", arg0);
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
 	bool opt = false;
-	int i;
-	void (*eg)(block *) = eg1;
+	const char *fname = NULL;
 	block *entry = block_new_entry();
+	int i;
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-O")){
 			opt = true;
-		}else if(!strcmp(argv[i], "jmp")){
-			eg = egjmp;
+		}else if(!fname){
+			fname = argv[i];
 		}else{
 			usage(*argv);
 		}
 	}
 
-	eg(entry);
+	if(fname && !strcmp(fname, "--eg"))
+		eg1(entry);
+	else if(fname && !strcmp(fname, "--eg-jmp"))
+		egjmp(entry);
+	else
+		read_and_parse(fname, entry);
 
 	if(opt){
 		opt_cprop(entry);
