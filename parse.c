@@ -41,10 +41,31 @@ static void parse_error(parse *p, const char *fmt, ...)
 	p->err = 1;
 }
 
+static void create_names2vals(parse *p)
+{
+	if(p->names2vals)
+		return;
+
+	p->names2vals = dynmap_new(
+			const char *, (dynmap_cmp_f *)strcmp, dynmap_strhash);
+}
+
+static val *map_val(parse *p, const char *name, val *v)
+{
+	val *old;
+
+	create_names2vals(p);
+
+	old = dynmap_set(const char *, val *, p->names2vals, name, v);
+	assert(!old);
+
+	return v;
+}
+
 static val *uniq_val(
 		parse *p, const char *name, enum val_opts opts)
 {
-	val *v, *old;
+	val *v;
 
 	if(p->names2vals){
 		v = dynmap_get(const char *, val *, p->names2vals, name);
@@ -53,21 +74,15 @@ static val *uniq_val(
 				parse_error(p, "pre-existing identifier '%s'", name);
 			return v;
 		}
-
-	}else{
-		p->names2vals = dynmap_new(
-				const char *, (dynmap_cmp_f *)strcmp, dynmap_strhash);
 	}
 
 	if((opts & VAL_CREATE) == 0)
 		parse_error(p, "undeclared identifier '%s'", name);
 
+
 	v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)();
 
-	old = dynmap_set(const char *, val *, p->names2vals, name, v);
-	assert(!old);
-
-	return v;
+	return map_val(p, name, v);
 }
 
 static void eat(parse *p, const char *desc, enum token expect)
