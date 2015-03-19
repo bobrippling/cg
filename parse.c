@@ -45,8 +45,11 @@ static val *uniq_val(
 
 	if(p->names2vals){
 		v = dynmap_get(const char *, val *, p->names2vals, name);
-		if(v)
+		if(v){
+			if(opts & VAL_CREATE)
+				parse_error(p, "pre-existing identifier '%s'", name);
 			return v;
+		}
 
 	}else{
 		p->names2vals = dynmap_new(
