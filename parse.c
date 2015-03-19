@@ -95,7 +95,7 @@ static void parse_ident(parse *p)
 {
 	/* x = load y */
 	const char *to = token_last_ident(p->tok);
-	val *vto = uniq_val(p, to, VAL_CREATE);
+	val *vto = uniq_val(p, to, VAL_CREATE | VAL_LVAL);
 	val *vfrom;
 
 	eat(p, "load", tok_equal);
