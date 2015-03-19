@@ -194,7 +194,9 @@ void parse_code(tokeniser *tok, block *entry, int *const err)
 
 		switch(ct){
 			default:
-				assert(0 && "TODO");
+				parse_error(&state, "unexpected token %s", token_to_str(ct));
+				goto fin;
+
 			case tok_eof:
 				goto fin;
 
