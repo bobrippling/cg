@@ -93,14 +93,20 @@ enum token token_next(tokeniser *t)
 	size_t i;
 
 	if(!t->linep || !*t->linep){
+		if(t->eof)
+			return tok_eof;
+
 		free(t->line);
 		t->line = t->linep = read_line(t->f);
 
 		if(!t->line){
+			t->eof = 1;
+
 			if(ferror(t->f))
 				t->ferr = errno;
 
 			fclose(t->f);
+			return tok_eof;
 		}
 	}
 
