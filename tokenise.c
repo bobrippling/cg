@@ -157,6 +157,8 @@ enum token token_next(tokeniser *t)
 		return tok_ident;
 	}
 
+	fprintf(stderr, "unknown token '%s'\n", t->linep);
+
 	return tok_unknown;
 }
 
