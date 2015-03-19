@@ -148,8 +148,26 @@ static void parse_ident(parse *p)
 			break;
 		}
 
+		case tok_elem:
+		{
+			val *vlhs;
+			val *index_into = parse_lval(p);
+			unsigned idx;
+
+			eat(p, "elem", tok_comma);
+			eat(p, "elem", tok_int);
+
+			idx = token_last_int(p->tok);
+			vlhs = val_element(NULL, index_into, idx, 1);
+
+			map_val(p, lhs, vlhs);
+
+			isn_elem(p->entry, index_into, val_new_i(idx), vlhs);
+			break;
+		}
+
 		default:
-			parse_error(p, "expected load or alloca");
+			parse_error(p, "expected load, alloca or elem");
 	}
 }
 
