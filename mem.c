@@ -18,6 +18,13 @@ void *xmalloc(size_t l)
 	return p;
 }
 
+void *xrealloc(void *p, size_t l)
+{
+	void *r = realloc(p, l);
+	assert(r);
+	return r;
+}
+
 char *xstrdup(const char *s)
 {
 	size_t l = strlen(s) + 1;
