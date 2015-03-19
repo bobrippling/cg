@@ -118,6 +118,8 @@ enum token token_next(tokeniser *t)
 		t->lastident = buf;
 		t->free_lastident = 1;
 
+		t->linep += len - 1;
+
 		return tok_ident;
 	}
 
