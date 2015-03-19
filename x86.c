@@ -118,11 +118,14 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 
 		case ALLOCA:
 		{
+			int err;
 			assert(i->u.elem.add->type == INT);
 
 			add_total = op_exe(op_add,
 					alloca_offset(alloca2stack, i->u.elem.lval),
-					i->u.elem.add->u.i);
+					i->u.elem.add->u.i, &err);
+
+			assert(!err);
 			break;
 		}
 	}

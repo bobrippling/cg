@@ -32,7 +32,9 @@ static const struct
 #define KW(t) { #t, tok_ ## t },
 #define OTHER(t)
 #define PUNCT(t, s)
+#define OP(t) { #t, tok_ ## t },
 	TOKENS
+#undef OP
 #undef PUNCT
 #undef OTHER
 #undef KW
@@ -71,10 +73,12 @@ const char *token_to_str(enum token t)
 #define OTHER(x) case tok_ ## x: return #x;
 #define KW(x) case tok_ ## x: return "tok_" #x;
 #define PUNCT(x, p) case tok_ ## x: return #p;
+#define OP(t) case tok_ ## t: return #t;
 		TOKENS
 #undef OTHER
 #undef KW
 #undef PUNCT
+#undef OP
 	}
 	assert(0);
 }
@@ -203,4 +207,20 @@ char *token_last_ident(tokeniser *t)
 {
 	t->free_lastident = 0;
 	return t->lastident;
+}
+
+int token_is_op(enum token t, enum op *const o)
+{
+	switch(t){
+#define KW(t) case tok_ ## t: break;
+#define OTHER KW
+#define PUNCT(t, c) case tok_ ## t: break;
+#define OP(t) case tok_ ## t: *o = op_ ## t; return 1;
+	TOKENS
+#undef OP
+#undef PUNCT
+#undef OTHER
+#undef KW
+	}
+	return 0;
 }

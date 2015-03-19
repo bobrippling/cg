@@ -63,12 +63,14 @@ unsigned val_hash(val *v)
 
 bool val_op_maybe(enum op op, val *l, val *r, int *res)
 {
+	int err;
+
 	if(l->type != INT || r->type != INT)
 		return false;
 
-	*res = op_exe(op, l->u.i, r->u.i);
+	*res = op_exe(op, l->u.i, r->u.i, &err);
 
-	return true;
+	return !err;
 }
 
 bool val_op_maybe_val(enum op op, val *l, val *r, val **res)

@@ -140,10 +140,11 @@ static void parse_ident(parse *p)
 {
 	/* x = load y */
 	const char *lhs = token_last_ident(p->tok);
+	enum token tok;
 
 	eat(p, "assignment", tok_equal);
 
-	switch(token_next(p->tok)){
+	switch((tok = token_next(p->tok))){
 		case tok_load:
 		{
 			val *vlhs = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
@@ -184,7 +185,21 @@ static void parse_ident(parse *p)
 		}
 
 		default:
-			parse_error(p, "expected load, alloca or elem");
+		{
+			enum op op;
+			if(token_is_op(tok, &op)){
+				/* x = add a, b */
+				val *vlhs = parse_rval(p);
+				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p));
+				val *vres = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
+
+				isn_op(p->entry, op, vlhs, vrhs, vres);
+
+			}else{
+				parse_error(p, "expected load, alloca, elem or operator");
+			}
+			break;
+		}
 	}
 }
 
