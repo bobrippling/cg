@@ -119,6 +119,23 @@ static val *parse_lval(parse *p)
 	}
 }
 
+static val *parse_rval(parse *p)
+{
+	enum token t = token_next(p->tok);
+
+	switch(t){
+		case tok_int:
+			return val_new_i(token_last_int(p->tok));
+
+		case tok_ident:
+			return uniq_val(p, token_last_ident(p->tok), 0);
+
+		default:
+			parse_error(p, "rvalue operand expected, got %s", token_to_str(t));
+			return val_new_i(0);
+	}
+}
+
 static void parse_ident(parse *p)
 {
 	/* x = load y */
@@ -173,13 +190,7 @@ static void parse_ident(parse *p)
 
 static void parse_ret(parse *p)
 {
-	eat(p, "ret", tok_ident);
-
-	isn_ret(p->entry,
-			uniq_val(
-				p,
-				token_last_ident(p->tok),
-				0));
+	isn_ret(p->entry, parse_rval(p));
 }
 
 void parse_code(tokeniser *tok, block *entry, int *const err)
