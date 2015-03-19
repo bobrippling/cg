@@ -8,7 +8,8 @@ typedef struct val val;
 val *val_new_i(int);
 val *val_new_ptr_from_int(int);
 
-val *val_alloca(block *, int n, unsigned elemsz);
+val *val_make_alloca(block *, int n, unsigned elemsz);
+
 val *val_element(block *, val *lval, int i, unsigned elemsz); /* i'th element */
 val *val_element_noop(val *lval, int i, unsigned elemsz);
 
@@ -21,6 +22,7 @@ val *val_equal(block *, val *, val *);
 void val_ret(block *, val *);
 
 /* anonymous */
+val *val_alloca(void);
 val *val_name_new_lval(void);
 val *val_name_new(void);
 

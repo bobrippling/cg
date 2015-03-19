@@ -9,6 +9,7 @@
 
 #include "dynmap.h"
 #include "val.h"
+#include "val_allocas.h"
 #include "isn.h"
 
 typedef struct {
@@ -21,7 +22,8 @@ typedef struct {
 enum val_opts
 {
 	VAL_LVAL = 1 << 0,
-	VAL_CREATE = 1 << 1
+	VAL_CREATE = 1 << 1,
+	VAL_ALLOCA = 1 << 2
 };
 
 attr_printf(2, 3)
@@ -79,8 +81,13 @@ static val *uniq_val(
 	if((opts & VAL_CREATE) == 0)
 		parse_error(p, "undeclared identifier '%s'", name);
 
+	if(opts & VAL_ALLOCA){
+		assert(opts & VAL_LVAL);
 
-	v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)();
+		v = val_alloca();
+	}else{
+		v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)();
+	}
 
 	return map_val(p, name, v);
 }
@@ -115,20 +122,31 @@ static val *parse_lval(parse *p)
 static void parse_ident(parse *p)
 {
 	/* x = load y */
-	const char *to = token_last_ident(p->tok);
-	val *vto = uniq_val(p, to, VAL_CREATE | VAL_LVAL);
+	const char *lhs = token_last_ident(p->tok);
 
 	eat(p, "assignment", tok_equal);
 
 	switch(token_next(p->tok)){
 		case tok_load:
-			isn_load(p->entry, vto, parse_lval(p));
+		{
+			val *vlhs = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL);
+			isn_load(p->entry, vlhs, parse_lval(p));
 			break;
+		}
 
 		case tok_alloca:
+		{
+			unsigned amt;
+			val *vlhs;
+
 			eat(p, "alloca", tok_int);
-			isn_alloca(p->entry, token_last_int(p->tok), vto);
+			amt = token_last_int(p->tok);
+
+			vlhs = uniq_val(p, lhs, VAL_CREATE | VAL_LVAL | VAL_ALLOCA);
+
+			isn_alloca(p->entry, amt, vlhs);
 			break;
+		}
 
 		default:
 			parse_error(p, "expected load or alloca");

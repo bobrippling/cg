@@ -34,7 +34,7 @@ static void eg1(block *const entry)
 	/* loaded = 3 */
 	val *loaded = val_load(entry, store);
 
-	val *other_store = val_alloca(entry, 2, 4);
+	val *other_store = val_make_alloca(entry, 2, 4);
 
 	val_store(entry, val_new_i(7), other_store);
 	val_store(entry, val_new_i(9), val_element(entry, other_store, 1, 4));

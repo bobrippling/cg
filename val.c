@@ -187,12 +187,17 @@ val *val_new_ptr_from_int(int i)
 	return p;
 }
 
-val *val_alloca(block *blk, int n, unsigned elemsz)
+val *val_alloca(void)
+{
+	return val_new(ALLOCA);
+}
+
+val *val_make_alloca(block *blk, int n, unsigned elemsz)
 {
 	/* XXX: static */
 	static int idx;
 	const unsigned bytesz = n * elemsz;
-	val *v = val_new(ALLOCA);
+	val *v = val_alloca();
 
 	isn_alloca(blk, bytesz, v);
 
