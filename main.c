@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include <sys/utsname.h>
+
 #include "die.h"
+#include "str.h"
 
 #include "backend.h"
 #include "isn.h"
@@ -21,6 +24,17 @@
 #include "opt_storeprop.h"
 #include "opt_dse.h"
 #include "x86.h"
+
+static struct
+{
+	const char *name;
+	void (*emit)(block *);
+} backends[] = {
+	{ "ir", block_dump },
+	{ "x86_64", x86_out },
+	{ "amd64",  x86_out },
+	{ 0 }
+};
 
 enum
 {
@@ -142,14 +156,54 @@ static int read_and_parse(const char *fname, block *entry, bool dump_tok)
 
 static void usage(const char *arg0)
 {
-	fprintf(stderr, "Usage: %s [-O] [file | --eg[-jmp]]\n", arg0);
+	int i;
+
+	fprintf(stderr,
+			"Usage: %s [options] [file | --eg[-jmp]]\n"
+			"Options:\n"
+			"  -O: optimise\n"
+			"  --dump-tokens: token dump\n"
+			"  --emit=<backend>: emit via backend:\n"
+			, arg0);
+
+	for(i = 0; backends[i].name; i++)
+		fprintf(stderr, "    %s\n", backends[i].name);
+
 	exit(1);
+}
+
+static void (*find_machine(const char *machine))(block *)
+{
+	int i;
+
+	for(i = 0; backends[i].name; i++)
+		if(!strcmp(machine, backends[i].name))
+			return backends[i].emit;
+
+	return NULL;
+}
+
+static void (*default_backend(void))(block *)
+{
+	struct utsname unam;
+	void (*fn)(block *);
+
+	if(uname(&unam))
+		die("uname:");
+
+	fn = find_machine(unam.machine);
+	if(!fn)
+		die("unknown machine '%s'", unam.machine);
+
+	return fn;
 }
 
 int main(int argc, char *argv[])
 {
 	bool opt = false;
 	bool dump_tok = false;
+	void (*emit_fn)(block *) = NULL;
+	bool skip_read = false;
 	const char *fname = NULL;
 	block *entry = block_new_entry();
 	int i;
@@ -160,18 +214,40 @@ int main(int argc, char *argv[])
 			opt = true;
 		}else if(!strcmp(argv[i], "--dump-tokens")){
 			dump_tok = true;
+
+		}else if(str_beginswith(argv[i], "--emit=")){
+			const char *backend = argv[i] + 7;
+
+			if(emit_fn){
+				fprintf(stderr, "already given a --emit option\n");
+				usage(*argv);
+			}
+
+			emit_fn = find_machine(backend);
+			if(!emit_fn)
+				die("emit: unknown machine '%s'", backend);
+
 		}else if(!fname){
 			fname = argv[i];
+
 		}else{
 			usage(*argv);
 		}
 	}
 
-	if(fname && !strcmp(fname, "--eg")){
-		eg1(entry);
-	}else if(fname && !strcmp(fname, "--eg-jmp")){
-		egjmp(entry);
-	}else{
+	if(fname){
+		if(!strcmp(fname, "--eg")){
+			eg1(entry);
+			skip_read = true;
+		}else if(!strcmp(fname, "--eg-jmp")){
+			egjmp(entry);
+			skip_read = true;
+		}else if(!strcmp(fname, "-")){
+			fname = NULL;
+		}
+	}
+
+	if(!skip_read){
 		parse_err = read_and_parse(fname, entry, dump_tok);
 		if(dump_tok)
 			return 0;
@@ -183,14 +259,12 @@ int main(int argc, char *argv[])
 		opt_dse(entry);
 	}
 
-	block_dump(entry);
-
 	if(parse_err)
 		return 1;
 
-	printf("x86:\n");
-
-	x86_out(entry);
+	if(!emit_fn)
+		emit_fn = default_backend();
+	emit_fn(entry);
 
 	return 0;
 }
