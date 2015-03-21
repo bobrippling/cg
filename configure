@@ -19,6 +19,7 @@ if [ -z "$TMPDIR" ]
 then
 	TMPDIR=tmp/
 	mkdir -p "$TMPDIR" || exit $?
+	trap "rm -r '$TMPDIR'" EXIT
 fi
 
 if [ -z "$CC" ]
@@ -27,6 +28,7 @@ then
 fi
 
 ctmp="$TMPDIR"/1.c
+trap "rm -f '$ctmp'" EXIT
 
 echo > Makefile.cfg
 
