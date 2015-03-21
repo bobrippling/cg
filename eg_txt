@@ -1,22 +1,22 @@
-store 0, 3
+store.4 0, 3
 
-tmp.0 = load 0
+tmp_0 = load.4 0
 
-alloca.0 = alloca 8
-store alloca.0, 7
+alloca_0 = alloca 8
+store.4 alloca_0, 7
 
-tmp.1 = elem alloca.0, 4
-store tmp.1, 9
+tmp_1 = elem alloca_0, 4
+store.4 tmp_1, 9
 
-tmp.2 = load alloca.0
-tmp.3 = add tmp.2, tmp.0
-tmp.4 = add 5, tmp.3
+tmp_2 = load.4 alloca_0
+tmp_3 = add.4 tmp_2, tmp_0
+tmp_4 = add.4 5, tmp_3
 
-tmp.5 = load 0
-tmp.6 = load alloca.0
-tmp.7 = add tmp.5, tmp.6
-tmp.8 = add tmp.7, tmp.4
-tmp.9 = load tmp.1
-tmp.10 = add tmp.9, tmp.8
+tmp_5 = load.4 0
+tmp_6 = load.4 alloca_0
+tmp_7 = add.4 tmp_5, tmp_6
+tmp_8 = add.4 tmp_7, tmp_4
+tmp_9 = load.4 tmp_1
+tmp_10 = add.4 tmp_9, tmp_8
 
-ret tmp.10
+ret.4 tmp_10
