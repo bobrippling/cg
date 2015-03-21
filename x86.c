@@ -221,9 +221,14 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_RET:
 			{
-				/* XXX: hard coded eax */
-				printf("\tmov %s, %%eax\n",
-						x86_val_str(i->u.ret, 0, alloca2stack, 0));
+				val veax = { 0 };
+
+				veax.type = NAME;
+				veax.u.addr.u.name.reg = 0; /* XXX: hard coded eax */
+				veax.u.addr.u.name.val_size = val_size(i->u.ret);
+
+				x86_mov(i->u.ret, &veax, alloca2stack);
+
 				printf("\tleave\n\tret\n");
 				break;
 			}
