@@ -16,7 +16,9 @@ HEADERS = backend.h dyn.h dynmap.h \
 
 SRC = ${OBJ:.o=.c}
 
-CFLAGS = -std=c89 -g -Wall -Wextra ${CFLAGS_CONFIGURE}
+CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L
+
+CFLAGS = -std=c89 -g -Wall -Wextra ${CFLAGS_CONFIGURE} ${CFLAGS_DEFINE}
 LDFLAGS = -g
 
 all: tags ir
