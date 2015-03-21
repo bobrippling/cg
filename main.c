@@ -227,6 +227,9 @@ int main(int argc, char *argv[])
 			if(!emit_fn)
 				die("emit: unknown machine '%s'", backend);
 
+		}else if(!strcmp(argv[i], "--help")){
+			usage(*argv);
+
 		}else if(!fname){
 			fname = argv[i];
 
