@@ -112,7 +112,7 @@ enum token token_next(tokeniser *t)
 
 	t->linep = skipspace(t->linep);
 
-	if(!t->linep || !*t->linep){
+	while(!t->linep || !*t->linep){
 		free(t->line);
 		t->line = t->linep = read_line(t->f);
 
