@@ -100,11 +100,19 @@ static const char *x86_val_str(
 	return buf;
 }
 
-static void x86_mov(val *from, val *to, dynmap *alloca2stack)
+static void x86_mov_deref(
+		val *from, val *to,
+		dynmap *alloca2stack,
+		int dl, int dr)
 {
 	printf("\tmov %s, %s\n",
-			x86_val_str(from, 0, alloca2stack, 0),
-			x86_val_str(to, 1, alloca2stack, 0));
+			x86_val_str(from, 0, alloca2stack, dl),
+			x86_val_str(to, 1, alloca2stack, dr));
+}
+
+static void x86_mov(val *from, val *to, dynmap *alloca2stack)
+{
+	x86_mov_deref(from, to, alloca2stack, 0, 0);
 }
 
 static void emit_elem(isn *i, dynmap *alloca2stack)
@@ -235,20 +243,13 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_STORE:
 			{
-				printf("\tmov %s, %s\n",
-							x86_val_str(i->u.store.from, 1, alloca2stack, 0),
-							x86_val_str(i->u.store.lval, 0, alloca2stack, 1));
+				x86_mov_deref(i->u.store.from, i->u.store.lval, alloca2stack, 0, 1);
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				val *rval = i->u.load.lval;
-
-				printf("\tmov %s, %s\n",
-						x86_val_str(rval, 0, alloca2stack, 1),
-						x86_val_str(i->u.load.to, 1, alloca2stack, 0));
-
+				x86_mov_deref(i->u.load.lval, i->u.load.to, alloca2stack, 1, 0);
 				break;
 			}
 
