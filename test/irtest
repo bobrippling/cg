@@ -1,0 +1,40 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]
+then
+	echo "Usage: $0 ir-file" >&2
+	exit 1
+fi
+
+if [ -z "$ir" ]
+then
+	echo "$0: no \$ir" >&2
+	exit 1
+fi
+
+if [ -z "$TMPDIR" ]
+then TMPDIR=/tmp
+fi
+
+tmp="$TMPDIR"/$$.ir
+trap "rm -f '$tmp'" EXIT
+
+irdiff(){
+	sed '/#/d' "$1"      >$tmp.in
+	"$ir" --emit=ir "$1" >$tmp.out
+
+	diff -u "$tmp.in" "$tmp.out"
+}
+
+f="$1"
+type=$(head -1 "$f" | sed -n 's;.*test=\([a-z]*\).*;\1;p')
+
+case "$type" in
+	irdiff)
+		irdiff "$f"
+		;;
+	*)
+		echo "$0: unknown test type '$type'" >&2
+		exit 1
+		;;
+esac
