@@ -24,6 +24,9 @@ all: tags ir
 ir: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
+check: ir
+	make -Ctest
+
 tags: ${SRC}
 	ctags ${SRC} ${HEADERS}
 
@@ -36,4 +39,4 @@ Makefile.dep: ${SRC}
 -include Makefile.dep
 -include Makefile.cfg
 
-.PHONY: clean all
+.PHONY: clean all check
