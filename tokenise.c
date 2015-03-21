@@ -60,10 +60,14 @@ static void free_lastident(tokeniser *t)
 
 void token_fin(tokeniser *t, int *const err)
 {
-	*err = t->ferr;
+	if(t->f){
+		int failed = fclose(t->f);
 
-	if(t->f)
-		fclose(t->f);
+		if(!t->ferr && failed)
+			t->ferr = errno;
+	}
+
+	*err = t->ferr;
 
 	free_lastident(t);
 	free(t);
@@ -118,7 +122,7 @@ enum token token_next(tokeniser *t)
 			if(ferror(t->f))
 				t->ferr = errno;
 
-			fclose(t->f);
+			/* file closed later */
 			return tok_eof;
 		}
 
