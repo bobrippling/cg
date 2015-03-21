@@ -16,9 +16,8 @@ char *read_line(FILE *f)
 		size_t nr;
 
 		got = fgets(buf + off, l - off, f);
-		nr = strlen(buf + off);
 
-		if(nr == 0){
+		if(!got || (nr = strlen(buf + off)) == 0){
 			const int e = errno;
 			free(buf);
 			errno = e;
