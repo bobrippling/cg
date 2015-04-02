@@ -11,6 +11,8 @@
 
 #include "tokenise.h"
 
+#define TOKEN_PEEK_EMPTY tok_eof
+
 struct tokeniser
 {
 	FILE *f;
@@ -18,6 +20,7 @@ struct tokeniser
 	int ferr;
 
 	char *line, *linep;
+	enum token unget;
 
 	int free_lastident;
 	char *lastident;
@@ -48,6 +51,7 @@ tokeniser *token_init(FILE *f)
 	memset(t, 0, sizeof *t);
 
 	t->f = f;
+	t->unget = TOKEN_PEEK_EMPTY;
 
 	return t;
 }
@@ -106,6 +110,12 @@ static int consume_word(tokeniser *t, const char *word)
 enum token token_next(tokeniser *t)
 {
 	size_t i;
+
+	if(t->unget != TOKEN_PEEK_EMPTY){
+		enum token unget = t->unget;
+		t->unget = TOKEN_PEEK_EMPTY;
+		return unget;
+	}
 
 	if(t->eof)
 		return tok_eof;
@@ -180,6 +190,14 @@ enum token token_next(tokeniser *t)
 	fprintf(stderr, "unknown token '%s'\n", t->linep);
 
 	return tok_unknown;
+}
+
+enum token token_peek(tokeniser *t)
+{
+	if(t->unget == TOKEN_PEEK_EMPTY)
+		t->unget = token_next(t);
+
+	return t->unget;
 }
 
 void token_curline(tokeniser *t, char *out, size_t len)

@@ -63,6 +63,7 @@ void token_fin(tokeniser *, int *err);
 const char *token_to_str(enum token);
 
 enum token token_next(tokeniser *);
+enum token token_peek(tokeniser *);
 
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
