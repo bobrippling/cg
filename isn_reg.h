@@ -4,6 +4,11 @@
 #include "isn_internal.h"
 #include "block.h"
 
-void isn_regalloc(block *blk, int nregs);
+struct regalloc_ctx
+{
+	int nregs, scratch_reg;
+};
+
+void isn_regalloc(block *blk, const struct regalloc_ctx *);
 
 #endif

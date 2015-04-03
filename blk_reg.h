@@ -3,6 +3,6 @@
 
 #include "block.h"
 
-void blk_regalloc(block *, int nregs);
+void blk_regalloc(block *, int nregs, int scratch_reg);
 
 #endif

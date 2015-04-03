@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "macros.h"
 
@@ -29,6 +30,68 @@ static const char *const regs[][4] = {
 	{ "sil", "si", "esi", "rsi" },
 };
 
+#define SCRATCH_REG 2 /* ecx */
+
+struct x86_isn
+{
+	const char *mnemonic;
+	struct x86_isn_constraint
+	{
+		unsigned char l, r;
+	} constraints[5];
+};
+
+typedef enum operand_category
+{
+	/* 0 means no entry / end of entries */
+	OPERAND_REG = 1,
+	OPERAND_MEM,
+	OPERAND_INT
+} operand_category;
+
+static const struct x86_isn isn_mov = {
+	"mov",
+	{
+		{ OPERAND_REG, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_MEM },
+		{ OPERAND_MEM, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_INT },
+		{ OPERAND_INT, OPERAND_REG }
+	}
+};
+
+static const struct x86_isn isn_add = {
+	"add",
+	{
+		{ OPERAND_REG, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_MEM },
+		{ OPERAND_MEM, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_REG }
+	}
+};
+
+
+static void mov_deref(
+		val *from, val *to,
+		dynmap *alloca2stack,
+		int dl, int dr);
+
+
+
+static operand_category val_category(val *v)
+{
+	if(val_is_mem(v))
+		return OPERAND_MEM;
+
+	switch(v->type){
+		case INT:  return OPERAND_INT;
+		case NAME: return OPERAND_REG; /* not mem from val_is_mem() */
+		default:
+			assert(0 && "unreachable");
+	}
+	assert(0);
+}
+
 static int alloca_offset(dynmap *alloca2stack, val *val)
 {
 	intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
@@ -36,14 +99,17 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 	return off;
 }
 
-static const char *name_str(val *val, /*optional*/int size)
+static const char *name_in_reg_str(val *val, /*optional*/int size)
 {
 	int sz_idx;
+	int reg = val->u.addr.u.name.loc.u.reg;
 
-	if(val->u.addr.u.name.reg == -1)
+	assert(val->u.addr.u.name.loc.where == NAME_IN_REG);
+
+	if(reg == -1)
 		return val->u.addr.u.name.spel;
 
-	assert(val->u.addr.u.name.reg < (int)countof(regs));
+	assert(reg < (int)countof(regs));
 
 	if(size < 0)
 		size = val->u.addr.u.name.val_size;
@@ -61,7 +127,7 @@ static const char *name_str(val *val, /*optional*/int size)
 		default: assert(0);
 	}
 
-	return regs[val->u.addr.u.name.reg][sz_idx];
+	return regs[reg][sz_idx];
 }
 
 static const char *x86_val_str_sized(
@@ -84,10 +150,17 @@ static const char *x86_val_str_sized(
 			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
 			break;
 		case NAME:
-			snprintf(buf, sizeof bufs[0], "%s%%%s%s",
-					dereference ? "(" : "",
-					name_str(val, dereference ? 0 : size),
-					dereference ? ")" : "");
+			if(val->u.addr.u.name.loc.where == NAME_IN_REG){
+				snprintf(buf, sizeof bufs[0], "%s%%%s%s",
+						dereference ? "(" : "",
+						name_in_reg_str(val, dereference ? 0 : size),
+						dereference ? ")" : "");
+			}else{
+				assert(dereference);
+
+				snprintf(buf, sizeof bufs[0], "-%u(%%rbp)",
+						val->u.addr.u.name.loc.u.off);
+			}
 			break;
 		case ALLOCA:
 		{
@@ -112,30 +185,141 @@ static const char *x86_val_str(
 		dereference, -1);
 }
 
-static void x86_mov_deref(
+static void move_val(
+		val *from,
+		val *write_to,
+		operand_category from_cat,
+		operand_category to_cat)
+{
+	/* move 'from' into category 'to_cat' (from 'from_cat'),
+	 * saving the new value in *write_to */
+
+	if(from_cat == to_cat){
+		*write_to = *from;
+		return;
+	}
+
+	assert(to_cat != OPERAND_INT);
+	assert(to_cat != OPERAND_MEM && "TODO");
+
+	/* use scratch register */
+	memset(write_to, 0, sizeof *write_to);
+
+	write_to->type = NAME;
+
+	write_to->u.addr.u.name.loc.where = NAME_IN_REG;
+	write_to->u.addr.u.name.loc.u.reg = SCRATCH_REG;
+	write_to->u.addr.u.name.val_size = from->u.addr.u.name.val_size;
+}
+
+static void emit_isn(
+		const struct x86_isn *isn, dynmap *alloca2stack,
+		val *const lhs, int deref_lhs,
+		val *const rhs, int deref_rhs)
+{
+	const operand_category lhs_cat = deref_lhs ? OPERAND_MEM : val_category(lhs);
+	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
+	const int max = countof(isn->constraints);
+	int i;
+	int satisfied;
+	int mem_reg_idx = -1, reg_mem_idx = -1;
+	const struct x86_isn_constraint *required = NULL;
+	val store_lhs, *emit_lhs = lhs;
+	val store_rhs, *emit_rhs = rhs;
+
+	if(lhs_cat == OPERAND_MEM)
+		deref_lhs = 1;
+	if(rhs_cat == OPERAND_MEM)
+		deref_rhs = 1;
+
+	for(i = 0; i < max && isn->constraints[i].l; i++){
+		if(lhs_cat == isn->constraints[i].l
+		&& rhs_cat == isn->constraints[i].r)
+		{
+			break;
+		}
+
+		if(isn->constraints[i].l == OPERAND_MEM
+		&& isn->constraints[i].r == OPERAND_REG)
+		{
+			mem_reg_idx = i;
+		}
+
+		if(isn->constraints[i].l == OPERAND_REG
+		&& isn->constraints[i].r == OPERAND_MEM)
+		{
+			reg_mem_idx = i;
+		}
+	}
+
+	satisfied = !(i == max || isn->constraints[i].l == 0);
+	if(!satisfied){
+		/* not satisfied - convert an operand to REG */
+		i = mem_reg_idx > -1 ? mem_reg_idx : reg_mem_idx;
+		assert(i != -1 && "unsatisfiable + unconvertable instruction operands");
+		required = &isn->constraints[i];
+
+		move_val(lhs, &store_lhs, lhs_cat, required->l);
+		move_val(rhs, &store_rhs, rhs_cat, required->r);
+
+		/* LHS needs to be loaded before the instruction */
+		if(lhs_cat != required->l){
+			/* no dereference rhs here - move into the temporary */
+			mov_deref(emit_lhs, lhs, alloca2stack, deref_lhs, 0);
+			deref_lhs = 1;
+
+			emit_lhs = &store_lhs;
+		}
+
+		if(rhs_cat != required->r){
+			/* wait to store the value until after the main isn */
+
+			/* using a register as a temporary rhs - no dereference */
+			deref_rhs = 0;
+
+			emit_rhs = &store_rhs;
+		}
+
+	}else{
+		/* satisfied */
+	}
+
+	printf("\t%s %s, %s\n",
+			isn->mnemonic,
+			x86_val_str(emit_lhs, 0, alloca2stack, deref_lhs),
+			x86_val_str(emit_rhs, 1, alloca2stack, deref_rhs));
+
+	if(!satisfied){
+		/* RHS needs to be stored after the instruction */
+		if(rhs_cat != required->r){
+			mov_deref(emit_rhs, rhs, alloca2stack, 0, 1);
+		}
+	}
+}
+
+static void mov_deref(
 		val *from, val *to,
 		dynmap *alloca2stack,
 		int dl, int dr)
 {
-	const char *pre = "";
-
 	if(!dl && !dr
 	&& from->type == NAME
 	&& to->type == NAME
-	&& from->u.addr.u.name.reg == to->u.addr.u.name.reg)
+	&& from->u.addr.u.name.loc.where == NAME_IN_REG
+	&& to->u.addr.u.name.loc.where == NAME_IN_REG
+	&& from->u.addr.u.name.loc.u.reg == to->u.addr.u.name.loc.u.reg)
 	{
-		pre = "; ";
+		printf("\t;");
 	}
 
-	printf("\t%smov %s, %s\n",
-			pre,
-			x86_val_str(from, 0, alloca2stack, dl),
-			x86_val_str(to, 1, alloca2stack, dr));
+	emit_isn(&isn_mov, alloca2stack,
+			from, dl,
+			to, dr);
 }
 
-static void x86_mov(val *from, val *to, dynmap *alloca2stack)
+static void mov(val *from, val *to, dynmap *alloca2stack)
 {
-	x86_mov_deref(from, to, alloca2stack, 0, 0);
+	mov_deref(from, to, alloca2stack, 0, 0);
 }
 
 static void emit_elem(isn *i, dynmap *alloca2stack)
@@ -181,7 +365,7 @@ static void x86_op(
 		val *res, dynmap *alloca2stack)
 {
 	/* no instruction selection / register merging. just this for now */
-	x86_mov(lhs, res, alloca2stack);
+	mov(lhs, res, alloca2stack);
 
 	printf("\t%s %s, %s\n",
 			op_to_str(op),
@@ -215,7 +399,7 @@ static void x86_cmp(
 
 	zero = val_new_i(0, val_size(lhs));
 
-	x86_mov(zero, res, alloca2stack);
+	mov(zero, res, alloca2stack);
 
 	printf("\tset%s %s\n",
 			x86_cmp_str(cmp),
@@ -242,10 +426,11 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 				val veax = { 0 };
 
 				veax.type = NAME;
-				veax.u.addr.u.name.reg = 0; /* XXX: hard coded eax */
+				veax.u.addr.u.name.loc.where = NAME_IN_REG;
+				veax.u.addr.u.name.loc.u.reg = 0; /* XXX: hard coded eax */
 				veax.u.addr.u.name.val_size = val_size(i->u.ret);
 
-				x86_mov(i->u.ret, &veax, alloca2stack);
+				mov(i->u.ret, &veax, alloca2stack);
 
 				printf("\tleave\n\tret\n");
 				break;
@@ -253,13 +438,13 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_STORE:
 			{
-				x86_mov_deref(i->u.store.from, i->u.store.lval, alloca2stack, 0, 1);
+				mov_deref(i->u.store.from, i->u.store.lval, alloca2stack, 0, 1);
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				x86_mov_deref(i->u.load.lval, i->u.load.to, alloca2stack, 1, 0);
+				mov_deref(i->u.load.lval, i->u.load.to, alloca2stack, 1, 0);
 				break;
 			}
 
@@ -279,7 +464,7 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_COPY:
 			{
-				x86_mov(i->u.copy.from, i->u.copy.to, alloca2stack);
+				mov(i->u.copy.from, i->u.copy.to, alloca2stack);
 				break;
 			}
 		}
@@ -339,7 +524,7 @@ void x86_out(block *const entry)
 	/* gather allocas */
 	blocks_iterate(entry, x86_sum_alloca, &ctx);
 
-	blk_regalloc(entry, countof(regs));
+	blk_regalloc(entry, countof(regs), SCRATCH_REG);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", ctx.alloca);

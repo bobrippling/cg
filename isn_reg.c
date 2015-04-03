@@ -12,7 +12,7 @@
 #include "val_struct.h"
 #include "block_internal.h"
 
-#define VAL_REG(v) (v)->u.addr.u.name.reg
+#define VAL_REG(v) (v)->u.addr.u.name.loc.u.reg
 
 struct lifetime
 {
@@ -136,19 +136,28 @@ static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
 	ctx->offset += size;
 }
 
-static void regalloc_greedy(block *blk, isn *head, int nregs)
+static void regalloc_greedy(
+		block *blk, isn *const head,
+		const struct regalloc_ctx *regs_ctx)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
 	int i;
+	isn *isn_iter;
 
-	alloc_ctx.in_use = xcalloc(nregs, 1);
-	alloc_ctx.nregs = nregs;
+	alloc_ctx.in_use = xcalloc(regs_ctx->nregs, 1);
+	alloc_ctx.nregs = regs_ctx->nregs;
 
-	for(; head; head = head->next, alloc_ctx.isn_num++)
-		isn_on_vals(head, regalloc_greedy1, &alloc_ctx);
+	alloc_ctx.in_use[regs_ctx->scratch_reg] = 1;
 
-	for(i = 0; i < nregs; i++)
-		assert(alloc_ctx.in_use[i] == 0);
+	for(isn_iter = head; isn_iter; isn_iter = isn_iter->next, alloc_ctx.isn_num++)
+		isn_on_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
+
+	for(i = 0; i < regs_ctx->nregs; i++){
+		int expected = 0;
+		if(i == regs_ctx->scratch_reg)
+			expected = 1;
+		assert(alloc_ctx.in_use[i] == expected);
+	}
 
 	free(alloc_ctx.in_use);
 
@@ -159,23 +168,23 @@ static void regalloc_greedy(block *blk, isn *head, int nregs)
 
 		isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);
 
-		for(; head; head = head->next)
-			isn_on_vals(head, regalloc_greedy_spill, &spill_ctx);
+		for(isn_iter = head; isn_iter; isn_iter = isn_iter->next)
+			isn_on_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);
 	}
 }
 
-static void simple_regalloc(block *blk, int nregs)
+static void simple_regalloc(block *blk, const struct regalloc_ctx *ctx)
 {
 	isn *head = block_first_isn(blk);
 
 	assign_lifetimes(head);
 
-	regalloc_greedy(blk, head, nregs);
+	regalloc_greedy(blk, head, ctx);
 
 	free_regalloc_data(head);
 }
 
-void isn_regalloc(block *blk, int nregs)
+void isn_regalloc(block *blk, const struct regalloc_ctx *ctx)
 {
-	simple_regalloc(blk, nregs);
+	simple_regalloc(blk, ctx);
 }

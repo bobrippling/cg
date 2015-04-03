@@ -1,4 +1,4 @@
-# test=grep_x86_64 ; mov %ax, %ax
+# test=grep_x86_64 ;	mov %ax, %ax
 	x = load.2 5
 	a = alloca 10
 	store.2 a, x

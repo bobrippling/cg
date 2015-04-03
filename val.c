@@ -54,6 +54,17 @@ int val_size(val *v)
 	assert(0);
 }
 
+bool val_is_mem(val *v)
+{
+	switch(v->type){
+		case INT_PTR: return true;
+		case ALLOCA:  return true;
+		case INT:     return false;
+		case NAME:    return v->u.addr.u.name.loc.where == NAME_SPILT;
+	}
+	assert(0);
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->type;
@@ -178,7 +189,8 @@ val *val_name_new(unsigned sz)
 	snprintf(buf, sizeof buf, "tmp_%d", n++);
 
 	v->u.addr.u.name.spel = xstrdup(buf);
-	v->u.addr.u.name.reg = -1;
+	v->u.addr.u.name.loc.where = NAME_IN_REG;
+	v->u.addr.u.name.loc.u.reg = -1;
 	v->u.addr.u.name.val_size = sz;
 
 	return v;
@@ -241,15 +253,16 @@ val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 	if(pre_existing)
 		return pre_existing;
 
-	val *named = val_name_new(elemsz);
-	val *vidx = val_new_i(byteidx, 0);
+	val *elem = val_name_new(elemsz);
 
-	if(blk) /* else noop */
-		isn_elem(blk, lval, vidx, named);
+	if(blk){ /* else noop */
+		val *vidx = val_new_i(byteidx, 0);
+		isn_elem(blk, lval, vidx, elem);
+	}
 
-	val_alloca_idx_set(lval, byteidx, named);
+	val_alloca_idx_set(lval, byteidx, elem);
 
-	return named;
+	return elem;
 }
 
 val *val_element_noop(val *lval, int i, unsigned elemsz)
