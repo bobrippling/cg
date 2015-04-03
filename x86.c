@@ -367,10 +367,13 @@ static void x86_op(
 	/* no instruction selection / register merging. just this for now */
 	mov(lhs, res, alloca2stack);
 
-	printf("\t%s %s, %s\n",
-			op_to_str(op),
-			x86_val_str(rhs, 0, alloca2stack, 0),
-			x86_val_str(res, 1, alloca2stack, 0));
+	assert(op == op_add && "TODO");
+
+	emit_isn(
+			&isn_add, /* FIXME: op_to_str / op_to_isn_xyz */
+			alloca2stack,
+			rhs, 0,
+			res, 0);
 }
 
 static const char *x86_cmp_str(enum op_cmp cmp)
