@@ -191,12 +191,25 @@ val *val_retain(val *v)
 	return v;
 }
 
+static void val_free(val *v)
+{
+	switch(v->type){
+		case NAME:
+			free(v->u.addr.u.name.spel);
+			break;
+		default:
+			break;
+	}
+
+	free(v);
+}
+
 void val_release(val *v)
 {
 	v->retains--;
 
 	if(v->retains == 0)
-		free(v);
+		val_free(v);
 }
 
 val *val_name_new(unsigned sz)
