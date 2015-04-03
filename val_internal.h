@@ -5,6 +5,9 @@
 #include "val.h"
 #include "op.h"
 
+val *val_retain(val *);
+void val_release(val *);
+
 bool val_op_maybe(enum op, val *, val *, int *res);
 bool val_op_maybe_val(enum op, val *, val *, val **res);
 val *val_op_symbolic(enum op, val *, val *);

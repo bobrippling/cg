@@ -24,6 +24,7 @@ struct val
 		NAME,      /* sized */
 		ALLOCA
 	} type;
+	unsigned retains;
 
 	union
 	{

@@ -451,7 +451,7 @@ static void x86_cmp(
 			x86_val_str(lhs, 0, alloca2stack, 0),
 			x86_val_str(rhs, 1, alloca2stack, 0));
 
-	zero = val_new_i(0, val_size(lhs));
+	zero = val_retain(val_new_i(0, val_size(lhs)));
 
 	mov(zero, res, alloca2stack);
 
@@ -459,7 +459,7 @@ static void x86_cmp(
 			x86_cmp_str(cmp),
 			x86_val_str(res, 0, alloca2stack, 0));
 
-	val_free(zero);
+	val_release(zero);
 }
 
 static void x86_out_block1(block *blk, dynmap *alloca2stack)

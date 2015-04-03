@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "mem.h"
 
@@ -18,6 +19,60 @@ static isn *isn_new(enum isn_type t, block *blk)
 
 	isn->type = t;
 	return isn;
+}
+
+static void isn_free_1(isn *isn)
+{
+	switch(isn->type){
+		case ISN_STORE:
+			val_release(isn->u.store.lval);
+			val_release(isn->u.store.from);
+			break;
+		case ISN_LOAD:
+			val_release(isn->u.load.lval);
+			val_release(isn->u.load.to);
+			break;
+		case ISN_ALLOCA:
+			val_release(isn->u.alloca.out);
+			break;
+		case ISN_ELEM:
+			val_release(isn->u.elem.lval);
+			val_release(isn->u.elem.add);
+			val_release(isn->u.elem.res);
+			break;
+		case ISN_OP:
+			val_release(isn->u.op.lhs);
+			val_release(isn->u.op.rhs);
+			val_release(isn->u.op.res);
+			break;
+		case ISN_CMP:
+			val_release(isn->u.cmp.lhs);
+			val_release(isn->u.cmp.rhs);
+			val_release(isn->u.cmp.res);
+			break;
+		case ISN_COPY:
+			val_release(isn->u.copy.from);
+			val_release(isn->u.copy.to);
+			break;
+		case ISN_EXT:
+			val_release(isn->u.ext.from);
+			val_release(isn->u.ext.to);
+			break;
+		case ISN_RET:
+			val_release(isn->u.ret);
+			break;
+	}
+
+	free(isn);
+}
+
+void isn_free_r(isn *head)
+{
+	isn *i, *next;
+	for(i = head; i; i = next){
+		next = i->next;
+		isn_free_1(i);
+	}
 }
 
 const char *isn_type_to_str(enum isn_type t)
@@ -40,62 +95,62 @@ void isn_load(block *blk, val *to, val *lval)
 {
 	isn *isn = isn_new(ISN_LOAD, blk);
 
-	isn->u.load.lval = lval;
-	isn->u.load.to = to;
+	isn->u.load.lval = val_retain(lval);
+	isn->u.load.to = val_retain(to);
 }
 
 void isn_store(block *blk, val *from, val *lval)
 {
 	isn *isn = isn_new(ISN_STORE, blk);
 
-	isn->u.store.lval = lval;
-	isn->u.store.from = from;
+	isn->u.store.lval = val_retain(lval);
+	isn->u.store.from = val_retain(from);
 }
 
 void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 {
 	isn *isn = isn_new(ISN_OP, blk);
 	isn->u.op.op = op;
-	isn->u.op.lhs = lhs;
-	isn->u.op.rhs = rhs;
-	isn->u.op.res = res;
+	isn->u.op.lhs = val_retain(lhs);
+	isn->u.op.rhs = val_retain(rhs);
+	isn->u.op.res = val_retain(res);
 }
 
 void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 {
 	isn *isn = isn_new(ISN_CMP, blk);
 	isn->u.cmp.cmp = cmp;
-	isn->u.cmp.lhs = lhs;
-	isn->u.cmp.rhs = rhs;
-	isn->u.cmp.res = res;
+	isn->u.cmp.lhs = val_retain(lhs);
+	isn->u.cmp.rhs = val_retain(rhs);
+	isn->u.cmp.res = val_retain(res);
 }
 
 void isn_zext(block *blk, val *from, val *to)
 {
 	isn *isn = isn_new(ISN_EXT, blk);
-	isn->u.ext.from = from;
-	isn->u.ext.to = to;
+	isn->u.ext.from = val_retain(from);
+	isn->u.ext.to = val_retain(to);
 }
 
 void isn_elem(block *blk, val *lval, val *add, val *res)
 {
 	isn *isn = isn_new(ISN_ELEM, blk);
-	isn->u.elem.lval = lval;
-	isn->u.elem.add = add;
-	isn->u.elem.res = res;
+	isn->u.elem.lval = val_retain(lval);
+	isn->u.elem.add = val_retain(add);
+	isn->u.elem.res = val_retain(res);
 }
 
 void isn_alloca(block *blk, unsigned sz, val *v)
 {
 	isn *isn = isn_new(ISN_ALLOCA, blk);
 	isn->u.alloca.sz = sz;
-	isn->u.alloca.out = v;
+	isn->u.alloca.out = val_retain(v);
 }
 
 void isn_ret(block *blk, val *r)
 {
 	isn *isn = isn_new(ISN_RET, blk);
-	isn->u.ret = r;
+	isn->u.ret = val_retain(r);
 	block_set_type(blk, BLK_EXIT);
 }
 

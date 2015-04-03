@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "mem.h"
@@ -7,12 +8,22 @@
 #include "block_struct.h"
 #include "block_internal.h"
 #include "isn_struct.h"
+#include "branch_internal.h"
 
 block *block_new(void)
 {
 	block *b = xcalloc(1, sizeof *b);
 	b->isntail = &b->isn1;
 	return b;
+}
+
+void block_free(block *b)
+{
+	if(b->type == BLK_BRANCH)
+		branch_free(b);
+
+	isn_free_r(b->isn1);
+	free(b);
 }
 
 block *block_new_entry(void)

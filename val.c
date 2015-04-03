@@ -169,13 +169,23 @@ static val *val_new(enum val_type k)
 {
 	/* XXX: memleak */
 	val *v = xcalloc(1, sizeof *v);
+	/* v->retains begins at zero - isns initially retain them */
 	v->type = k;
 	return v;
 }
 
-void val_free(val *v)
+val *val_retain(val *v)
 {
-	free(v);
+	v->retains++;
+	return v;
+}
+
+void val_release(val *v)
+{
+	v->retains--;
+
+	if(v->retains == 0)
+		free(v);
 }
 
 val *val_name_new(unsigned sz)
