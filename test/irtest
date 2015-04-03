@@ -27,11 +27,17 @@ irdiff(){
 }
 
 f="$1"
-type=$(head -1 "$f" | sed -n 's;.*test=\([a-z]*\).*;\1;p')
+type=$(head -1 "$f" | sed -n 's;.*test=\([a-z0-9_]*\).*;\1;p')
 
 case "$type" in
 	irdiff)
 		irdiff "$f"
+		;;
+	grep_*)
+		backend=$(echo "$type" | sed 's;grep_;;')
+		regex=$(head -1 "$f" | sed -n 's;.*test=[a-z0-9_]* \(.*\);\1;p')
+
+		"$ir" "--emit=$backend" "$f" | grep "$regex" >/dev/null
 		;;
 	*)
 		echo "$0: unknown test type '$type'" >&2

@@ -115,7 +115,18 @@ static void x86_mov_deref(
 		dynmap *alloca2stack,
 		int dl, int dr)
 {
-	printf("\tmov %s, %s\n",
+	const char *pre = "";
+
+	if(!dl && !dr
+	&& from->type == NAME
+	&& to->type == NAME
+	&& from->u.addr.u.name.reg == to->u.addr.u.name.reg)
+	{
+		pre = "; ";
+	}
+
+	printf("\t%smov %s, %s\n",
+			pre,
 			x86_val_str(from, 0, alloca2stack, dl),
 			x86_val_str(to, 1, alloca2stack, dr));
 }
