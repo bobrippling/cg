@@ -35,7 +35,7 @@ tags: ${SRC}
 clean:
 	rm -f ir ${OBJ}
 
-Makefile.dep: ${SRC}
+Makefile.dep: ${SRC} ${HEADERS}
 	${CC} -MM ${SRC} > $@
 
 -include Makefile.dep
