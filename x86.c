@@ -524,10 +524,10 @@ void x86_out(block *const entry)
 	struct x86_alloca_ctx ctx = { 0 };
 	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
-	/* gather allocas */
-	blocks_iterate(entry, x86_sum_alloca, &ctx);
-
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
+
+	/* gather allocas - must be after regalloc */
+	blocks_iterate(entry, x86_sum_alloca, &ctx);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
