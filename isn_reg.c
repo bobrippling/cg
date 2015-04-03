@@ -43,7 +43,7 @@ static void assign_lifetime(val *v, isn *isn, void *ctx)
 
 	(void)isn;
 
-	if(!VAL_IS_NAME(v))
+	if(v->type != NAME)
 		return;
 
 	if(!lt){
@@ -82,7 +82,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(!lt)
 		return; /* not something we need to regalloc */
 
-	assert(VAL_IS_NAME(v));
+	assert(v->type == NAME);
 
 	if(lt->start == ctx->isn_num && VAL_REG(v) == -1){
 		int i;

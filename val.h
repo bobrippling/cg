@@ -25,7 +25,6 @@ void val_ret(block *, val *);
 
 /* anonymous */
 val *val_alloca(void);
-val *val_name_new_lval(unsigned sz);
 val *val_name_new(unsigned sz);
 
 /* util */

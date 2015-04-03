@@ -25,8 +25,6 @@ static bool val_in(val *v, enum val_to to)
 			return to & (LITERAL | ADDRESSABLE);
 		case NAME:
 			return to & NAMED;
-		case NAME_LVAL:
-			return to & ADDRESSABLE;
 		case ALLOCA:
 			return to & ADDRESSABLE;
 	}
@@ -51,7 +49,6 @@ int val_size(val *v)
 		case INT:
 			return v->u.i.val_size;
 		case NAME:
-		case NAME_LVAL:
 			return v->u.addr.u.name.val_size;
 	}
 	assert(0);
@@ -66,7 +63,6 @@ unsigned val_hash(val *v)
 		case INT_PTR:
 			h ^= v->u.i.i;
 			break;
-		case NAME_LVAL:
 		case NAME:
 			h ^= dynmap_strhash(v->u.addr.u.name.spel);
 			break;
@@ -134,7 +130,6 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 		}
 
 		case NAME:
-		case NAME_LVAL:
 			assert(0 && "can't add to name vals");
 	}
 	assert(0);
@@ -150,7 +145,6 @@ char *val_str(val *v)
 			snprintf(buf, sizeof buf, "%d", v->u.i.i);
 			break;
 		case NAME:
-		case NAME_LVAL:
 			snprintf(buf, sizeof buf, "%s", v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
@@ -173,13 +167,13 @@ void val_free(val *v)
 	free(v);
 }
 
-static val *val_name_new_lval_(bool lval, unsigned sz)
+val *val_name_new(unsigned sz)
 {
 	/* XXX: static */
 	static int n;
 	char buf[32];
 
-	val *v = val_new(lval ? NAME_LVAL : NAME);
+	val *v = val_new(NAME);
 
 	snprintf(buf, sizeof buf, "tmp_%d", n++);
 
@@ -188,16 +182,6 @@ static val *val_name_new_lval_(bool lval, unsigned sz)
 	v->u.addr.u.name.val_size = sz;
 
 	return v;
-}
-
-val *val_name_new(unsigned sz)
-{
-	return val_name_new_lval_(false, sz);
-}
-
-val *val_name_new_lval(unsigned sz)
-{
-	return val_name_new_lval_(true, sz);
 }
 
 val *val_new_i(int i, unsigned sz)
@@ -237,17 +221,12 @@ val *val_make_alloca(block *blk, int n, unsigned elemsz)
 
 void val_store(block *blk, val *rval, val *lval)
 {
-	lval = VAL_NEED(lval, ADDRESSABLE);
-	rval = VAL_NEED(rval, LITERAL | NAMED);
-
 	isn_store(blk, rval, lval);
 }
 
 val *val_load(block *blk, val *v, unsigned size)
 {
 	val *named = val_name_new(size);
-
-	v = VAL_NEED(v, ADDRESSABLE);
 
 	isn_load(blk, named, v);
 
@@ -262,7 +241,7 @@ val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 	if(pre_existing)
 		return pre_existing;
 
-	val *named = val_name_new_lval(elemsz);
+	val *named = val_name_new(elemsz);
 	val *vidx = val_new_i(byteidx, 0);
 
 	if(blk) /* else noop */

@@ -79,10 +79,6 @@ static const char *x86_val_str(
 			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
 			break;
 		case NAME:
-			assert(!dereference);
-			snprintf(buf, sizeof bufs[0], "%%%s", name_str(val));
-			break;
-		case NAME_LVAL:
 			snprintf(buf, sizeof bufs[0], "%s%%%s%s",
 					dereference ? "(" : "",
 					name_str(val),
@@ -132,19 +128,6 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 				assert(0 && "couldn't add operands");
 			}
 			break;
-		}
-
-		case NAME_LVAL:
-		{
-			assert(0 && "TODO: add name_lval");
-			assert(i->u.elem.add->type == INT);
-
-			printf("\tlea %d(%s), %s ; NAME_LVAL\n",
-					i->u.elem.add->u.i.i,
-					x86_val_str(i->u.elem.lval, 1, alloca2stack, 0),
-					x86_val_str(i->u.elem.res,  2, alloca2stack, 0));
-
-			return;
 		}
 
 		case ALLOCA:

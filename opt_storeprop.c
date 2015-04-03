@@ -18,28 +18,6 @@ void opt_storeprop(block *const entry)
 
 	for(i = block_first_isn(entry); i; i = i->next){
 		switch(i->type){
-			case ISN_STORE:
-			{
-				if(i->u.store.lval->type == NAME_LVAL){
-					/* mov $3, (%rax) - see where %rax points */
-					val *actual = dynmap_get(
-							val *, val *,
-							lval_entries,
-							i->u.store.lval);
-
-					if(actual){
-						val *from = i->u.store.from;
-						val *dest = actual;
-
-						i->type = ISN_STORE;
-						i->u.store.lval = dest;
-						i->u.store.from = from;
-						break;
-					}
-				}
-				break;
-			}
-
 			case ISN_ELEM:
 			{
 				if(i->u.elem.add->type == INT){
@@ -57,6 +35,7 @@ void opt_storeprop(block *const entry)
 				break;
 			}
 
+			case ISN_STORE:
 			case ISN_LOAD:
 			case ISN_ALLOCA:
 			case ISN_COPY:

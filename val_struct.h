@@ -8,7 +8,6 @@ struct val
 		INT,       /* sized */
 		INT_PTR,
 		NAME,      /* sized */
-		NAME_LVAL, /* sized */
 		ALLOCA
 	} type;
 
@@ -48,7 +47,5 @@ struct val
 
 	void *pass_data;
 };
-
-#define VAL_IS_NAME(v) ((v)->type == NAME || (v)->type == NAME_LVAL)
 
 #endif

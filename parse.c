@@ -21,9 +21,8 @@ typedef struct {
 
 enum val_opts
 {
-	VAL_LVAL = 1 << 0,
-	VAL_CREATE = 1 << 1,
-	VAL_ALLOCA = 1 << 2
+	VAL_CREATE = 1 << 0,
+	VAL_ALLOCA = 1 << 1
 };
 
 attr_printf(2, 3)
@@ -82,12 +81,10 @@ static val *uniq_val(
 		parse_error(p, "undeclared identifier '%s'", name);
 
 	if(opts & VAL_ALLOCA){
-		assert(opts & VAL_LVAL);
-
 		v = val_alloca();
 	}else{
 		assert(size >= 0);
-		v = (opts & VAL_LVAL ? val_name_new_lval : val_name_new)(size);
+		v = val_name_new(size);
 	}
 
 	return map_val(p, name, v);
@@ -164,7 +161,7 @@ static void parse_ident(parse *p)
 		case tok_load:
 		{
 			unsigned isn_sz = parse_dot_size(p);
-			val *vlhs = uniq_val(p, lhs, isn_sz, VAL_CREATE | VAL_LVAL);
+			val *vlhs = uniq_val(p, lhs, isn_sz, VAL_CREATE);
 			isn_load(p->entry, vlhs, parse_lval(p));
 			break;
 		}
@@ -177,7 +174,7 @@ static void parse_ident(parse *p)
 			eat(p, "alloca", tok_int);
 			amt = token_last_int(p->tok);
 
-			vlhs = uniq_val(p, lhs, -1, VAL_CREATE | VAL_LVAL | VAL_ALLOCA);
+			vlhs = uniq_val(p, lhs, -1, VAL_CREATE | VAL_ALLOCA);
 
 			isn_alloca(p->entry, amt, vlhs);
 			break;
@@ -212,7 +209,7 @@ static void parse_ident(parse *p)
 				unsigned isn_sz = parse_dot_size(p);
 				val *vlhs = parse_rval(p, isn_sz);
 				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p, isn_sz));
-				val *vres = uniq_val(p, lhs, isn_sz, VAL_CREATE | VAL_LVAL);
+				val *vres = uniq_val(p, lhs, isn_sz, VAL_CREATE);
 
 				if(is_cmp)
 					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
