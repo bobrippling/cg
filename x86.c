@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "countof.h"
+#include "macros.h"
 
 #include "x86.h"
 
