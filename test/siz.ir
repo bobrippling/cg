@@ -1,0 +1,17 @@
+# test=irdiff
+	store.4 0, 3
+	tmp_0 = load.4 0
+	alloca_0 = alloca 8
+	store.4 alloca_0, 7
+	tmp_1 = elem alloca_0, 4
+	store.4 tmp_1, 9
+	tmp_2 = load.4 alloca_0
+	tmp_3 = add.4 tmp_2, tmp_0
+	tmp_4 = add.4 5, tmp_3
+	tmp_5 = load.4 0
+	tmp_6 = load.4 alloca_0
+	tmp_7 = add.4 tmp_5, tmp_6
+	tmp_8 = add.4 tmp_7, tmp_4
+	tmp_9 = load.4 tmp_1
+	tmp_10 = add.4 tmp_9, tmp_8
+	ret.4 tmp_10
