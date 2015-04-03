@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "block.h"
@@ -51,28 +52,31 @@ static void create_names2vals(parse *p)
 			const char *, (dynmap_cmp_f *)strcmp, dynmap_strhash);
 }
 
-static val *map_val(parse *p, const char *name, val *v)
+static val *map_val(parse *p, char *name, val *v)
 {
 	val *old;
 
 	create_names2vals(p);
 
-	old = dynmap_set(const char *, val *, p->names2vals, name, v);
+	old = dynmap_set(char *, val *, p->names2vals, name, v);
 	assert(!old);
 
 	return v;
 }
 
 static val *uniq_val(
-		parse *p, const char *name, int size, enum val_opts opts)
+		parse *p, char *name, int size, enum val_opts opts)
 {
 	val *v;
 
 	if(p->names2vals){
-		v = dynmap_get(const char *, val *, p->names2vals, name);
+		v = dynmap_get(char *, val *, p->names2vals, name);
 		if(v){
 			if(opts & VAL_CREATE)
 				parse_error(p, "pre-existing identifier '%s'", name);
+
+			free(name);
+
 			return v;
 		}
 	}
@@ -150,7 +154,7 @@ static val *parse_rval(parse *p, unsigned size)
 static void parse_ident(parse *p)
 {
 	/* x = load y */
-	const char *lhs = token_last_ident(p->tok);
+	char *lhs = token_last_ident(p->tok);
 	enum token tok;
 
 	eat(p, "assignment", tok_equal);
@@ -244,6 +248,17 @@ static void parse_store(parse *p)
 	isn_store(p->entry, rval, lval);
 }
 
+static void free_names2vals(dynmap *names2vals)
+{
+	size_t i;
+	char *name;
+
+	for(i = 0; (name = dynmap_key(char *, names2vals, i)); i++)
+		free(name);
+
+	dynmap_free(names2vals);
+}
+
 void parse_code(tokeniser *tok, block *entry, int *const err)
 {
 	parse state = { 0 };
@@ -277,5 +292,7 @@ void parse_code(tokeniser *tok, block *entry, int *const err)
 	}
 
 fin:
+	free_names2vals(state.names2vals);
+
 	*err = state.err;
 }
