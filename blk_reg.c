@@ -3,7 +3,7 @@
 #include "isn_reg.h"
 #include "block_internal.h"
 
-void blk_regalloc1(block *blk, void *ctx)
+static void blk_regalloc1(block *blk, void *ctx)
 {
 	const int nregs = *(int *)ctx;
 

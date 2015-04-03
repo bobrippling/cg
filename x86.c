@@ -4,6 +4,8 @@
 
 #include "countof.h"
 
+#include "x86.h"
+
 #include "dynmap.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
