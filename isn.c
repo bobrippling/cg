@@ -212,17 +212,17 @@ static void isn_dump1(isn *i)
 		{
 			printf("\tstore.%u %s, %s\n",
 					val_size(i->u.store.from),
-					val_str(i->u.store.lval),
-					val_str(i->u.store.from));
+					val_str_rn(0, i->u.store.lval),
+					val_str_rn(1, i->u.store.from));
 			break;
 		}
 
 		case ISN_LOAD:
 		{
 			printf("\t%s = load.%u %s\n",
-					val_str(i->u.load.to),
+					val_str_rn(0, i->u.load.to),
 					val_size(i->u.load.to),
-					val_str(i->u.load.lval));
+					val_str_rn(1, i->u.load.lval));
 
 			break;
 		}
@@ -238,47 +238,47 @@ static void isn_dump1(isn *i)
 		case ISN_ELEM:
 		{
 			printf("\t%s = elem %s, %s\n",
-					val_str(i->u.elem.res),
-					val_str(i->u.elem.lval),
-					val_str(i->u.elem.add));
+					val_str_rn(0, i->u.elem.res),
+					val_str_rn(1, i->u.elem.lval),
+					val_str_rn(2, i->u.elem.add));
 			break;
 		}
 
 		case ISN_CMP:
 		{
 			printf("\t%s = %s %s, %s\n",
-					val_str(i->u.cmp.res),
+					val_str_rn(0, i->u.cmp.res),
 					op_cmp_to_str(i->u.cmp.cmp),
-					val_str(i->u.cmp.lhs),
-					val_str(i->u.cmp.rhs));
+					val_str_rn(1, i->u.cmp.lhs),
+					val_str_rn(2, i->u.cmp.rhs));
 			break;
 		}
 
 		case ISN_OP:
 		{
 			printf("\t%s = %s.%u %s, %s\n",
-					val_str(i->u.op.res),
+					val_str_rn(0, i->u.op.res),
 					op_to_str(i->u.op.op),
 					val_size(i->u.op.lhs),
-					val_str(i->u.op.lhs),
-					val_str(i->u.op.rhs));
+					val_str_rn(1, i->u.op.lhs),
+					val_str_rn(2, i->u.op.rhs));
 			break;
 		}
 
 		case ISN_COPY:
 		{
 			printf("\t%s = %s\n",
-					val_str(i->u.copy.to),
-					val_str(i->u.copy.from));
+					val_str_rn(0, i->u.copy.to),
+					val_str_rn(1, i->u.copy.from));
 			break;
 		}
 
 		case ISN_EXT:
 		{
 			printf("\t%s = zext %u, %s\n",
-					val_str(i->u.copy.to),
+					val_str_rn(0, i->u.copy.to),
 					val_size(i->u.copy.to),
-					val_str(i->u.copy.from));
+					val_str_rn(1, i->u.copy.from));
 			break;
 		}
 

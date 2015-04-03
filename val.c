@@ -146,23 +146,34 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 	assert(0);
 }
 
-char *val_str(val *v)
+char *val_str_r(char buf[32], val *v)
 {
-	/* XXX: memleak */
-	char buf[256];
 	switch(v->type){
 		case INT:
 		case INT_PTR:
-			snprintf(buf, sizeof buf, "%d", v->u.i.i);
+			snprintf(buf, VAL_STR_SZ, "%d", v->u.i.i);
 			break;
 		case NAME:
-			snprintf(buf, sizeof buf, "%s", v->u.addr.u.name.spel);
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
-			snprintf(buf, sizeof buf, "alloca_%d", v->u.addr.u.alloca.idx);
+			snprintf(buf, VAL_STR_SZ, "alloca_%d", v->u.addr.u.alloca.idx);
 			break;
 	}
-	return xstrdup(buf);
+	return buf;
+}
+
+char *val_str(val *v)
+{
+	static char buf[VAL_STR_SZ];
+	return val_str_r(buf, v);
+}
+
+char *val_str_rn(unsigned buf_n, val *v)
+{
+	static char buf[3][VAL_STR_SZ];
+	assert(buf_n < 3);
+	return val_str_r(buf[buf_n], v);
 }
 
 static val *val_new(enum val_type k)

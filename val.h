@@ -29,8 +29,12 @@ val *val_alloca(void);
 val *val_name_new(unsigned sz);
 
 /* util */
+#define VAL_STR_SZ 32
 
 char *val_str(val *);
+char *val_str_r(char buf[], val *);
+char *val_str_rn(unsigned buf_n, val *);
+
 unsigned val_hash(val *);
 
 #endif
