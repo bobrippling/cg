@@ -190,7 +190,7 @@ static void parse_ident(parse *p)
 			eat(p, "elem", tok_int);
 
 			idx = token_last_int(p->tok);
-			vlhs = val_element(NULL, index_into, idx, 1);
+			vlhs = val_element(NULL, index_into, idx, 0);
 
 			map_val(p, lhs, vlhs);
 
