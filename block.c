@@ -5,6 +5,7 @@
 
 #include "block.h"
 #include "block_struct.h"
+#include "block_internal.h"
 #include "isn_struct.h"
 
 block *block_new(void)

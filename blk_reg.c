@@ -7,7 +7,7 @@ static void blk_regalloc1(block *blk, void *ctx)
 {
 	const int nregs = *(int *)ctx;
 
-	isn_regalloc(block_first_isn(blk), nregs);
+	isn_regalloc(blk, nregs);
 }
 
 void blk_regalloc(block *blk, int nregs)
