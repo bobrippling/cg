@@ -33,7 +33,7 @@ void val_alloca_idx_set(val *lval, unsigned idx, val *elemptr)
 			*next;
 			next = &(*next)->next)
 	{
-		assert((*next)->idx == idx);
+		assert((*next)->idx != idx);
 	}
 
 	struct val_idxpair *newpair = xcalloc(1, sizeof *newpair);
