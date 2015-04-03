@@ -19,9 +19,12 @@ char *read_line(FILE *f)
 
 		if(!got || (nr = strlen(buf + off)) == 0){
 			const int e = errno;
-			free(buf);
+			if(off == 0){
+				free(buf);
+				buf = NULL;
+			}
 			errno = e;
-			return NULL;
+			return buf;
 		}
 
 		nl = memchr(buf + off, '\n', nr);
