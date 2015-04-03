@@ -1,3 +1,4 @@
+# test=harness 45
 r0 = load.4 0
 r1 = load.4 1
 r2 = load.4 2

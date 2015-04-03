@@ -3,3 +3,6 @@ Makefile.cfg
 ir
 *.o
 tags
+test/harness/harness
+test/harness/gen.s
+test/harness/src.s

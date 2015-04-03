@@ -40,6 +40,20 @@ case "$type" in
 
 		"$ir" "--emit=$backend" "$f" | grep "$regex" >/dev/null
 		;;
+	harness)
+		"$ir" "$f" > harness/src.s
+		(
+			cd harness
+			make -s
+
+			set +e
+			./harness
+			ec=$?
+			set -e
+
+			[ $ec -eq $rest ]
+		)
+		;;
 	sh)
 		export f
 		sh <<-!
