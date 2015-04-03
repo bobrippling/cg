@@ -58,8 +58,10 @@ tokeniser *token_init(FILE *f)
 
 static void free_lastident(tokeniser *t)
 {
-	if(t->free_lastident)
+	if(t->free_lastident){
 		free(t->lastident);
+		t->free_lastident = 0;
+	}
 }
 
 void token_fin(tokeniser *t, int *const err)
