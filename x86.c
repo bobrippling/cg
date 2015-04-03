@@ -34,7 +34,7 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 	return off;
 }
 
-static const char *name_str(val *val)
+static const char *name_str(val *val, /*optional*/int size)
 {
 	int sz_idx;
 
@@ -43,7 +43,10 @@ static const char *name_str(val *val)
 
 	assert(val->u.addr.u.name.reg < (int)countof(regs));
 
-	switch(val->u.addr.u.name.val_size){
+	if(size < 0)
+		size = val->u.addr.u.name.val_size;
+
+	switch(size){
 		case 0:
 			/* FIXME: word size */
 			sz_idx = 3;
@@ -59,10 +62,10 @@ static const char *name_str(val *val)
 	return regs[val->u.addr.u.name.reg][sz_idx];
 }
 
-static const char *x86_val_str(
+static const char *x86_val_str_sized(
 		val *val, int bufchoice,
 		dynmap *alloca2stack,
-		bool dereference)
+		bool dereference, int size)
 {
 	static char bufs[3][256];
 
@@ -81,7 +84,7 @@ static const char *x86_val_str(
 		case NAME:
 			snprintf(buf, sizeof bufs[0], "%s%%%s%s",
 					dereference ? "(" : "",
-					name_str(val),
+					name_str(val, dereference ? 0 : size),
 					dereference ? ")" : "");
 			break;
 		case ALLOCA:
@@ -94,6 +97,17 @@ static const char *x86_val_str(
 	}
 
 	return buf;
+}
+
+static const char *x86_val_str(
+		val *val, int bufchoice,
+		dynmap *alloca2stack,
+		bool dereference)
+{
+	return x86_val_str_sized(
+		val, bufchoice,
+		alloca2stack,
+		dereference, -1);
 }
 
 static void x86_mov_deref(
@@ -146,7 +160,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 
 	printf("\tlea %d(%%rbp), %s\n",
 			add_total,
-			x86_val_str(i->u.elem.res, 0, alloca2stack, 0));
+			x86_val_str_sized(i->u.elem.res, 0, alloca2stack, 0, /*ptrsize*/0));
 }
 
 static void x86_op(
