@@ -21,6 +21,9 @@ val *val_load(block *, val *, unsigned size);
 val *val_add(block *, val *, val *);
 val *val_equal(block *, val *, val *);
 
+/* TODO: sext and trunc */
+val *val_zext(block *, val *, unsigned);
+
 void val_ret(block *, val *);
 
 /* anonymous */

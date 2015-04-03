@@ -60,6 +60,14 @@ static const struct x86_isn isn_mov = {
 	}
 };
 
+static const struct x86_isn isn_movzx = {
+	"mov",
+	{
+		{ OPERAND_REG, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_MEM },
+	}
+};
+
 static const struct x86_isn isn_add = {
 	"add",
 	{
@@ -215,7 +223,8 @@ static void move_val(
 static void emit_isn(
 		const struct x86_isn *isn, dynmap *alloca2stack,
 		val *const lhs, int deref_lhs,
-		val *const rhs, int deref_rhs)
+		val *const rhs, int deref_rhs,
+		const char *isn_suffix)
 {
 	const operand_category lhs_cat = deref_lhs ? OPERAND_MEM : val_category(lhs);
 	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
@@ -284,8 +293,8 @@ static void emit_isn(
 		/* satisfied */
 	}
 
-	printf("\t%s %s, %s\n",
-			isn->mnemonic,
+	printf("\t%s%s %s, %s\n",
+			isn->mnemonic, isn_suffix,
 			x86_val_str(emit_lhs, 0, alloca2stack, deref_lhs),
 			x86_val_str(emit_rhs, 1, alloca2stack, deref_rhs));
 
@@ -314,7 +323,8 @@ static void mov_deref(
 
 	emit_isn(&isn_mov, alloca2stack,
 			from, dl,
-			to, dr);
+			to, dr,
+			"");
 }
 
 static void mov(val *from, val *to, dynmap *alloca2stack)
@@ -373,7 +383,48 @@ static void x86_op(
 			&isn_add, /* FIXME: op_to_str / op_to_isn_xyz */
 			alloca2stack,
 			rhs, 0,
-			res, 0);
+			res, 0,
+			"");
+}
+
+static void x86_ext(val *from, val *to, dynmap *alloca2stack)
+{
+	unsigned sz_from = val_size(from);
+	unsigned sz_to = val_size(to);
+	char buf[4] = "z";
+
+	assert(sz_to > sz_from);
+	buf[3] = '\0';
+
+	/*      1   2   4   8
+	 *   1  x  zbw zbl zbq
+	 *   2  x   x  zwl zwq
+	 *   4  x   x   x <empty>
+	 *   8  x   x   x   x
+	 */
+
+	switch(sz_from){
+		case 1: buf[1] = 'b'; break;
+		case 2: buf[1] = 'w'; break;
+		case 4:
+			assert(sz_to == 8);
+			mov(from, to, alloca2stack); /* movl a, b */
+			return;
+
+		default:
+			assert(0 && "bad extension");
+	}
+
+	switch(sz_to){
+		case 2: buf[2] = 'w'; break;
+		case 4: buf[2] = 'l'; break;
+		case 8: buf[2] = 'q'; break;
+		default:
+			assert(0 && "bad extension");
+	}
+
+	emit_isn(&isn_movzx, alloca2stack,
+			from, 0, to, 0, buf);
 }
 
 static const char *x86_cmp_str(enum op_cmp cmp)
@@ -463,6 +514,10 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 				x86_cmp(i->u.cmp.cmp,
 						i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
 						alloca2stack);
+				break;
+
+			case ISN_EXT:
+				x86_ext(i->u.ext.from, i->u.ext.to, alloca2stack);
 				break;
 
 			case ISN_COPY:

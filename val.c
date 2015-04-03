@@ -286,6 +286,20 @@ val *val_add(block *blk, val *a, val *b)
 	return named;
 }
 
+val *val_zext(block *blk, val *v, unsigned to)
+{
+	unsigned sz = val_size(v);
+	val *named;
+
+	assert(sz < to);
+
+	named = val_name_new(to);
+
+	isn_zext(blk, v, named);
+
+	return named;
+}
+
 val *val_equal(block *blk, val *lhs, val *rhs)
 {
 	val *eq = val_name_new(1);

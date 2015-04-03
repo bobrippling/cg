@@ -30,6 +30,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_OP:     return "op";
 		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
+		case ISN_EXT:    return "ext";
 		case ISN_RET:    return "ret";
 	}
 	return NULL;
@@ -67,6 +68,13 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 	isn->u.cmp.lhs = lhs;
 	isn->u.cmp.rhs = rhs;
 	isn->u.cmp.res = res;
+}
+
+void isn_zext(block *blk, val *from, val *to)
+{
+	isn *isn = isn_new(ISN_EXT, blk);
+	isn->u.ext.from = from;
+	isn->u.ext.to = to;
 }
 
 void isn_elem(block *blk, val *lval, val *add, val *res)
@@ -129,6 +137,11 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 		case ISN_COPY:
 			fn(current->u.copy.to, current, ctx);
 			fn(current->u.copy.from, current, ctx);
+			break;
+
+		case ISN_EXT:
+			fn(current->u.ext.to, current, ctx);
+			fn(current->u.ext.from, current, ctx);
 			break;
 
 		case ISN_RET:
@@ -201,6 +214,15 @@ static void isn_dump1(isn *i)
 		{
 			printf("\t%s = %s\n",
 					val_str(i->u.copy.to),
+					val_str(i->u.copy.from));
+			break;
+		}
+
+		case ISN_EXT:
+		{
+			printf("\t%s = zext %u, %s\n",
+					val_str(i->u.copy.to),
+					val_size(i->u.copy.to),
 					val_str(i->u.copy.from));
 			break;
 		}

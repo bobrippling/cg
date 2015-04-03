@@ -12,6 +12,7 @@ struct isn
 		ISN_CMP,
 		ISN_ELEM,
 		ISN_COPY,
+		ISN_EXT,
 		ISN_RET
 	} type;
 
@@ -52,7 +53,7 @@ struct isn
 		struct
 		{
 			val *from, *to;
-		} copy;
+		} copy, ext;
 
 		val *ret;
 	} u;

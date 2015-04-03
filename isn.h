@@ -14,6 +14,8 @@ void isn_elem(block *, val *lval, val *add, val *res);
 void isn_op(block *, enum op op, val *lhs, val *rhs, val *res);
 void isn_cmp(block *, enum op_cmp, val *lhs, val *rhs, val *res);
 
+void isn_zext(block *, val *, val *);
+
 void isn_ret(block *, val *);
 
 #endif

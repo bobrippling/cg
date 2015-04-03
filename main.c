@@ -104,7 +104,10 @@ static void egjmp(block *const entry)
 	val *escaped_bad;
 
 	{
-		val *added = val_add(btrue, cmp, val_new_i(1, INT_SIZE));
+		val *added = val_add(btrue,
+				val_zext(btrue, cmp, INT_SIZE),
+				val_new_i(1, INT_SIZE));
+
 		val_ret(btrue, added);
 
 		escaped_bad = added;

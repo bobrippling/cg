@@ -64,6 +64,11 @@ void opt_cprop(block *entry)
 				break;
 			}
 
+			case ISN_EXT:
+			{
+				break;
+			}
+
 			case ISN_ALLOCA:
 			{
 				break;
