@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -eu
+
 if [ $# -ne 1 ]
 then
 	echo "Usage: $0 ir-file" >&2
@@ -12,9 +14,11 @@ then
 	exit 1
 fi
 
+set +u
 if [ -z "$TMPDIR" ]
 then TMPDIR=/tmp
 fi
+set -u
 
 tmp="$TMPDIR"/$$.ir
 trap "rm -f '$tmp'" EXIT
