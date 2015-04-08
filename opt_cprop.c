@@ -63,7 +63,7 @@ void opt_cprop(block *entry)
 							i->u.load.to, rval);
 
 					i->type = ISN_COPY;
-					i->u.copy.from = rval;
+					i->u.copy.from = val_retain(rval);
 					i->u.copy.to = i->u.load.to;
 				}
 				break;
@@ -106,7 +106,7 @@ void opt_cprop(block *entry)
 							i->u.op.res, synth_add);
 
 					i->type = ISN_COPY;
-					i->u.copy.from = synth_add;
+					i->u.copy.from = val_retain(synth_add);
 					i->u.copy.to = i->u.op.res;
 				}
 				break;
