@@ -84,18 +84,34 @@ unsigned val_hash(val *v)
 	return h;
 }
 
-bool val_op_maybe(enum op op, val *l, val *r, int *res)
+static bool val_both_ints(val *l, val *r)
 {
-	int err;
-
 	if(l->type != INT || r->type != INT)
 		return false;
 
 	assert(l->u.i.val_size == r->u.i.val_size);
+	return true;
+}
+
+bool val_op_maybe(enum op op, val *l, val *r, int *res)
+{
+	int err;
+
+	if(!val_both_ints(l, r))
+		return false;
 
 	*res = op_exe(op, l->u.i.i, r->u.i.i, &err);
 
 	return !err;
+}
+
+bool val_cmp_maybe(enum op_cmp cmp, val *l, val *r, int *res)
+{
+	if(!val_both_ints(l, r))
+		return false;
+
+	*res = op_cmp_exe(cmp, l->u.i.i, r->u.i.i);
+	return true;
 }
 
 bool val_op_maybe_val(enum op op, val *l, val *r, val **res)

@@ -31,6 +31,19 @@ int op_exe(enum op op, int l, int r, int *const div0)
 	assert(0);
 }
 
+int op_cmp_exe(enum op_cmp cmp, int l, int r)
+{
+	switch(cmp){
+		case cmp_eq: return l == r;
+		case cmp_ne: return l != r;
+		case cmp_gt: return l >  r;
+		case cmp_ge: return l >= r;
+		case cmp_lt: return l <  r;
+		case cmp_le: return l <= r;
+	}
+	assert(0);
+}
+
 const char *op_to_str(enum op op)
 {
 	switch(op){

@@ -40,7 +40,7 @@ enum op_cmp
 
 int op_exe(enum op, int l, int r, int *div0);
 
-int op_cmp_exe(enum op, int l, int r);
+int op_cmp_exe(enum op_cmp, int l, int r);
 
 const char *op_to_str(enum op);
 const char *op_cmp_to_str(enum op_cmp);

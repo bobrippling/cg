@@ -119,6 +119,26 @@ void opt_cprop(block *entry)
 
 			case ISN_CMP:
 			{
+				val *solved_lhs = resolve_val(i->u.cmp.lhs, stores2rvals);
+				val *solved_rhs = resolve_val(i->u.cmp.rhs, stores2rvals);
+				int cmp_ret;
+
+				if(!solved_lhs)
+					solved_lhs = i->u.op.lhs;
+				if(!solved_rhs)
+					solved_rhs = i->u.op.rhs;
+
+				if(val_cmp_maybe(i->u.cmp.cmp, solved_lhs, solved_rhs, &cmp_ret)){
+					val *synth_cmp = val_new_i(cmp_ret, 1);
+
+					(void)dynmap_set(val *, val *,
+							stores2rvals,
+							i->u.op.res, synth_cmp);
+
+					i->type = ISN_COPY;
+					i->u.copy.from = val_retain(synth_cmp);
+					i->u.copy.to = i->u.op.res;
+				}
 				break;
 			}
 		}
