@@ -246,9 +246,10 @@ static void isn_dump1(isn *i)
 
 		case ISN_CMP:
 		{
-			printf("\t%s = %s %s, %s\n",
+			printf("\t%s = %s.%u %s, %s\n",
 					val_str_rn(0, i->u.cmp.res),
 					op_cmp_to_str(i->u.cmp.cmp),
+					val_size(i->u.cmp.lhs),
 					val_str_rn(1, i->u.cmp.lhs),
 					val_str_rn(2, i->u.cmp.rhs));
 			break;
