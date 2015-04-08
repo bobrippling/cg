@@ -16,6 +16,14 @@ static val *resolve_val(val *initial, dynmap *stores2rvals)
 	return dynmap_get(val *, val *, stores2rvals, initial);
 }
 
+static void simple_rval_resolve(val **const vaddr, dynmap *stores2rvals)
+{
+	val *found = resolve_val(*vaddr, stores2rvals);
+
+	if(found && found != *vaddr)
+		*vaddr = val_retain(found);
+}
+
 void opt_cprop(block *entry)
 {
 	dynmap *stores2rvals = dynmap_new(val *, /*ref*/NULL, val_hash);
@@ -40,16 +48,13 @@ void opt_cprop(block *entry)
 
 			case ISN_BR:
 			{
+				simple_rval_resolve(&i->u.branch.cond, stores2rvals);
 				break;
 			}
 
 			case ISN_RET:
 			{
-				val *ret = resolve_val(i->u.ret, stores2rvals);
-
-				if(ret && ret != i->u.ret){
-					i->u.ret = ret;
-				}
+				simple_rval_resolve(&i->u.ret, stores2rvals);
 				break;
 			}
 
