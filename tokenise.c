@@ -142,11 +142,17 @@ enum token token_next(tokeniser *t)
 	}
 
 	switch(*t->linep++){
-		case '(': return tok_lparen;
-		case ')': return tok_rparen;
-		case '.': return tok_dot;
-		case ',': return tok_comma;
-		case '=': return tok_equal;
+#define OTHER(x)
+#define KW(x)
+#define PUNCT(t, c) case c: return tok_ ## t;
+#define OP(x)
+#define CMP(x)
+		TOKENS
+#undef OTHER
+#undef KW
+#undef PUNCT
+#undef OP
+#undef CMP
 
 		case '#':
 			for(; *t->linep && *t->linep != '\n'; t->linep++);
