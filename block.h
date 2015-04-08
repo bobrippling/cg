@@ -1,6 +1,9 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
+struct val;
+struct isn;
+
 typedef struct block block;
 
 block *block_new(const char *lbl);

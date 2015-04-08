@@ -4,7 +4,6 @@
 #include <assert.h>
 
 #include "block.h"
-#include "branch.h"
 #include "tokenise.h"
 
 #include "parse.h"
@@ -286,7 +285,7 @@ static void parse_br(parse *p)
 	btrue = function_block_find(p->func, ltrue, NULL);
 	bfalse = function_block_find(p->func, lfalse, NULL);
 
-	branch_cond(cond, p->entry, btrue, bfalse);
+	isn_br(p->entry, cond, btrue, bfalse);
 }
 
 static void parse_block(parse *p)

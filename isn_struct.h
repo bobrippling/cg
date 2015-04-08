@@ -13,6 +13,7 @@ struct isn
 		ISN_ELEM,
 		ISN_COPY,
 		ISN_EXT,
+		ISN_BR,
 		ISN_RET
 	} type;
 
@@ -54,6 +55,12 @@ struct isn
 		{
 			val *from, *to;
 		} copy, ext;
+
+		struct
+		{
+			val *cond;
+			block *t, *f;
+		} branch;
 
 		val *ret;
 	} u;

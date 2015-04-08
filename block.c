@@ -8,7 +8,6 @@
 #include "block_struct.h"
 #include "block_internal.h"
 #include "isn_struct.h"
-#include "branch_internal.h"
 
 block *block_new(const char *lbl)
 {
@@ -16,6 +15,11 @@ block *block_new(const char *lbl)
 	b->isntail = &b->isn1;
 	b->lbl = lbl ? xstrdup(lbl) : NULL;
 	return b;
+}
+
+static void branch_free(block *b)
+{
+	val_release(b->u.branch.cond);
 }
 
 void block_free(block *b)
@@ -51,6 +55,8 @@ int block_tenative(block *b)
 
 void block_add_isn(block *blk, isn *isn)
 {
+	assert(blk->type != BLK_BRANCH && "already branched - no more isns");
+
 	*blk->isntail = isn;
 	blk->isntail = &isn->next;
 }
@@ -94,11 +100,6 @@ void block_dump(block *blk)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			printf("\tbr %s, %s, %s\n",
-					val_str(blk->u.branch.cond),
-					blk->u.branch.t->lbl,
-					blk->u.branch.f->lbl);
-
 			printf("\n%s:\n", blk->u.branch.t->lbl);
 			block_dump(blk->u.branch.t);
 			printf("\n%s:\n", blk->u.branch.f->lbl);

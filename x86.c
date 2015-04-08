@@ -525,6 +525,13 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 				mov(i->u.copy.from, i->u.copy.to, alloca2stack);
 				break;
 			}
+
+			case ISN_BR:
+			{
+				printf("TODO: branch on %s\n",
+						x86_val_str(i->u.branch.cond, 0, alloca2stack, 0));
+				break;
+			}
 		}
 	}
 }
@@ -539,9 +546,7 @@ static void x86_out_block(block *const blk, dynmap *alloca2stack)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			printf("TODO: BRANCH B-TRUE %p\n", blk);
 			x86_out_block(blk->u.branch.t, alloca2stack);
-			printf("      BRANCH B-FALS %p\n", blk);
 			x86_out_block(blk->u.branch.f, alloca2stack);
 	}
 }

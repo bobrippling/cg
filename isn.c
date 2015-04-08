@@ -61,6 +61,9 @@ static void isn_free_1(isn *isn)
 		case ISN_RET:
 			val_release(isn->u.ret);
 			break;
+		case ISN_BR:
+			val_release(isn->u.branch.cond);
+			break;
 	}
 
 	free(isn);
@@ -87,6 +90,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_COPY:   return "copy";
 		case ISN_EXT:    return "ext";
 		case ISN_RET:    return "ret";
+		case ISN_BR:     return "br";
 	}
 	return NULL;
 }
@@ -154,6 +158,20 @@ void isn_ret(block *blk, val *r)
 	block_set_type(blk, BLK_EXIT);
 }
 
+void isn_br(block *current, val *cond, block *btrue, block *bfalse)
+{
+	isn *isn = isn_new(ISN_BR, current);
+	isn->u.branch.cond = val_retain(cond);
+	isn->u.branch.t = btrue;
+	isn->u.branch.f = bfalse;
+
+	block_set_type(current, BLK_BRANCH);
+
+	current->u.branch.cond = cond; /* weak ref */
+	current->u.branch.t = btrue;
+	current->u.branch.f = bfalse;
+}
+
 void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 {
 	switch(current->type){
@@ -201,6 +219,10 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 
 		case ISN_RET:
 			fn(current->u.ret, current, ctx);
+			break;
+
+		case ISN_BR:
+			fn(current->u.branch.cond, current, ctx);
 			break;
 	}
 }
@@ -288,6 +310,15 @@ static void isn_dump1(isn *i)
 			printf("\tret.%u %s\n",
 					val_size(i->u.ret),
 					val_str(i->u.ret));
+			break;
+		}
+
+		case ISN_BR:
+		{
+			printf("\tbr %s, %s, %s\n",
+					val_str(i->u.branch.cond),
+					i->u.branch.t->lbl,
+					i->u.branch.f->lbl);
 			break;
 		}
 	}

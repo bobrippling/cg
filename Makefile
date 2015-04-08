@@ -1,7 +1,7 @@
 OBJ = val.o val_allocas.o main.o mem.o op.o \
       dynmap.o opt_cprop.o opt_storeprop.o opt_dse.o \
       isn.o isn_reg.o \
-      function.o block.o branch.o blk_reg.o unit.o \
+      function.o block.o blk_reg.o unit.o \
       die.o io.o str.o \
       tokenise.o parse.o \
       x86.o
@@ -11,7 +11,6 @@ HEADERS = backend.h dyn.h dynmap.h \
           mem.h op.h opt_cprop.h \
           val.h val_internal.h val_struct.h \
           block.h block_internal.h block_struct.h blk_reg.h \
-          branch.h \
           x86.h
 
 SRC = ${OBJ:.o=.c}

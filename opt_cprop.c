@@ -38,6 +38,11 @@ void opt_cprop(block *entry)
 				break;
 			}
 
+			case ISN_BR:
+			{
+				break;
+			}
+
 			case ISN_RET:
 			{
 				val *ret = resolve_val(i->u.ret, stores2rvals);

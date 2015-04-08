@@ -16,6 +16,8 @@ void isn_cmp(block *, enum op_cmp, val *lhs, val *rhs, val *res);
 
 void isn_zext(block *, val *, val *);
 
+void isn_br(block *, val *cond, block *btrue, block *bfalse);
+
 void isn_ret(block *, val *);
 
 #endif

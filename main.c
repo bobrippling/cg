@@ -13,7 +13,6 @@
 #include "backend.h"
 #include "isn.h"
 #include "unit.h"
-#include "branch.h"
 
 #include "tokenise.h"
 #include "parse.h"
@@ -100,7 +99,7 @@ static void egjmp(block *const entry)
 
 	block *btrue = block_new("true"), *bfalse = block_new("false");
 
-	branch_cond(cmp, entry, btrue, bfalse);
+	isn_br(entry, cmp, btrue, bfalse);
 
 	val *escaped_bad;
 
