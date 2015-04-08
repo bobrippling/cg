@@ -232,7 +232,7 @@ static void parse_ident(parse *p)
 				unsigned isn_sz = parse_dot_size(p);
 				val *vlhs = parse_rval(p, isn_sz);
 				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p, isn_sz));
-				val *vres = uniq_val(p, lhs, isn_sz, VAL_CREATE);
+				val *vres = uniq_val(p, lhs, is_cmp ? 1 : isn_sz, VAL_CREATE);
 
 				if(is_cmp)
 					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
