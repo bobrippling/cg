@@ -202,6 +202,24 @@ static void parse_ident(parse *p)
 			break;
 		}
 
+		case tok_zext:
+		{
+			unsigned to;
+			val *from;
+			val *vres;
+
+			eat(p, "extend-to", tok_int);
+			to = token_last_int(p->tok);
+
+			eat(p, "zext", tok_comma);
+
+			from = parse_rval(p, /*unused except for literal int*/to);
+
+			vres = uniq_val(p, lhs, to, VAL_CREATE);
+			isn_zext(p->entry, from, vres);
+			break;
+		}
+
 		default:
 		{
 			int is_cmp = 0;

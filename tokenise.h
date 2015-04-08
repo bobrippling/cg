@@ -20,6 +20,7 @@
 	KW(alloca)          \
 	KW(elem)            \
 	KW(ret)             \
+	KW(zext)            \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \
