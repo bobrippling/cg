@@ -17,6 +17,11 @@ void function_onblocks(function *, void (block *));
 
 block *function_entry_block(function *);
 
+block *function_block_find(
+		function *f,
+		char *ident /*takes ownership*/,
+		int *const created);
+
 block *function_block_n(function *, size_t);
 
 #define function_iter_blocks(fn, blk, i)    \

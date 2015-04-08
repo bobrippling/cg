@@ -24,6 +24,7 @@
 	KW(elem)            \
 	KW(ret)             \
 	KW(zext)            \
+	KW(br)              \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \

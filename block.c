@@ -34,9 +34,19 @@ block *block_new_entry(void)
 	return b;
 }
 
+const char *block_label(block *b)
+{
+	return b->lbl;
+}
+
 isn *block_first_isn(block *b)
 {
 	return b->isn1;
+}
+
+int block_tenative(block *b)
+{
+	return block_first_isn(b) == NULL;
 }
 
 void block_add_isn(block *blk, isn *isn)

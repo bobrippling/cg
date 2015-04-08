@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "mem.h"
 #include "function.h"
@@ -59,6 +60,37 @@ block *function_entry_block(function *f)
 block *function_block_n(function *f, size_t n)
 {
 	return n >= f->nblocks ? NULL : f->blocks[n];
+}
+
+block *function_block_find(
+		function *f,
+		char *ident /*takes ownership*/,
+		int *const created)
+{
+	size_t i;
+	block *b;
+
+	for(i = 0; i < f->nblocks; i++){
+		const char *lbl;
+
+		b = f->blocks[i];
+		lbl = block_label(b);
+
+		if(lbl && !strcmp(ident, lbl)){
+			if(created)
+				*created = 0;
+
+			free(ident);
+			return b;
+		}
+	}
+
+	if(created)
+		*created = 1;
+
+	b = block_new(ident);
+	function_add_block(f, b);
+	return b;
 }
 
 void function_dump(function *f)

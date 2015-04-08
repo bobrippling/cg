@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "block.h"
+#include "branch.h"
 #include "tokenise.h"
 
 #include "parse.h"
@@ -267,6 +268,27 @@ static void parse_store(parse *p)
 	isn_store(p->entry, rval, lval);
 }
 
+static void parse_br(parse *p)
+{
+	/* br cond, ltrue, lfalse */
+	char *ltrue, *lfalse;
+	block *btrue, *bfalse;
+	val *cond = parse_rval(p, 1);
+
+	eat(p, "br comma", tok_comma);
+	eat(p, "br true", tok_ident);
+	ltrue = token_last_ident(p->tok);
+
+	eat(p, "br comma", tok_comma);
+	eat(p, "br false", tok_ident);
+	lfalse = token_last_ident(p->tok);
+
+	btrue = function_block_find(p->func, ltrue, NULL);
+	bfalse = function_block_find(p->func, lfalse, NULL);
+
+	branch_cond(cond, p->entry, btrue, bfalse);
+}
+
 static void parse_block(parse *p)
 {
 	enum token ct = token_next(p->tok);
@@ -288,16 +310,24 @@ static void parse_block(parse *p)
 			char *ident = token_last_ident(p->tok);
 
 			if(token_peek(p->tok) == tok_colon){
+				int created;
+
 				eat(p, "label colon", tok_colon);
 
-				p->entry = block_new(ident);
+				p->entry = function_block_find(p->func, ident, &created);
 
-				function_add_block(p->func, p->entry);
+				if(!created && !block_tenative(p->entry))
+					parse_error(p, "block '%s' already exists", ident);
+
 			}else{
 				parse_ident(p);
 			}
 			break;
 		}
+
+		case tok_br:
+			parse_br(p);
+			break;
 
 		case tok_store:
 			parse_store(p);
