@@ -80,6 +80,28 @@ static const struct x86_isn isn_add = {
 	}
 };
 
+static const struct x86_isn isn_cmp = {
+	"cmp",
+	{
+		{ OPERAND_REG, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_MEM },
+		{ OPERAND_MEM, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM },
+	}
+};
+
+static const struct x86_isn isn_test = {
+	"test",
+	{
+		{ OPERAND_REG, OPERAND_REG },
+		{ OPERAND_REG, OPERAND_MEM },
+		{ OPERAND_MEM, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM },
+	}
+};
+
 
 static void mov_deref(
 		val *from, val *to,
@@ -442,6 +464,17 @@ static const char *x86_cmp_str(enum op_cmp cmp)
 	assert(0);
 }
 
+static const char *x86_size_suffix(unsigned sz)
+{
+	switch(sz){
+		case 1: return "b";
+		case 2: return "w";
+		case 4: return "l";
+		case 8: return "q";
+	}
+	assert(0);
+}
+
 static void x86_cmp(
 		enum op_cmp cmp,
 		val *lhs, val *rhs, val *res,
@@ -449,9 +482,10 @@ static void x86_cmp(
 {
 	val *zero;
 
-	printf("\tcmp %s, %s\n",
-			x86_val_str(lhs, 0, alloca2stack, 0),
-			x86_val_str(rhs, 1, alloca2stack, 0));
+	emit_isn(&isn_cmp, alloca2stack,
+			lhs, 0,
+			rhs, 0,
+			x86_size_suffix(val_size(lhs)));
 
 	zero = val_retain(val_new_i(0, val_size(lhs)));
 
@@ -462,6 +496,17 @@ static void x86_cmp(
 			x86_val_str(res, 0, alloca2stack, 0));
 
 	val_release(zero);
+}
+
+static void x86_branch(val *cond, block *bt, block *bf, dynmap *alloca2stack)
+{
+	emit_isn(&isn_test, alloca2stack,
+			cond, 0,
+			cond, 0,
+			x86_size_suffix(val_size(cond)));
+
+	printf("\tjz  " x86_lbl_prefix "%s\n", bf->lbl);
+	printf("\tjmp " x86_lbl_prefix "%s\n", bt->lbl);
 }
 
 static void x86_out_block1(block *blk, dynmap *alloca2stack)
@@ -533,8 +578,11 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 			case ISN_BR:
 			{
-				printf("TODO: branch on %s\n",
-						x86_val_str(i->u.branch.cond, 0, alloca2stack, 0));
+				x86_branch(
+						i->u.branch.cond,
+						i->u.branch.t,
+						i->u.branch.f,
+						alloca2stack);
 				break;
 			}
 		}
