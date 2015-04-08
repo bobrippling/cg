@@ -10,6 +10,7 @@ void function_free(function *);
 
 void function_add_block(function *, block *);
 
+const char *function_name(function *);
 void function_dump(function *);
 
 void function_onblocks(function *, void (block *));

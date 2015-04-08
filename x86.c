@@ -585,6 +585,8 @@ void x86_out(function *const func)
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &ctx);
 
+	printf("%s:\n", function_name(func));
+
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
 

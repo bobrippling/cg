@@ -69,3 +69,8 @@ void function_dump(function *f)
 
 	printf("}\n");
 }
+
+const char *function_name(function *f)
+{
+	return f->name;
+}
