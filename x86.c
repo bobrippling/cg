@@ -32,15 +32,6 @@ static const char *const regs[][4] = {
 
 #define SCRATCH_REG 2 /* ecx */
 
-struct x86_isn
-{
-	const char *mnemonic;
-	struct x86_isn_constraint
-	{
-		unsigned char l, r;
-	} constraints[5];
-};
-
 typedef enum operand_category
 {
 	/* 0 means no entry / end of entries */
@@ -48,6 +39,15 @@ typedef enum operand_category
 	OPERAND_MEM,
 	OPERAND_INT
 } operand_category;
+
+struct x86_isn
+{
+	const char *mnemonic;
+	struct x86_isn_constraint
+	{
+		operand_category l, r;
+	} constraints[5];
+};
 
 static const struct x86_isn isn_mov = {
 	"mov",
