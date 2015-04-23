@@ -1,0 +1,9 @@
+# test=harness 0
+4 test()
+{
+	x = load.4 0
+
+	z = eq.4 x, 3
+
+	ret.4 z
+}

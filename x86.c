@@ -45,6 +45,10 @@ typedef enum operand_category
 struct x86_isn
 {
 	const char *mnemonic;
+	enum {
+		OPERAND_INPUT = 1 << 0,
+		OPERAND_OUTPUT = 1 << 1
+	} io_l, io_r;
 	struct x86_isn_constraint
 	{
 		operand_category l, r;
@@ -53,6 +57,7 @@ struct x86_isn
 
 static const struct x86_isn isn_mov = {
 	"mov",
+	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -64,6 +69,7 @@ static const struct x86_isn isn_mov = {
 
 static const struct x86_isn isn_movzx = {
 	"mov",
+	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -72,6 +78,7 @@ static const struct x86_isn isn_movzx = {
 
 static const struct x86_isn isn_add = {
 	"add",
+	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -82,6 +89,7 @@ static const struct x86_isn isn_add = {
 
 static const struct x86_isn isn_cmp = {
 	"cmp",
+	OPERAND_INPUT, OPERAND_INPUT,
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -93,6 +101,7 @@ static const struct x86_isn isn_cmp = {
 
 static const struct x86_isn isn_test = {
 	"test",
+	OPERAND_INPUT, OPERAND_INPUT,
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -217,7 +226,7 @@ static const char *x86_val_str(
 		dereference, -1);
 }
 
-static void move_val(
+static void make_val_temporary_store(
 		val *from,
 		val *write_to,
 		operand_category from_cat,
@@ -228,42 +237,48 @@ static void move_val(
 
 	if(from_cat == to_cat){
 		*write_to = *from;
-		return;
+		goto out;
 	}
 
 	assert(to_cat != OPERAND_INT);
-	assert(to_cat != OPERAND_MEM && "TODO");
 
-	/* use scratch register */
 	memset(write_to, 0, sizeof *write_to);
 
-	write_to->type = NAME;
+	if(to_cat == OPERAND_REG){
+		/* use scratch register */
+		write_to->type = NAME;
 
-	write_to->u.addr.u.name.loc.where = NAME_IN_REG;
-	write_to->u.addr.u.name.loc.u.reg = SCRATCH_REG;
-	write_to->u.addr.u.name.val_size = from->u.addr.u.name.val_size;
+		write_to->u.addr.u.name.loc.where = NAME_IN_REG;
+		write_to->u.addr.u.name.loc.u.reg = SCRATCH_REG;
+
+	}else{
+		assert(to_cat == OPERAND_MEM);
+
+		write_to->type = NAME;
+
+		write_to->u.addr.u.name.loc.where = NAME_SPILT;
+		write_to->u.addr.u.name.loc.u.off = 13; /* TODO */
+	}
+
+	write_to->u.addr.u.name.val_size = val_size(from);
+
+out:
+	write_to->retains = 1;
 }
 
-static void emit_isn(
-		const struct x86_isn *isn, dynmap *alloca2stack,
-		val *const lhs, int deref_lhs,
-		val *const rhs, int deref_rhs,
-		const char *isn_suffix)
+static const struct x86_isn_constraint *find_isn_operand(
+		const struct x86_isn *isn,
+		const operand_category lhs_cat,
+		const operand_category rhs_cat,
+		int *const mem_reg_idx,
+		int *const reg_mem_idx,
+		int *const reg_reg_idx)
 {
-	const operand_category lhs_cat = deref_lhs ? OPERAND_MEM : val_category(lhs);
-	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
 	const int max = countof(isn->constraints);
 	int i;
 	int satisfied;
-	int mem_reg_idx = -1, reg_mem_idx = -1;
-	const struct x86_isn_constraint *required = NULL;
-	val store_lhs, *emit_lhs = lhs;
-	val store_rhs, *emit_rhs = rhs;
 
-	if(lhs_cat == OPERAND_MEM)
-		deref_lhs = 1;
-	if(rhs_cat == OPERAND_MEM)
-		deref_rhs = 1;
+	*mem_reg_idx = *reg_mem_idx = *reg_reg_idx = -1;
 
 	for(i = 0; i < max && isn->constraints[i].l; i++){
 		if(lhs_cat == isn->constraints[i].l
@@ -275,44 +290,142 @@ static void emit_isn(
 		if(isn->constraints[i].l == OPERAND_MEM
 		&& isn->constraints[i].r == OPERAND_REG)
 		{
-			mem_reg_idx = i;
+			*mem_reg_idx = i;
 		}
 
 		if(isn->constraints[i].l == OPERAND_REG
 		&& isn->constraints[i].r == OPERAND_MEM)
 		{
-			reg_mem_idx = i;
+			*reg_mem_idx = i;
+		}
+
+		if(isn->constraints[i].l == OPERAND_REG
+		&& isn->constraints[i].r == OPERAND_REG)
+		{
+			*reg_reg_idx = i;
 		}
 	}
 
 	satisfied = !(i == max || isn->constraints[i].l == 0);
-	if(!satisfied){
-		/* not satisfied - convert an operand to REG */
-		i = mem_reg_idx > -1 ? mem_reg_idx : reg_mem_idx;
+	if(!satisfied)
+		return NULL;
+
+	return &isn->constraints[i];
+}
+
+static void ready_input(
+		val *orig_val, val *temporary_store,
+		operand_category orig_val_category,
+		operand_category operand_category,
+		int *const deref_val,
+		dynmap *alloca2stack)
+{
+	make_val_temporary_store(
+			orig_val, temporary_store,
+			orig_val_category, operand_category);
+
+	/* orig_val needs to be loaded before the instruction
+	 * no dereference of temporary_store here - move into the temporary */
+	mov_deref(orig_val, temporary_store, alloca2stack, *deref_val, 0);
+	*deref_val = 0;
+}
+
+static void ready_output(
+		val *orig_val, val *temporary_store,
+		operand_category orig_val_category,
+		operand_category operand_category,
+		int *const deref_val)
+{
+	/* wait to store the value until after the main isn */
+	make_val_temporary_store(
+			orig_val, temporary_store,
+			orig_val_category, operand_category);
+
+	/* using a register as a temporary rhs - no dereference */
+	*deref_val = 0;
+}
+
+static void emit_isn(
+		const struct x86_isn *isn, dynmap *alloca2stack,
+		val *const lhs, int deref_lhs,
+		val *const rhs, int deref_rhs,
+		const char *isn_suffix)
+{
+	const operand_category lhs_cat = deref_lhs ? OPERAND_MEM : val_category(lhs);
+	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
+	const int orig_deref_lhs = deref_lhs;
+	const int orig_deref_rhs = deref_rhs;
+	int mem_reg_idx, reg_mem_idx, reg_reg_idx;
+	const struct x86_isn_constraint *operands_target = NULL;
+	val temporary_lhs, *emit_lhs = lhs;
+	val temporary_rhs, *emit_rhs = rhs;
+
+	if(lhs_cat == OPERAND_MEM)
+		deref_lhs = 1;
+	if(rhs_cat == OPERAND_MEM)
+		deref_rhs = 1;
+
+	operands_target = find_isn_operand(
+			isn, lhs_cat, rhs_cat,
+			&mem_reg_idx, &reg_mem_idx, &reg_reg_idx);
+
+	if(!operands_target){
+		/* not satisfied - convert an operand to REG or MEM */
+		int i = -1;
+
+		if(reg_reg_idx > -1)
+			i = reg_reg_idx;
+		else if(mem_reg_idx > -1)
+			i = mem_reg_idx;
+		else if(reg_mem_idx > -1)
+			i = reg_mem_idx;
+
 		assert(i != -1 && "unsatisfiable + unconvertable instruction operands");
-		required = &isn->constraints[i];
+		operands_target = &isn->constraints[i];
 
-		move_val(lhs, &store_lhs, lhs_cat, required->l);
-		move_val(rhs, &store_rhs, rhs_cat, required->r);
+		/* ready the operands if they're inputs */
+		if(isn->io_l & OPERAND_INPUT
+		&& lhs_cat != operands_target->l)
+		{
+			ready_input(
+					lhs, &temporary_lhs,
+					lhs_cat, operands_target->l,
+					&deref_lhs, alloca2stack);
 
-		/* LHS needs to be loaded before the instruction */
-		if(lhs_cat != required->l){
-			/* no dereference rhs here - move into the temporary */
-			mov_deref(emit_lhs, lhs, alloca2stack, deref_lhs, 0);
-			deref_lhs = 1;
+			emit_lhs = &temporary_lhs;
+		}
+		if(isn->io_r & OPERAND_INPUT
+		&& rhs_cat != operands_target->r)
+		{
+			ready_input(
+					rhs, &temporary_rhs,
+					rhs_cat, operands_target->r,
+					&deref_rhs, alloca2stack);
 
-			emit_lhs = &store_lhs;
+			emit_rhs = &temporary_rhs;
 		}
 
-		if(rhs_cat != required->r){
-			/* wait to store the value until after the main isn */
+		/* ready the output operands */
+		if(lhs_cat != operands_target->l
+		&& isn->io_l & OPERAND_OUTPUT)
+		{
+			ready_output(
+					lhs, &temporary_lhs,
+					lhs_cat, operands_target->l,
+					&deref_lhs);
 
-			/* using a register as a temporary rhs - no dereference */
-			deref_rhs = 0;
-
-			emit_rhs = &store_rhs;
+			emit_lhs = &temporary_lhs;
 		}
+		if(rhs_cat != operands_target->r
+		&& isn->io_r & OPERAND_OUTPUT)
+		{
+			ready_output(
+					rhs, &temporary_rhs,
+					rhs_cat, operands_target->r,
+					&deref_rhs);
 
+			emit_rhs = &temporary_rhs;
+		}
 	}else{
 		/* satisfied */
 	}
@@ -322,11 +435,16 @@ static void emit_isn(
 			x86_val_str(emit_lhs, 0, alloca2stack, deref_lhs),
 			x86_val_str(emit_rhs, 1, alloca2stack, deref_rhs));
 
-	if(!satisfied){
-		/* RHS needs to be stored after the instruction */
-		if(rhs_cat != required->r){
-			mov_deref(emit_rhs, rhs, alloca2stack, 0, 1);
-		}
+	/* store outputs after the instruction */
+	if(lhs_cat != operands_target->l
+	&& isn->io_l & OPERAND_OUTPUT)
+	{
+		mov_deref(emit_lhs, lhs, alloca2stack, 0, orig_deref_lhs);
+	}
+	if(rhs_cat != operands_target->r
+	&& isn->io_r & OPERAND_OUTPUT)
+	{
+		mov_deref(emit_rhs, rhs, alloca2stack, 0, orig_deref_rhs);
 	}
 }
 
