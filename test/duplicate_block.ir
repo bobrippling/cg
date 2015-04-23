@@ -1,0 +1,9 @@
+# test=error block 'a' already exists
+
+4 main()
+{
+a:
+	ret.4 5
+a:
+	ret.4 3
+}

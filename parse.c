@@ -315,8 +315,13 @@ static void parse_block(parse *p)
 
 				p->entry = function_block_find(p->func, ident, &created);
 
-				if(!created && !block_tenative(p->entry))
+				if(!created && !block_tenative(p->entry)){
 					parse_error(p, "block '%s' already exists", ident);
+
+					/* use an anonymous block to prevent assertion failures
+					 * in the backend */
+					p->entry = function_block_trash(p->func);
+				}
 
 			}else{
 				parse_ident(p);

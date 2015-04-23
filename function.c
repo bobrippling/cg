@@ -12,6 +12,7 @@ struct function
 {
 	char *name;
 	block *entry;
+	block *trash; /* used for holding unused / error isns */
 
 	block **blocks;
 	size_t nblocks;
@@ -57,6 +58,14 @@ void function_onblocks(function *f, void cb(block *))
 block *function_entry_block(function *f)
 {
 	return f->entry;
+}
+
+block *function_block_trash(function *f)
+{
+	if(!f->trash)
+		f->trash = block_new(NULL);
+
+	return f->trash;
 }
 
 block *function_block_n(function *f, size_t n)

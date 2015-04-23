@@ -22,6 +22,8 @@ block *function_block_find(
 
 block *function_block_n(function *, size_t);
 
+block *function_block_trash(function *);
+
 #define function_iter_blocks(fn, blk, i)    \
 	for(i = 0, blk = function_block_n(fn, i); \
 			blk;                                  \

@@ -64,6 +64,18 @@ case "$type" in
 		$rest
 		!
 		;;
+	error)
+		errmsg="$rest"
+		if "$ir" --emit=ir "$f" >/dev/null 2>"$tmp"
+		then
+			echo "expected '$f' to raise an error" >&2
+			exit 1
+		elif !  grep -F "$errmsg" "$tmp" >/dev/null
+		then
+			echo "expected '$f' to raise '$errmsg'" >&2
+			exit 1
+		fi
+		;;
 	*)
 		echo "$0: unknown test type '$type'" >&2
 		exit 1
