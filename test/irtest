@@ -25,14 +25,19 @@ trap "rm -f '$tmp'" EXIT
 
 irdiff(){
 	sed '/#/d' "$1"      >$tmp.in
-	"$ir" --emit=ir "$1" >$tmp.out
+	"$ir" $opt --emit=ir "$1" >$tmp.out
 
 	diff -u "$tmp.in" "$tmp.out"
 }
 
 f="$1"
-type=$(head -1 "$f" | sed -n 's;.*test=\([a-z0-9_]*\).*;\1;p')
-rest=$(head -1 "$f" | sed -n 's;.*test=[a-z0-9_]* \(.*\);\1;p')
+type=$(head -1 "$f" | sed -En 's;.*test(-opt)?=([a-z0-9_]*).*;\2;p')
+rest=$(head -1 "$f" | sed -En 's;.*test(-opt)?=[a-z0-9_]* (.*);\2;p')
+
+if head -1 "$f" | grep 'test-opt=' >/dev/null
+then opt=-O
+else opt=
+fi
 
 case "$type" in
 	irdiff)
@@ -42,10 +47,10 @@ case "$type" in
 		backend=$(echo "$type" | sed 's;grep_;;')
 		regex="$rest"
 
-		"$ir" "--emit=$backend" "$f" | grep "$regex" >/dev/null
+		"$ir" $opt "--emit=$backend" "$f" | grep "$regex" >/dev/null
 		;;
 	harness)
-		"$ir" "$f" > harness/src.s
+		"$ir" $opt "$f" > harness/src.s
 		(
 			cd harness
 			make -s
@@ -66,7 +71,7 @@ case "$type" in
 		;;
 	error)
 		errmsg="$rest"
-		if "$ir" --emit=ir "$f" >/dev/null 2>"$tmp"
+		if "$ir" $opt --emit=ir "$f" >/dev/null 2>"$tmp"
 		then
 			echo "expected '$f' to raise an error" >&2
 			exit 1
