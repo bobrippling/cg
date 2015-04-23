@@ -266,51 +266,51 @@ out:
 	write_to->retains = 1;
 }
 
-static const struct x86_isn_constraint *find_isn_operand(
+static bool operand_type_convertible(
+		operand_category from, operand_category to)
+{
+	if(to == OPERAND_INT)
+		return from == OPERAND_INT;
+
+	return true;
+}
+
+static const struct x86_isn_constraint *find_isn_bestmatch(
 		const struct x86_isn *isn,
 		const operand_category lhs_cat,
 		const operand_category rhs_cat,
-		int *const mem_reg_idx,
-		int *const reg_mem_idx,
-		int *const reg_reg_idx)
+		bool *const is_exactmatch)
 {
 	const int max = countof(isn->constraints);
-	int i;
-	int satisfied;
-
-	*mem_reg_idx = *reg_mem_idx = *reg_reg_idx = -1;
+	int i, bestmatch_i = -1;
 
 	for(i = 0; i < max && isn->constraints[i].l; i++){
-		if(lhs_cat == isn->constraints[i].l
-		&& rhs_cat == isn->constraints[i].r)
-		{
-			break;
+		bool match_l = (lhs_cat == isn->constraints[i].l);
+		bool match_r = (rhs_cat == isn->constraints[i].r);
+
+		if(match_l && match_r){
+			*is_exactmatch = true;
+			return &isn->constraints[i];
 		}
 
-		if(isn->constraints[i].l == OPERAND_MEM
-		&& isn->constraints[i].r == OPERAND_REG)
-		{
-			*mem_reg_idx = i;
-		}
+		if(bestmatch_i != -1)
+			continue;
 
-		if(isn->constraints[i].l == OPERAND_REG
-		&& isn->constraints[i].r == OPERAND_MEM)
+		/* we can only have the best match if the non-matched operand
+		 * is convertible to the required operand type */
+		if((match_l && operand_type_convertible(rhs_cat, isn->constraints[i].r))
+		|| (match_r && operand_type_convertible(lhs_cat, isn->constraints[i].l)))
 		{
-			*reg_mem_idx = i;
-		}
-
-		if(isn->constraints[i].l == OPERAND_REG
-		&& isn->constraints[i].r == OPERAND_REG)
-		{
-			*reg_reg_idx = i;
+			bestmatch_i = i;
 		}
 	}
 
-	satisfied = !(i == max || isn->constraints[i].l == 0);
-	if(!satisfied)
-		return NULL;
+	*is_exactmatch = false;
 
-	return &isn->constraints[i];
+	if(bestmatch_i != -1)
+		return &isn->constraints[bestmatch_i];
+
+	return NULL;
 }
 
 static void ready_input(
@@ -355,7 +355,7 @@ static void emit_isn(
 	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
 	const int orig_deref_lhs = deref_lhs;
 	const int orig_deref_rhs = deref_rhs;
-	int mem_reg_idx, reg_mem_idx, reg_reg_idx;
+	bool is_exactmatch;
 	const struct x86_isn_constraint *operands_target = NULL;
 	val temporary_lhs, *emit_lhs = lhs;
 	val temporary_rhs, *emit_rhs = rhs;
@@ -365,23 +365,12 @@ static void emit_isn(
 	if(rhs_cat == OPERAND_MEM)
 		deref_rhs = 1;
 
-	operands_target = find_isn_operand(
-			isn, lhs_cat, rhs_cat,
-			&mem_reg_idx, &reg_mem_idx, &reg_reg_idx);
+	operands_target = find_isn_bestmatch(isn, lhs_cat, rhs_cat, &is_exactmatch);
 
-	if(!operands_target){
+	assert(operands_target && "couldn't satisfy operands for isn");
+
+	if(!is_exactmatch){
 		/* not satisfied - convert an operand to REG or MEM */
-		int i = -1;
-
-		if(reg_reg_idx > -1)
-			i = reg_reg_idx;
-		else if(mem_reg_idx > -1)
-			i = mem_reg_idx;
-		else if(reg_mem_idx > -1)
-			i = reg_mem_idx;
-
-		assert(i != -1 && "unsatisfiable + unconvertable instruction operands");
-		operands_target = &isn->constraints[i];
 
 		/* ready the operands if they're inputs */
 		if(isn->io_l & OPERAND_INPUT

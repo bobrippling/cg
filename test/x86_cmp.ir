@@ -1,0 +1,9 @@
+# test=grep_x86_64 cmpl $5, %ecx
+1 main()
+{
+	use = load.4 0
+
+	cond = eq.4 5, 3
+
+	ret.1 cond
+}
