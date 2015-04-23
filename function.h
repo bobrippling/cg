@@ -8,8 +8,6 @@ typedef struct function function;
 function *function_new(const char *lbl, unsigned retsz);
 void function_free(function *);
 
-void function_add_block(function *, block *);
-
 const char *function_name(function *);
 void function_dump(function *);
 

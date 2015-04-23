@@ -6,6 +6,8 @@
 #include "function.h"
 #include "block_internal.h"
 
+static void function_add_block(function *, block *);
+
 struct function
 {
 	char *name;
