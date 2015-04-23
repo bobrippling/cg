@@ -1,6 +1,8 @@
 #ifndef ISN_STRUCT_H
 #define ISN_STRUCT_H
 
+#include <stdbool.h>
+
 struct isn
 {
 	enum isn_type
@@ -65,7 +67,7 @@ struct isn
 		val *ret;
 	} u;
 
-	isn *next;
+	struct isn *next;
 
 	bool skip;
 };

@@ -1,5 +1,6 @@
 OBJ = val.o val_allocas.o main.o mem.o op.o \
       dynmap.o opt_cprop.o opt_storeprop.o opt_dse.o \
+      opt_loadmerge.o \
       isn.o isn_reg.o \
       function.o block.o blk_reg.o unit.o \
       die.o io.o str.o \

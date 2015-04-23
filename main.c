@@ -23,6 +23,7 @@
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
 #include "opt_dse.h"
+#include "opt_loadmerge.h"
 #include "x86.h"
 
 static struct
@@ -207,6 +208,7 @@ static void run_opts(function *fn)
 	function_onblocks(fn, opt_cprop);
 	function_onblocks(fn, opt_storeprop);
 	function_onblocks(fn, opt_dse);
+	function_onblocks(fn, opt_loadmerge);
 }
 
 int main(int argc, char *argv[])
