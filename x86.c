@@ -15,6 +15,8 @@
 #include "block_internal.h"
 #include "block_struct.h"
 
+#define x86_lbl_prefix "L_"
+
 struct x86_alloca_ctx
 {
 	dynmap *alloca2stack;
@@ -466,6 +468,9 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 {
 	isn *head = block_first_isn(blk);
 	isn *i;
+
+	if(blk->lbl)
+		printf(x86_lbl_prefix "%s:\n", blk->lbl);
 
 	for(i = head; i; i = i->next){
 		if(i->skip)
