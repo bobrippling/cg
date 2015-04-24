@@ -18,7 +18,6 @@
 #include "parse.h"
 
 #include "isn_internal.h" /* isn_dump() */
-#include "block_internal.h" /* block_first_isn() */
 
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
@@ -42,11 +41,13 @@ enum
 	INT_SIZE = 4
 };
 
-static void eg1(block *const entry)
+static void eg1(function *fn, block *const entry)
 {
 	val *a = val_new_i(3, INT_SIZE);
 	val *b = val_new_i(5, INT_SIZE);
 	val *store = val_new_ptr_from_int(0);
+
+	(void)fn;
 
 	/* store = 3 */
 	val_store(entry, a, store);
@@ -92,13 +93,14 @@ static void eg1(block *const entry)
 	val_ret(entry, final);
 }
 
-static void egjmp(block *const entry)
+static void egjmp(function *const fn, block *const entry)
 {
 	val *arg = val_new_i(5, INT_SIZE);
 
 	val *cmp = val_equal(entry, arg, val_new_i(3, INT_SIZE));
 
-	block *btrue = block_new("true"), *bfalse = block_new("false");
+	block *btrue = function_block_new(fn);
+	block *bfalse = function_block_new(fn);
 
 	isn_br(entry, cmp, btrue, bfalse);
 
@@ -254,12 +256,12 @@ int main(int argc, char *argv[])
 		int jmp = 0;
 
 		if(!strcmp(fname, "--eg") || (jmp = 1, !strcmp(fname, "--eg-jmp"))){
-			function *fn = function_new("main", INT_SIZE);
+			function *fn;
 
 			unit = unit_new();
-			unit_add_function(unit, fn);
+			fn = unit_function_new(unit, "main", INT_SIZE);
 
-			(jmp ? egjmp : eg1)(function_entry_block(fn));
+			(jmp ? egjmp : eg1)(fn, function_entry_block(fn));
 
 		}else if(!strcmp(fname, "-")){
 			fname = NULL;

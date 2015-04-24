@@ -8,7 +8,6 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
-#include "block_internal.h"
 
 struct last_access
 {

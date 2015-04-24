@@ -3,7 +3,7 @@ OBJ = val.o val_allocas.o main.o mem.o op.o \
       opt_loadmerge.o \
       isn.o isn_reg.o \
       function.o block.o blk_reg.o unit.o \
-      die.o io.o str.o \
+      die.o io.o str.o lbl.o \
       tokenise.o parse.o \
       x86.o
 

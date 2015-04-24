@@ -8,8 +8,8 @@
 #include "isn.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
-#include "block_internal.h"
 #include "block_struct.h"
+#include "block_internal.h"
 
 static isn *isn_new(enum isn_type t, block *blk)
 {

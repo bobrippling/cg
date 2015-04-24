@@ -4,6 +4,7 @@
 
 #include "mem.h"
 #include "function.h"
+#include "lbl.h"
 #include "block_internal.h"
 
 static void function_add_block(function *, block *);
@@ -11,8 +12,10 @@ static void function_add_block(function *, block *);
 struct function
 {
 	char *name;
-	block *entry;
+	block *entry, *exit;
 	block *trash; /* used for holding unused / error isns */
+
+	unsigned *uniq_counter;
 
 	block **blocks;
 	size_t nblocks;
@@ -20,13 +23,16 @@ struct function
 	unsigned retsz;
 };
 
-function *function_new(const char *lbl, unsigned retsz)
+function *function_new(
+		const char *lbl, unsigned retsz,
+		unsigned *uniq_counter)
 {
 	function *fn = xcalloc(1, sizeof *fn);
 
 	fn->name = xstrdup(lbl);
 	fn->retsz = retsz;
 	fn->entry = block_new_entry();
+	fn->uniq_counter = uniq_counter;
 
 	function_add_block(fn, fn->entry);
 
@@ -60,17 +66,37 @@ block *function_entry_block(function *f)
 	return f->entry;
 }
 
+static block *ondemand(block **p)
+{
+	if(!*p)
+		*p = block_new(NULL);
+
+	return *p;
+}
+
+block *function_exit_block(function *f)
+{
+	if(!f->exit)
+		f->exit = block_new(lbl_new(f->uniq_counter));
+
+	return f->exit;
+}
+
 block *function_block_trash(function *f)
 {
-	if(!f->trash)
-		f->trash = block_new(NULL);
-
-	return f->trash;
+	return ondemand(&f->trash);
 }
 
 block *function_block_n(function *f, size_t n)
 {
 	return n >= f->nblocks ? NULL : f->blocks[n];
+}
+
+block *function_block_new(function *f)
+{
+	block *b = block_new(lbl_new(f->uniq_counter));
+	function_add_block(f, b);
+	return b;
 }
 
 block *function_block_find(

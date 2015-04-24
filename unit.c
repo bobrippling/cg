@@ -8,6 +8,7 @@ struct unit
 	function **funcs;
 	size_t nfuncs;
 
+	unsigned uniq_counter;
 };
 
 unit *unit_new(void)
@@ -31,10 +32,19 @@ void unit_on_functions(unit *u, void fn(function *))
 		fn(u->funcs[i]);
 }
 
-void unit_add_function(unit *u, function *f)
+static void unit_add_function(unit *u, function *f)
 {
 	u->nfuncs++;
 	u->funcs = xrealloc(u->funcs, u->nfuncs * sizeof *u->funcs);
 
 	u->funcs[u->nfuncs - 1] = f;
+}
+
+function *unit_function_new(unit *u, const char *lbl, unsigned retsz)
+{
+	function *fn = function_new(lbl, retsz, &u->uniq_counter);
+
+	unit_add_function(u, fn);
+
+	return fn;
 }

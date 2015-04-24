@@ -15,6 +15,7 @@
 
 typedef struct {
 	tokeniser *tok;
+	unit *unit;
 	function *func;
 	block *entry;
 	dynmap *names2vals;
@@ -362,7 +363,7 @@ static function *parse_function(parse *p)
 
 	eat(p, "function open brace", tok_lbrace);
 
-	fn = function_new(name, ret);
+	fn = unit_function_new(p->unit, name, ret);
 	p->func = fn;
 	p->entry = function_entry_block(fn);
 
@@ -389,20 +390,17 @@ static void free_names2vals(dynmap *names2vals)
 unit *parse_code(tokeniser *tok, int *const err)
 {
 	parse state = { 0 };
-	unit *unit = unit_new();
 
 	state.tok = tok;
+	state.unit = unit_new();
 
 	while(!parse_finished(tok)){
-		function *f = parse_function(&state);
-
-		if(f)
-			unit_add_function(unit, f);
+		parse_function(&state);
 	}
 
 	free_names2vals(state.names2vals);
 
 	*err = state.err;
 
-	return unit;
+	return state.unit;
 }

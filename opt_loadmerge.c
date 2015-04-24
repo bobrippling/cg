@@ -4,9 +4,9 @@
 
 #include "val.h"
 #include "val_struct.h"
+#include "val_internal.h"
 #include "op.h"
 #include "isn_struct.h"
-#include "block_internal.h"
 
 static int cmp_load_addr(const val *a, const val *b)
 {

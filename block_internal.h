@@ -5,9 +5,9 @@
 #include "isn_internal.h"
 
 block *block_new_entry(void);
+block *block_new(char *lbl /* consumed */);
 
-isn *block_first_isn(block *);
-void block_add_isn(block *, isn *);
+void block_add_isn(block *, struct isn *);
 
 const char *block_label(block *);
 

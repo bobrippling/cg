@@ -9,8 +9,6 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 
-#include "block_internal.h"
-
 void opt_storeprop(block *const entry)
 {
 	dynmap *lval_entries = dynmap_new(val *, /*ref*/NULL, val_hash);

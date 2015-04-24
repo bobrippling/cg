@@ -12,16 +12,19 @@
 #include "isn_struct.h"
 #include "val_struct.h"
 #include "blk_reg.h"
-#include "block_internal.h"
 #include "block_struct.h"
-
-#define x86_lbl_prefix "L_"
 
 struct x86_alloca_ctx
 {
 	dynmap *alloca2stack;
 	long alloca;
 };
+
+typedef struct x86_out_ctx
+{
+	dynmap *alloca2stack;
+	block *exitblk;
+} x86_octx;
 
 static const char *const regs[][4] = {
 	{  "al", "ax", "eax", "rax" },
@@ -612,17 +615,23 @@ static void x86_branch(val *cond, block *bt, block *bf, dynmap *alloca2stack)
 			cond, 0,
 			x86_size_suffix(val_size(cond)));
 
-	printf("\tjz  " x86_lbl_prefix "%s\n", bf->lbl);
-	printf("\tjmp " x86_lbl_prefix "%s\n", bt->lbl);
+	printf("\tjz  %s\n", bf->lbl);
+	printf("\tjmp %s\n", bt->lbl);
 }
 
-static void x86_out_block1(block *blk, dynmap *alloca2stack)
+static void x86_block_enter(block *blk)
 {
+	if(blk->lbl)
+		printf("%s:\n", blk->lbl);
+}
+
+static void x86_out_block1(block *blk, x86_octx *octx)
+{
+	dynmap *alloca2stack = octx->alloca2stack;
 	isn *head = block_first_isn(blk);
 	isn *i;
 
-	if(blk->lbl)
-		printf(x86_lbl_prefix "%s:\n", blk->lbl);
+	x86_block_enter(blk);
 
 	for(i = head; i; i = i->next){
 		if(i->skip)
@@ -643,7 +652,7 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 
 				mov(i->u.ret, &veax, alloca2stack);
 
-				printf("\tleave\n\tret\n");
+				printf("\tjmp %s\n", octx->exitblk->lbl);
 				break;
 			}
 
@@ -696,9 +705,9 @@ static void x86_out_block1(block *blk, dynmap *alloca2stack)
 	}
 }
 
-static void x86_out_block(block *const blk, dynmap *alloca2stack)
+static void x86_out_block(block *const blk, x86_octx *octx)
 {
-	x86_out_block1(blk, alloca2stack);
+	x86_out_block1(blk, octx);
 	switch(blk->type){
 		case BLK_UNKNOWN:
 			assert(0 && "unknown block type");
@@ -706,8 +715,8 @@ static void x86_out_block(block *const blk, dynmap *alloca2stack)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			x86_out_block(blk->u.branch.t, alloca2stack);
-			x86_out_block(blk->u.branch.f, alloca2stack);
+			x86_out_block(blk->u.branch.t, octx);
+			x86_out_block(blk->u.branch.f, octx);
 	}
 }
 
@@ -739,11 +748,19 @@ static void x86_sum_alloca(block *blk, void *vctx)
 	}
 }
 
+static void x86_emit_epilogue(block *exit)
+{
+	x86_block_enter(exit);
+	printf("\tleave\n" "\tret\n");
+}
+
 void x86_out(function *const func)
 {
 	struct x86_alloca_ctx ctx = { 0 };
+	struct x86_out_ctx out_ctx = { 0 };
 	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 	block *entry = function_entry_block(func);
+	block *exit = function_exit_block(func);
 
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
 
@@ -755,7 +772,11 @@ void x86_out(function *const func)
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
 
-	x86_out_block(entry, ctx.alloca2stack);
+	out_ctx.alloca2stack = ctx.alloca2stack;
+	out_ctx.exitblk = exit;
+	x86_out_block(entry, &out_ctx);
+
+	x86_emit_epilogue(exit);
 
 	dynmap_free(ctx.alloca2stack);
 }

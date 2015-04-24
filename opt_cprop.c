@@ -9,8 +9,6 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 
-#include "block_internal.h"
-
 static val *resolve_val(val *initial, dynmap *stores2rvals)
 {
 	return dynmap_get(val *, val *, stores2rvals, initial);

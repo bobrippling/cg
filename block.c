@@ -9,11 +9,11 @@
 #include "block_internal.h"
 #include "isn_struct.h"
 
-block *block_new(const char *lbl)
+block *block_new(char *lbl)
 {
 	block *b = xcalloc(1, sizeof *b);
 	b->isntail = &b->isn1;
-	b->lbl = lbl ? xstrdup(lbl) : NULL;
+	b->lbl = lbl;
 	return b;
 }
 

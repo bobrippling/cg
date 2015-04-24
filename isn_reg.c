@@ -10,7 +10,6 @@
 #include "isn_internal.h"
 #include "isn.h"
 #include "val_struct.h"
-#include "block_internal.h"
 
 #define VAL_REG(v) (v)->u.addr.u.name.loc.u.reg
 

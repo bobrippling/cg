@@ -5,7 +5,10 @@
 
 typedef struct function function;
 
-function *function_new(const char *lbl, unsigned retsz);
+function *function_new(
+		const char *lbl, unsigned retsz,
+		unsigned *unique_counter);
+
 void function_free(function *);
 
 const char *function_name(function *);
@@ -14,11 +17,14 @@ void function_dump(function *);
 void function_onblocks(function *, void (block *));
 
 block *function_entry_block(function *);
+block *function_exit_block(function *);
 
 block *function_block_find(
 		function *f,
 		char *ident /*takes ownership*/,
 		int *const created);
+
+block *function_block_new(function *f);
 
 block *function_block_n(function *, size_t);
 
