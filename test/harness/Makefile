@@ -11,4 +11,4 @@ gen.s: src.s harness.s
 	sed -E 's;([^$$L_0-9])([0-9]+)(,|$$);\1_\2(%rip)\3;' < src.s >> $@
 
 clean:
-	rm -f gen.s harness.o harness
+	rm -f src.s gen.s harness.o harness

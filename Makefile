@@ -33,6 +33,7 @@ tags: ${SRC}
 	ctags ${SRC} ${HEADERS}
 
 clean:
+	make -C test clean
 	rm -f ir ${OBJ}
 
 Makefile.dep: ${SRC} ${HEADERS}
