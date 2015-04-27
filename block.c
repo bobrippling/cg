@@ -102,6 +102,11 @@ static void block_dump1(block *blk)
 
 static void block_dump_lbl(block *blk)
 {
+	if(blk->emitted)
+		return;
+
+	blk->emitted = 1;
+
 	printf("\n%s:\n", blk->lbl);
 	block_dump(blk);
 }

@@ -29,6 +29,8 @@ struct block
 			block *target;
 		} jmp;
 	} u;
+
+	unsigned emitted;
 };
 
 void block_set_type(block *blk, enum block_type type);
