@@ -269,7 +269,7 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 
 	block_set_type(current, BLK_BRANCH);
 
-	current->u.branch.cond = cond; /* weak ref */
+	current->u.branch.cond = val_retain(cond);
 	current->u.branch.t = btrue;
 	current->u.branch.f = bfalse;
 }
