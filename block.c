@@ -92,6 +92,12 @@ static void block_dump1(block *blk)
 	isn_dump(block_first_isn(blk));
 }
 
+static void block_dump_lbl(block *blk)
+{
+	printf("\n%s:\n", blk->lbl);
+	block_dump(blk);
+}
+
 void block_dump(block *blk)
 {
 	block_dump1(blk);
@@ -103,14 +109,11 @@ void block_dump(block *blk)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			printf("\n%s:\n", blk->u.branch.t->lbl);
-			block_dump(blk->u.branch.t);
-			printf("\n%s:\n", blk->u.branch.f->lbl);
-			block_dump(blk->u.branch.f);
+			block_dump_lbl(blk->u.branch.t);
+			block_dump_lbl(blk->u.branch.f);
 			break;
 		case BLK_JMP:
-			printf("\n%s:\n", blk->u.jmp.target->lbl);
-			block_dump(blk->u.jmp.target);
+			block_dump_lbl(blk->u.jmp.target);
 			break;
 	}
 }
