@@ -53,7 +53,7 @@ case "$type" in
 		"$ir" $opt "$f" > harness/src.s
 		(
 			cd harness
-			make -s
+			make -sB
 
 			set +e
 			./harness
