@@ -93,7 +93,6 @@ static val *uniq_val(
 	if(opts & VAL_ALLOCA){
 		v = val_alloca();
 	}else{
-		assert(size >= 0);
 		v = val_name_new(size, name);
 	}
 
