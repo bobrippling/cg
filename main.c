@@ -63,7 +63,7 @@ static void eg1(function *fn, block *const entry)
 
 	val_store(entry,
 			val_new_i(9, INT_SIZE),
-			val_element(entry, other_store, 1, INT_SIZE));
+			val_element(entry, other_store, 1, INT_SIZE, NULL));
 
 	/* other_store = { 7, 9 } */
 
@@ -85,7 +85,7 @@ static void eg1(function *fn, block *const entry)
 
 	/* add_again = (3 + 7) + 15 = 25 */
 
-	val *alloca_p = val_element(entry, other_store, 1, 4);
+	val *alloca_p = val_element(entry, other_store, 1, 4, NULL);
 
 	val *final = val_add(entry, val_load(entry, alloca_p, INT_SIZE), add_again);
 	/* 9 + 25 = 34 */

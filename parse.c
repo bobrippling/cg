@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "mem.h"
+
 #include "block.h"
 #include "tokenise.h"
 
@@ -90,7 +92,7 @@ static val *uniq_val(
 		v = val_alloca();
 	}else{
 		assert(size >= 0);
-		v = val_name_new(size);
+		v = val_name_new(size, name);
 	}
 
 	return map_val(p, name, v);
@@ -189,6 +191,7 @@ static void parse_ident(parse *p)
 		case tok_elem:
 		{
 			val *vlhs;
+			char *ident = lhs ? xstrdup(lhs) : NULL;
 			val *index_into = parse_lval(p);
 			unsigned idx;
 
@@ -196,7 +199,7 @@ static void parse_ident(parse *p)
 			eat(p, "elem", tok_int);
 
 			idx = token_last_int(p->tok);
-			vlhs = val_element(NULL, index_into, idx, 0);
+			vlhs = val_element(NULL, index_into, idx, 0, ident);
 
 			map_val(p, lhs, vlhs);
 
@@ -376,17 +379,6 @@ static function *parse_function(parse *p)
 	return fn;
 }
 
-static void free_names2vals(dynmap *names2vals)
-{
-	size_t i;
-	char *name;
-
-	for(i = 0; (name = dynmap_key(char *, names2vals, i)); i++)
-		free(name);
-
-	dynmap_free(names2vals);
-}
-
 unit *parse_code(tokeniser *tok, int *const err)
 {
 	parse state = { 0 };
@@ -398,7 +390,9 @@ unit *parse_code(tokeniser *tok, int *const err)
 		parse_function(&state);
 	}
 
-	free_names2vals(state.names2vals);
+	/* char* => val*
+	 * the char* is present in the name-value and owned by it */
+	dynmap_free(state.names2vals);
 
 	*err = state.err;
 

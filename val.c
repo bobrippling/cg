@@ -228,17 +228,19 @@ void val_release(val *v)
 		val_free(v);
 }
 
-val *val_name_new(unsigned sz)
+val *val_name_new(unsigned sz, char *ident)
 {
-	/* XXX: static */
-	static int n;
-	char buf[32];
-
 	val *v = val_new(NAME);
 
-	snprintf(buf, sizeof buf, "tmp_%d", n++);
+	if(!ident){
+		/* XXX: static */
+		static int n;
+		char buf[32];
+		snprintf(buf, sizeof buf, "tmp_%d", n++);
+		ident = xstrdup(buf);
+	}
 
-	v->u.addr.u.name.spel = xstrdup(buf);
+	v->u.addr.u.name.spel = ident;
 	v->u.addr.u.name.loc.where = NAME_IN_REG;
 	v->u.addr.u.name.loc.u.reg = -1;
 	v->u.addr.u.name.val_size = sz;
@@ -288,14 +290,14 @@ void val_store(block *blk, val *rval, val *lval)
 
 val *val_load(block *blk, val *v, unsigned size)
 {
-	val *named = val_name_new(size);
+	val *named = val_name_new(size, NULL);
 
 	isn_load(blk, named, v);
 
 	return named;
 }
 
-val *val_element(block *blk, val *lval, int i, unsigned elemsz)
+val *val_element(block *blk, val *lval, int i, unsigned elemsz, char *ident_to)
 {
 	const unsigned byteidx = i * elemsz;
 
@@ -303,7 +305,7 @@ val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 	if(pre_existing)
 		return pre_existing;
 
-	val *elem = val_name_new(elemsz);
+	val *elem = val_name_new(elemsz, ident_to);
 
 	if(blk){ /* else noop */
 		val *vidx = val_new_i(byteidx, 0);
@@ -317,7 +319,7 @@ val *val_element(block *blk, val *lval, int i, unsigned elemsz)
 
 val *val_element_noop(val *lval, int i, unsigned elemsz)
 {
-	return val_element(NULL, lval, i, elemsz);
+	return val_element(NULL, lval, i, elemsz, NULL);
 }
 
 val *val_add(block *blk, val *a, val *b)
@@ -329,7 +331,7 @@ val *val_add(block *blk, val *a, val *b)
 	assert(sz_a != -1 && sz_b != -1);
 	assert(sz_a == sz_b);
 
-	named = val_name_new(sz_a);
+	named = val_name_new(sz_a, NULL);
 
 	isn_op(blk, op_add, a, b, named);
 
@@ -343,7 +345,7 @@ val *val_zext(block *blk, val *v, unsigned to)
 
 	assert(sz < to);
 
-	named = val_name_new(to);
+	named = val_name_new(to, NULL);
 
 	isn_zext(blk, v, named);
 
@@ -352,7 +354,7 @@ val *val_zext(block *blk, val *v, unsigned to)
 
 val *val_equal(block *blk, val *lhs, val *rhs)
 {
-	val *eq = val_name_new(1);
+	val *eq = val_name_new(1, NULL);
 
 	isn_cmp(blk, cmp_eq, lhs, rhs, eq);
 

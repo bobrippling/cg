@@ -1,4 +1,4 @@
-# test-opt=grep_ir tmp_1 = tmp_0
+# test-opt=grep_ir y = x
 
 4 main()
 {
