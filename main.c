@@ -138,7 +138,7 @@ static unit *read_and_parse(
 		f = stdin;
 	}
 
-	tok = token_init(f);
+	tok = token_init(f, fname);
 
 	if(dump_tok){
 		for(;;){

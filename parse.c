@@ -36,6 +36,8 @@ static void parse_error(parse *p, const char *fmt, ...)
 	char buf[32];
 	va_list l;
 
+	fprintf(stderr, "%s:%u: ", token_curfile(p->tok), token_curlineno(p->tok));
+
 	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
 	va_end(l);

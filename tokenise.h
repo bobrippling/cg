@@ -63,7 +63,7 @@ enum token
 #undef KW
 };
 
-tokeniser *token_init(FILE *);
+tokeniser *token_init(FILE *, const char *fname);
 void token_fin(tokeniser *, int *err);
 
 const char *token_to_str(enum token);
@@ -75,6 +75,8 @@ int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
 
 void token_curline(tokeniser *, char *out, size_t len);
+unsigned token_curlineno(tokeniser *);
+const char *token_curfile(tokeniser *);
 
 int token_is_op(enum token, enum op *);
 int token_is_cmp(enum token, enum op_cmp *);

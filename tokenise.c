@@ -18,7 +18,9 @@ struct tokeniser
 	FILE *f;
 	int eof;
 	int ferr;
+	unsigned lno;
 
+	const char *fname;
 	char *line, *linep;
 	enum token unget;
 
@@ -45,12 +47,13 @@ static const struct
 #undef KW
 };
 
-tokeniser *token_init(FILE *f)
+tokeniser *token_init(FILE *f, const char *fname)
 {
 	tokeniser *t = xmalloc(sizeof *t);
 	memset(t, 0, sizeof *t);
 
 	t->f = f;
+	t->fname = fname;
 	t->unget = TOKEN_PEEK_EMPTY;
 
 	return t;
@@ -138,6 +141,7 @@ enum token token_next(tokeniser *t)
 			return tok_eof;
 		}
 
+		t->lno++;
 		t->linep = skipspace(t->linep);
 	}
 
@@ -235,6 +239,16 @@ void token_curline(tokeniser *t, char *out, size_t len)
 	for(; len > 1 && *src && *src != '\n'; src++, out++, len--)
 		*out = *src;
 	*out = '\0';
+}
+
+unsigned token_curlineno(tokeniser *t)
+{
+	return t->lno;
+}
+
+const char *token_curfile(tokeniser *t)
+{
+	return t->fname;
 }
 
 int token_last_int(tokeniser *t)
