@@ -423,6 +423,10 @@ unit *parse_code(tokeniser *tok, int *const err)
 		parse_function(&state);
 	}
 
+	if(state.entry && block_unknown_ending(state.entry)){
+		parse_error(&state, "control reaches end of function");
+	}
+
 	/* char* => val*
 	 * the char* is present in the name-value and owned by it */
 	dynmap_free(state.names2vals);

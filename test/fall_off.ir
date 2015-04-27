@@ -1,0 +1,4 @@
+# test=error control reaches end of function
+4 main()
+{
+}
