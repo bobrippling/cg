@@ -50,6 +50,11 @@ void opt_cprop(block *entry)
 				break;
 			}
 
+			case ISN_JMP:
+			{
+				break;
+			}
+
 			case ISN_RET:
 			{
 				simple_rval_resolve(&i->u.ret, stores2rvals);

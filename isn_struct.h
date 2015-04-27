@@ -16,6 +16,7 @@ struct isn
 		ISN_COPY,
 		ISN_EXT,
 		ISN_BR,
+		ISN_JMP,
 		ISN_RET
 	} type;
 
@@ -63,6 +64,11 @@ struct isn
 			val *cond;
 			block *t, *f;
 		} branch;
+
+		struct
+		{
+			block *target;
+		} jmp;
 
 		val *ret;
 	} u;

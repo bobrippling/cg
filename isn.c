@@ -64,6 +64,8 @@ static void isn_free_1(isn *isn)
 		case ISN_BR:
 			val_release(isn->u.branch.cond);
 			break;
+		case ISN_JMP:
+			break;
 	}
 
 	free(isn);
@@ -91,6 +93,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_EXT:    return "ext";
 		case ISN_RET:    return "ret";
 		case ISN_BR:     return "br";
+		case ISN_JMP:    return "jmp";
 	}
 	return NULL;
 }
@@ -172,6 +175,16 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 	current->u.branch.f = bfalse;
 }
 
+void isn_jmp(block *current, block *new)
+{
+	isn *isn = isn_new(ISN_JMP, current);
+	isn->u.jmp.target = new;
+
+	block_set_type(current, BLK_JMP);
+
+	current->u.jmp.target = new; /* weak ref */
+}
+
 void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 {
 	switch(current->type){
@@ -219,6 +232,9 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 
 		case ISN_RET:
 			fn(current->u.ret, current, ctx);
+			break;
+
+		case ISN_JMP:
 			break;
 
 		case ISN_BR:
@@ -310,6 +326,12 @@ static void isn_dump1(isn *i)
 			printf("\tret.%u %s\n",
 					val_size(i->u.ret),
 					val_str(i->u.ret));
+			break;
+		}
+
+		case ISN_JMP:
+		{
+			printf("\tjmp %s\n", i->u.jmp.target->lbl);
 			break;
 		}
 

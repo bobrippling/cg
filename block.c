@@ -81,6 +81,9 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 			blocks_iterate(blk->u.branch.t, fn, ctx);
 			blocks_iterate(blk->u.branch.f, fn, ctx);
 			break;
+		case BLK_JMP:
+			blocks_iterate(blk->u.jmp.target, fn, ctx);
+			break;
 	}
 }
 
@@ -104,5 +107,10 @@ void block_dump(block *blk)
 			block_dump(blk->u.branch.t);
 			printf("\n%s:\n", blk->u.branch.f->lbl);
 			block_dump(blk->u.branch.f);
+			break;
+		case BLK_JMP:
+			printf("\n%s:\n", blk->u.jmp.target->lbl);
+			block_dump(blk->u.jmp.target);
+			break;
 	}
 }

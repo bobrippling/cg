@@ -271,6 +271,11 @@ static void parse_store(parse *p)
 	isn_store(p->entry, rval, lval);
 }
 
+static void enter_unreachable_code(parse *p)
+{
+	p->entry = function_block_trash(p->func);
+}
+
 static void parse_br(parse *p)
 {
 	/* br cond, ltrue, lfalse */
@@ -290,6 +295,23 @@ static void parse_br(parse *p)
 	bfalse = function_block_find(p->func, lfalse, NULL);
 
 	isn_br(p->entry, cond, btrue, bfalse);
+
+	enter_unreachable_code(p);
+}
+
+static void parse_jmp(parse *p)
+{
+	block *target;
+	char *lbl;
+
+	eat(p, "jmp label", tok_ident);
+	lbl = token_last_ident(p->tok);
+
+	target = function_block_find(p->func, lbl, NULL);
+
+	isn_jmp(p->entry, target);
+
+	enter_unreachable_code(p);
 }
 
 static void parse_block(parse *p)
@@ -324,7 +346,7 @@ static void parse_block(parse *p)
 
 					/* use an anonymous block to prevent assertion failures
 					 * in the backend */
-					p->entry = function_block_trash(p->func);
+					enter_unreachable_code(p);
 				}
 
 			}else{
@@ -332,6 +354,10 @@ static void parse_block(parse *p)
 			}
 			break;
 		}
+
+		case tok_jmp:
+			parse_jmp(p);
+			break;
 
 		case tok_br:
 			parse_br(p);

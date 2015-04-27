@@ -608,6 +608,11 @@ static void x86_cmp(
 	val_release(zero);
 }
 
+static void x86_jmp(block *target)
+{
+	printf("\tjmp %s\n", target->lbl);
+}
+
 static void x86_branch(val *cond, block *bt, block *bf, dynmap *alloca2stack)
 {
 	emit_isn(&isn_test, alloca2stack,
@@ -615,8 +620,8 @@ static void x86_branch(val *cond, block *bt, block *bf, dynmap *alloca2stack)
 			cond, 0,
 			x86_size_suffix(val_size(cond)));
 
-	printf("\tjz  %s\n", bf->lbl);
-	printf("\tjmp %s\n", bt->lbl);
+	printf("\tjz %s\n", bf->lbl);
+	x86_jmp(bt);
 }
 
 static void x86_block_enter(block *blk)
@@ -692,6 +697,12 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 				break;
 			}
 
+			case ISN_JMP:
+			{
+				x86_jmp(i->u.jmp.target);
+				break;
+			}
+
 			case ISN_BR:
 			{
 				x86_branch(
@@ -717,6 +728,10 @@ static void x86_out_block(block *const blk, x86_octx *octx)
 		case BLK_BRANCH:
 			x86_out_block(blk->u.branch.t, octx);
 			x86_out_block(blk->u.branch.f, octx);
+			break;
+		case BLK_JMP:
+			x86_out_block(blk->u.jmp.target, octx);
+			break;
 	}
 }
 

@@ -13,7 +13,8 @@ struct block
 		BLK_UNKNOWN,
 		BLK_ENTRY,
 		BLK_EXIT,
-		BLK_BRANCH
+		BLK_BRANCH,
+		BLK_JMP
 	} type;
 
 	union
@@ -23,6 +24,10 @@ struct block
 			val *cond;
 			block *t, *f;
 		} branch;
+		struct
+		{
+			block *target;
+		} jmp;
 	} u;
 };
 

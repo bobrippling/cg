@@ -1,0 +1,10 @@
+# test=harness 1
+4 test()
+{
+	jmp l
+
+	ret.4 3
+
+l:
+	ret.4 1
+}
