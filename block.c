@@ -61,9 +61,17 @@ void block_add_isn(block *blk, isn *isn)
 	blk->isntail = &isn->next;
 }
 
+bool block_unknown_ending(block *blk)
+{
+	if(!blk)
+		return false;
+
+	return blk->type == BLK_UNKNOWN;
+}
+
 void block_set_type(block *blk, enum block_type type)
 {
-	assert(blk->type == BLK_UNKNOWN);
+	assert(block_unknown_ending(blk));
 	blk->type = type;
 }
 

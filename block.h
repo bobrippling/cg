@@ -1,10 +1,14 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
+#include <stdbool.h>
+
 struct val;
 struct isn;
 
 typedef struct block block;
+
+bool block_unknown_ending(block *);
 
 void block_free(block *);
 

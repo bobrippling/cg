@@ -13,7 +13,6 @@ struct function
 {
 	char *name;
 	block *entry, *exit;
-	block *trash; /* used for holding unused / error isns */
 
 	unsigned *uniq_counter;
 
@@ -66,25 +65,12 @@ block *function_entry_block(function *f)
 	return f->entry;
 }
 
-static block *ondemand(block **p)
-{
-	if(!*p)
-		*p = block_new(NULL);
-
-	return *p;
-}
-
 block *function_exit_block(function *f)
 {
 	if(!f->exit)
 		f->exit = block_new(lbl_new(f->uniq_counter));
 
 	return f->exit;
-}
-
-block *function_block_trash(function *f)
-{
-	return ondemand(&f->trash);
 }
 
 block *function_block_n(function *f, size_t n)

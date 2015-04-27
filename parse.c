@@ -275,7 +275,7 @@ static void parse_store(parse *p)
 
 static void enter_unreachable_code(parse *p)
 {
-	p->entry = function_block_trash(p->func);
+	p->entry = NULL;
 }
 
 static void parse_br(parse *p)
@@ -338,6 +338,7 @@ static void parse_block(parse *p)
 
 			if(token_peek(p->tok) == tok_colon){
 				int created;
+				block *from = p->entry;
 
 				eat(p, "label colon", tok_colon);
 
@@ -351,6 +352,10 @@ static void parse_block(parse *p)
 					enter_unreachable_code(p);
 				}
 
+				if(p->entry && block_unknown_ending(from)){
+					/* current block is fall-thru */
+					isn_jmp(from, p->entry);
+				}
 			}else{
 				parse_ident(p);
 			}

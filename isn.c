@@ -100,71 +100,170 @@ const char *isn_type_to_str(enum isn_type t)
 
 void isn_load(block *blk, val *to, val *lval)
 {
-	isn *isn = isn_new(ISN_LOAD, blk);
+	isn *isn;
 
-	isn->u.load.lval = val_retain(lval);
-	isn->u.load.to = val_retain(to);
+	val_retain(lval);
+	val_retain(to);
+
+	if(!blk){
+		val_release(lval);
+		val_release(to);
+		return;
+	}
+
+	isn = isn_new(ISN_LOAD, blk);
+
+	isn->u.load.lval = lval;
+	isn->u.load.to = to;
 }
 
 void isn_store(block *blk, val *from, val *lval)
 {
-	isn *isn = isn_new(ISN_STORE, blk);
+	isn *isn;
 
-	isn->u.store.lval = val_retain(lval);
-	isn->u.store.from = val_retain(from);
+	val_retain(from);
+	val_retain(lval);
+
+	if(!blk){
+		val_release(from);
+		val_release(lval);
+		return;
+	}
+
+	isn = isn_new(ISN_STORE, blk);
+
+	isn->u.store.from = from;
+	isn->u.store.lval = lval;
 }
 
 void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 {
-	isn *isn = isn_new(ISN_OP, blk);
+	isn *isn;
+
+	val_retain(lhs);
+	val_retain(rhs);
+	val_retain(res);
+
+	if(!blk){
+		val_release(lhs);
+		val_release(rhs);
+		val_release(res);
+		return;
+	}
+
+	isn = isn_new(ISN_OP, blk);
 	isn->u.op.op = op;
-	isn->u.op.lhs = val_retain(lhs);
-	isn->u.op.rhs = val_retain(rhs);
-	isn->u.op.res = val_retain(res);
+	isn->u.op.lhs = lhs;
+	isn->u.op.rhs = rhs;
+	isn->u.op.res = res;
 }
 
 void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 {
-	isn *isn = isn_new(ISN_CMP, blk);
+	isn *isn;
+
+	val_retain(lhs);
+	val_retain(rhs);
+	val_retain(res);
+
+	if(!blk){
+		val_release(lhs);
+		val_release(rhs);
+		val_release(res);
+		return;
+	}
+
+	isn = isn_new(ISN_CMP, blk);
 	isn->u.cmp.cmp = cmp;
-	isn->u.cmp.lhs = val_retain(lhs);
-	isn->u.cmp.rhs = val_retain(rhs);
-	isn->u.cmp.res = val_retain(res);
+	isn->u.cmp.lhs = lhs;
+	isn->u.cmp.rhs = rhs;
+	isn->u.cmp.res = res;
 }
 
 void isn_zext(block *blk, val *from, val *to)
 {
-	isn *isn = isn_new(ISN_EXT, blk);
-	isn->u.ext.from = val_retain(from);
-	isn->u.ext.to = val_retain(to);
+	isn *isn;
+
+	val_retain(from);
+	val_retain(to);
+
+	if(!blk){
+		val_release(from);
+		val_release(to);
+		return;
+	}
+
+	isn = isn_new(ISN_EXT, blk);
+	isn->u.ext.from = from;
+	isn->u.ext.to = to;
 }
 
 void isn_elem(block *blk, val *lval, val *add, val *res)
 {
-	isn *isn = isn_new(ISN_ELEM, blk);
-	isn->u.elem.lval = val_retain(lval);
-	isn->u.elem.add = val_retain(add);
-	isn->u.elem.res = val_retain(res);
+	isn *isn;
+
+	val_retain(lval);
+	val_retain(add);
+	val_retain(res);
+
+	if(!blk){
+		val_release(lval);
+		val_release(add);
+		val_release(res);
+		return;
+	}
+
+	isn = isn_new(ISN_ELEM, blk);
+	isn->u.elem.lval = lval;
+	isn->u.elem.add = add;
+	isn->u.elem.res = res;
 }
 
 void isn_alloca(block *blk, unsigned sz, val *v)
 {
-	isn *isn = isn_new(ISN_ALLOCA, blk);
+	isn *isn;
+
+	val_retain(v);
+
+	if(!blk){
+		val_release(v);
+		return;
+	}
+
+	isn = isn_new(ISN_ALLOCA, blk);
 	isn->u.alloca.sz = sz;
-	isn->u.alloca.out = val_retain(v);
+	isn->u.alloca.out = v;
 }
 
 void isn_ret(block *blk, val *r)
 {
-	isn *isn = isn_new(ISN_RET, blk);
-	isn->u.ret = val_retain(r);
+	isn *isn;
+
+	val_retain(r);
+
+	if(!blk){
+		val_release(r);
+		return;
+	}
+
+	isn = isn_new(ISN_RET, blk);
+	isn->u.ret = r;
 	block_set_type(blk, BLK_EXIT);
 }
 
 void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 {
-	isn *isn = isn_new(ISN_BR, current);
-	isn->u.branch.cond = val_retain(cond);
+	isn *isn;
+
+	val_retain(cond);
+
+	if(!current){
+		val_release(cond);
+		return;
+	}
+
+	isn = isn_new(ISN_BR, current);
+	isn->u.branch.cond = cond;
 	isn->u.branch.t = btrue;
 	isn->u.branch.f = bfalse;
 
@@ -177,7 +276,12 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 
 void isn_jmp(block *current, block *new)
 {
-	isn *isn = isn_new(ISN_JMP, current);
+	isn *isn;
+
+	if(!current)
+		return;
+
+	isn = isn_new(ISN_JMP, current);
 	isn->u.jmp.target = new;
 
 	block_set_type(current, BLK_JMP);
