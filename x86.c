@@ -229,6 +229,16 @@ static const char *x86_val_str(
 		dereference, -1);
 }
 
+static void x86_make_eax(val *out, unsigned size)
+{
+	memset(out, 0, sizeof *out);
+
+	out->type = NAME;
+	out->u.addr.u.name.loc.where = NAME_IN_REG;
+	out->u.addr.u.name.loc.u.reg = 0; /* XXX: hard coded eax */
+	out->u.addr.u.name.val_size = size;
+}
+
 static void make_val_temporary_store(
 		val *from,
 		val *write_to,
@@ -630,6 +640,26 @@ static void x86_block_enter(block *blk)
 		printf("%s:\n", blk->lbl);
 }
 
+static void x86_call(val *into, val *fn, dynmap *alloca2stack)
+{
+	/* TODO: label calls */
+#if 0
+	if(fn->type == NAME && fn->u.addr.u.name.loc.where == NAME_LBL)
+		printf("\tcall %s\n", fn->u.addr.u.name.spel);
+#endif
+
+	/* TODO: isn */
+	printf("\tcall *%s\n", x86_val_str(fn, 0, alloca2stack, 0));
+
+	if(into){
+		val eax;
+
+		x86_make_eax(&eax, /* HARDCODED TODO FIXME */ 4);
+
+		mov(&eax, into, alloca2stack);
+	}
+}
+
 static void x86_out_block1(block *blk, x86_octx *octx)
 {
 	dynmap *alloca2stack = octx->alloca2stack;
@@ -648,12 +678,9 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 
 			case ISN_RET:
 			{
-				val veax = { 0 };
+				val veax;
 
-				veax.type = NAME;
-				veax.u.addr.u.name.loc.where = NAME_IN_REG;
-				veax.u.addr.u.name.loc.u.reg = 0; /* XXX: hard coded eax */
-				veax.u.addr.u.name.val_size = val_size(i->u.ret);
+				x86_make_eax(&veax, val_size(i->u.ret));
 
 				mov(i->u.ret, &veax, alloca2stack);
 
@@ -710,6 +737,12 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 						i->u.branch.t,
 						i->u.branch.f,
 						alloca2stack);
+				break;
+			}
+
+			case ISN_CALL:
+			{
+				x86_call(i->u.call.into, i->u.call.fn, alloca2stack);
 				break;
 			}
 		}

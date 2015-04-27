@@ -97,6 +97,11 @@ void opt_cprop(block *entry)
 				break;
 			}
 
+			case ISN_CALL:
+			{
+				break;
+			}
+
 			case ISN_OP:
 			{
 				val *solved_lhs = resolve_val(i->u.op.lhs, stores2rvals);

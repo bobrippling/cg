@@ -66,6 +66,10 @@ static void isn_free_1(isn *isn)
 			break;
 		case ISN_JMP:
 			break;
+		case ISN_CALL:
+			val_release(isn->u.call.into);
+			val_release(isn->u.call.fn);
+			break;
 	}
 
 	free(isn);
@@ -94,6 +98,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_RET:    return "ret";
 		case ISN_BR:     return "br";
 		case ISN_JMP:    return "jmp";
+		case ISN_CALL:   return "call";
 	}
 	return NULL;
 }
@@ -251,6 +256,24 @@ void isn_ret(block *blk, val *r)
 	block_set_type(blk, BLK_EXIT);
 }
 
+void isn_call(block *blk, val *into, val *fn)
+{
+	isn *isn;
+
+	val_retain(into);
+	val_retain(fn);
+
+	if(!blk){
+		val_release(into);
+		val_release(fn);
+		return;
+	}
+
+	isn = isn_new(ISN_CALL, blk);
+	isn->u.call.fn = fn;
+	isn->u.call.into = into;
+}
+
 void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 {
 	isn *isn;
@@ -344,6 +367,11 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 		case ISN_BR:
 			fn(current->u.branch.cond, current, ctx);
 			break;
+
+		case ISN_CALL:
+			fn(current->u.call.into, current, ctx);
+			fn(current->u.call.fn, current, ctx);
+			break;
 	}
 }
 
@@ -436,6 +464,18 @@ static void isn_dump1(isn *i)
 		case ISN_JMP:
 		{
 			printf("\tjmp %s\n", i->u.jmp.target->lbl);
+			break;
+		}
+
+		case ISN_CALL:
+		{
+			if(i->u.call.into){
+				printf("\t%s = call %s\n",
+						val_str_rn(0, i->u.call.into),
+						val_str_rn(1, i->u.call.fn));
+			}else{
+				printf("\tcall %s\n", val_str(i->u.call.fn));
+			}
 			break;
 		}
 

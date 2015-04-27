@@ -21,4 +21,6 @@ void isn_jmp(block *, block *);
 
 void isn_ret(block *, val *);
 
+void isn_call(block *, val *into, val *fn);
+
 #endif

@@ -157,6 +157,20 @@ static val *parse_rval(parse *p, unsigned size)
 	}
 }
 
+static void parse_call(parse *p, char *ident_or_null)
+{
+	val *target = parse_rval(p, 0);
+	val *into;
+
+	assert(ident_or_null && "TODO: void");
+
+	/* TODO: need function return type/size */
+	into = uniq_val(p, ident_or_null, 0, VAL_CREATE);
+
+
+	isn_call(p->entry, into, target);
+}
+
 static void parse_ident(parse *p)
 {
 	/* x = load y */
@@ -224,6 +238,12 @@ static void parse_ident(parse *p)
 
 			vres = uniq_val(p, lhs, to, VAL_CREATE);
 			isn_zext(p->entry, from, vres);
+			break;
+		}
+
+		case tok_call:
+		{
+			parse_call(p, lhs);
 			break;
 		}
 
@@ -330,6 +350,10 @@ static void parse_block(parse *p)
 
 		case tok_ret:
 			parse_ret(p);
+			break;
+
+		case tok_call:
+			parse_call(p, NULL);
 			break;
 
 		case tok_ident:

@@ -64,6 +64,7 @@ void opt_storeprop(block *const entry)
 			case ISN_BR:
 			case ISN_JMP:
 			case ISN_EXT:
+			case ISN_CALL:
 				break;
 		}
 	}

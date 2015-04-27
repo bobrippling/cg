@@ -17,7 +17,8 @@ struct isn
 		ISN_EXT,
 		ISN_BR,
 		ISN_JMP,
-		ISN_RET
+		ISN_RET,
+		ISN_CALL
 	} type;
 
 	union
@@ -69,6 +70,11 @@ struct isn
 		{
 			block *target;
 		} jmp;
+
+		struct
+		{
+			val *into, *fn;
+		} call;
 
 		val *ret;
 	} u;

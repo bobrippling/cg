@@ -26,6 +26,7 @@
 	KW(zext)            \
 	KW(br)              \
 	KW(jmp)             \
+	KW(call)            \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \
