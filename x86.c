@@ -279,6 +279,8 @@ static void make_val_temporary_store(
 
 		write_to->u.addr.u.name.loc.where = NAME_SPILT;
 		write_to->u.addr.u.name.loc.u.off = 13; /* TODO */
+
+		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
 	}
 
 	write_to->u.addr.u.name.val_size = val_size(from);
