@@ -15,6 +15,11 @@ struct name_loc
 	} u;
 };
 
+struct lifetime
+{
+	unsigned start, end;
+};
+
 struct val
 {
 	enum val_type
@@ -65,6 +70,8 @@ struct val
 			 * where .first is a INT */
 		} addr;
 	} u;
+
+	struct lifetime lifetime;
 
 	void *pass_data;
 };

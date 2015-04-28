@@ -13,21 +13,15 @@
 
 #define VAL_REG(v) (v)->u.addr.u.name.loc.u.reg
 
-struct lifetime
-{
-	unsigned start, end;
-};
-
 static void init_regalloc_data(val *v)
 {
-	v->pass_data = xmalloc(sizeof(struct lifetime));
+	v->pass_data = /*anything non-null:*/&init_regalloc_data;
 }
 
 static void free_regalloc_data1(val *v, isn *isn, void *ctx)
 {
 	(void)ctx;
 	(void)isn;
-	free(v->pass_data);
 	v->pass_data = NULL;
 }
 
@@ -40,22 +34,19 @@ static void free_regalloc_data(isn *head)
 static void assign_lifetime(val *v, isn *isn, void *ctx)
 {
 	const unsigned isn_count = *(unsigned *)ctx;
-	struct lifetime *lt = v->pass_data;
 
 	(void)isn;
 
 	if(v->type != NAME)
 		return;
 
-	if(!lt){
+	if(!v->pass_data){
 		init_regalloc_data(v);
 
-		lt = v->pass_data;
-		assert(lt);
-		lt->start = isn_count;
+		v->lifetime.start = isn_count;
 	}
 
-	lt->end = isn_count;
+	v->lifetime.end = isn_count;
 }
 
 static void assign_lifetimes(isn *head)
@@ -76,17 +67,16 @@ struct greedy_ctx
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
-	const struct lifetime *lt = v->pass_data;
 	struct greedy_ctx *ctx = vctx;
 
 	(void)isn;
 
-	if(!lt)
+	if(!v->pass_data)
 		return; /* not something we need to regalloc */
 
 	assert(v->type == NAME);
 
-	if(lt->start == ctx->isn_num && VAL_REG(v) == -1){
+	if(v->lifetime.start == ctx->isn_num && VAL_REG(v) == -1){
 		int i;
 
 		for(i = 0; i < ctx->nregs; i++)
@@ -107,7 +97,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	}
 
-	if(lt->end == ctx->isn_num && VAL_REG(v) >= 0){
+	if(v->lifetime.end == ctx->isn_num && VAL_REG(v) >= 0){
 		ctx->in_use[VAL_REG(v)] = 0;
 	}
 }
