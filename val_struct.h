@@ -49,7 +49,11 @@ struct val
 					unsigned bytesz;
 					int idx;
 				} alloca;
-				char *lbl;
+				struct
+				{
+					char *spel;
+					unsigned offset;
+				} lbl;
 			} u;
 			struct val_idxpair
 			{

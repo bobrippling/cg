@@ -84,7 +84,7 @@ unsigned val_hash(val *v)
 		case ALLOCA:
 			break;
 		case LBL:
-			h ^= dynmap_strhash(v->u.addr.u.lbl);
+			h ^= dynmap_strhash(v->u.addr.u.lbl.spel);
 			break;
 	}
 
@@ -184,7 +184,7 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "alloca_%d", v->u.addr.u.alloca.idx);
 			break;
 		case LBL:
-			snprintf(buf, VAL_STR_SZ, "%s", v->u.addr.u.lbl);
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.addr.u.lbl.spel);
 			break;
 	}
 	return buf;
@@ -277,7 +277,7 @@ val *val_new_ptr_from_int(int i)
 val *val_new_lbl(char *lbl)
 {
 	val *v = val_new(LBL);
-	v->u.addr.u.lbl = lbl;
+	v->u.addr.u.lbl.spel = lbl;
 	return v;
 }
 

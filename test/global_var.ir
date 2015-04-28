@@ -1,0 +1,18 @@
+# test=harness 3
+
+8 glob;
+
+4 test()
+{
+	local = load.4 glob
+
+	glob_off = elem glob, 4
+
+	store.4 glob_off, 3
+
+	glob_off_read = load.4 glob_off
+
+	added = add.4 local, glob_off_read
+
+	ret.4 added
+}

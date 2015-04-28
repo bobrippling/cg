@@ -216,7 +216,9 @@ static const char *x86_val_str_sized(
 		case LBL:
 		{
 			/*assert(!dereference);*/
-			snprintf(buf, sizeof bufs[0], "%s(%%rip)", val->u.addr.u.lbl);
+			snprintf(buf, sizeof bufs[0], "%s+%u(%%rip)",
+					val->u.addr.u.lbl.spel,
+					val->u.addr.u.lbl.offset);
 			break;
 		}
 	}
@@ -489,7 +491,6 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 	switch(i->u.elem.lval->type){
 		case INT:
 		case NAME:
-		case LBL:
 			assert(0 && "element of INT/NAME");
 
 		case INT_PTR:
@@ -514,6 +515,28 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			assert(!err);
 			break;
 		}
+
+		case LBL:
+		{
+			int err;
+			assert(i->u.elem.add->type == INT);
+
+			add_total = op_exe(
+					op_add,
+					i->u.elem.lval->u.addr.u.lbl.offset,
+					i->u.elem.add->u.i.i,
+					&err);
+
+			assert(!err);
+
+			printf("\tlea %s+%u(%%rip), %s\n",
+					i->u.elem.lval->u.addr.u.lbl.spel,
+					add_total,
+					x86_val_str_sized(i->u.elem.res, 0, alloca2stack, 0, /*ptrsize*/0));
+
+			return;
+		}
+
 	}
 
 	printf("\tlea %d(%%rbp), %s\n",
