@@ -4,6 +4,7 @@
 
 #include "mem.h"
 #include "function.h"
+#include "function_internal.h"
 #include "lbl.h"
 #include "block_internal.h"
 

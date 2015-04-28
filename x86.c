@@ -213,6 +213,12 @@ static const char *x86_val_str_sized(
 			snprintf(buf, sizeof bufs[0], "%d(%%rbp)", (int)off);
 			break;
 		}
+		case LBL:
+		{
+			/*assert(!dereference);*/
+			snprintf(buf, sizeof bufs[0], "%s(%%rip)", val->u.addr.u.lbl);
+			break;
+		}
 	}
 
 	return buf;
@@ -483,6 +489,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 	switch(i->u.elem.lval->type){
 		case INT:
 		case NAME:
+		case LBL:
 			assert(0 && "element of INT/NAME");
 
 		case INT_PTR:
@@ -809,13 +816,17 @@ static void x86_out_fn(function *func)
 	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 	block *entry = function_entry_block(func);
 	block *exit = function_exit_block(func);
+	const char *fname;
 
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &ctx);
 
-	printf("%s:\n", function_name(func));
+	printf(".text\n");
+	fname = function_name(func);
+	printf(".globl %s\n", fname);
+	printf("%s:\n", fname);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
@@ -831,7 +842,10 @@ static void x86_out_fn(function *func)
 
 static void x86_out_var(variable *var)
 {
-	printf("TODO: out %s\n", variable_name(var));
+	printf(".bss\n");
+	printf("%s: .space %u\n",
+			variable_name(var),
+			variable_size(var));
 }
 
 void x86_out(global *const glob)

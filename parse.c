@@ -74,10 +74,12 @@ static val *uniq_val(
 		parse *p, char *name, int size, enum val_opts opts)
 {
 	val *v;
+	global *glob;
 
 	if(p->names2vals){
 		v = dynmap_get(char *, val *, p->names2vals, name);
 		if(v){
+found:
 			if(opts & VAL_CREATE)
 				parse_error(p, "pre-existing identifier '%s'", name);
 
@@ -85,6 +87,15 @@ static val *uniq_val(
 
 			return v;
 		}
+	}
+
+	/* check globals */
+	glob = unit_global_find(p->unit, name);
+
+	if(glob){
+		v = val_new_lbl(name);
+		name = NULL;
+		goto found;
 	}
 
 	if((opts & VAL_CREATE) == 0)

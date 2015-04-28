@@ -15,4 +15,6 @@ function *unit_function_new(unit *u, const char *lbl, unsigned retsz);
 
 variable *unit_variable_new(unit *u, const char *lbl, unsigned sz);
 
+global *unit_global_find(unit *, const char *);
+
 #endif

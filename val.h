@@ -8,6 +8,8 @@ typedef struct val val;
 val *val_new_i(int i, unsigned sz);
 val *val_new_ptr_from_int(int);
 
+val *val_new_lbl(char * /*consumed*/);
+
 val *val_make_alloca(block *, int n, unsigned elemsz);
 
 val *val_element(

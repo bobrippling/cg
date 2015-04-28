@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "mem.h"
 #include "unit.h"
@@ -72,4 +73,22 @@ variable *unit_variable_new(unit *u, const char *lbl, unsigned sz)
 	unit_add_global(u, var, 0);
 
 	return var;
+}
+
+global *unit_global_find(unit *u, const char *spel)
+{
+	size_t i;
+
+	for(i = 0; i < u->nglobals; i++){
+		const char *sp;
+		if(u->globals[i].is_fn)
+			sp = function_name(u->globals[i].u.fn);
+		else
+			sp = variable_name(u->globals[i].u.var);
+
+		if(!strcmp(sp, spel))
+			return &u->globals[i];
+	}
+
+	return NULL;
 }

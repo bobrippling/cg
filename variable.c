@@ -33,6 +33,11 @@ const char *variable_name(variable *v)
 	return v->name;
 }
 
+unsigned variable_size(variable *v)
+{
+	return v->sz;
+}
+
 void variable_dump(variable *v)
 {
 	printf("%u %s;\n",

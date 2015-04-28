@@ -22,7 +22,8 @@ struct val
 		INT,       /* sized */
 		INT_PTR,
 		NAME,      /* sized */
-		ALLOCA
+		ALLOCA,
+		LBL
 	} type;
 	unsigned retains;
 
@@ -48,6 +49,7 @@ struct val
 					unsigned bytesz;
 					int idx;
 				} alloca;
+				char *lbl;
 			} u;
 			struct val_idxpair
 			{

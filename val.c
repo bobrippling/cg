@@ -27,6 +27,8 @@ static bool val_in(val *v, enum val_to to)
 			return to & NAMED;
 		case ALLOCA:
 			return to & ADDRESSABLE;
+		case LBL:
+			return to & ADDRESSABLE;
 	}
 	assert(0);
 }
@@ -45,6 +47,7 @@ int val_size(val *v)
 	switch(v->type){
 		case INT_PTR:
 		case ALLOCA:
+		case LBL:
 			return 0;
 		case INT:
 			return v->u.i.val_size;
@@ -59,6 +62,7 @@ bool val_is_mem(val *v)
 	switch(v->type){
 		case INT_PTR: return true;
 		case ALLOCA:  return true;
+		case LBL:     return true;
 		case INT:     return false;
 		case NAME:    return v->u.addr.u.name.loc.where == NAME_SPILT;
 	}
@@ -78,6 +82,9 @@ unsigned val_hash(val *v)
 			h ^= dynmap_strhash(v->u.addr.u.name.spel);
 			break;
 		case ALLOCA:
+			break;
+		case LBL:
+			h ^= dynmap_strhash(v->u.addr.u.lbl);
 			break;
 	}
 
@@ -156,6 +163,7 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 			return alloca;
 		}
 
+		case LBL:
 		case NAME:
 			assert(0 && "can't add to name vals");
 	}
@@ -174,6 +182,9 @@ char *val_str_r(char buf[32], val *v)
 			break;
 		case ALLOCA:
 			snprintf(buf, VAL_STR_SZ, "alloca_%d", v->u.addr.u.alloca.idx);
+			break;
+		case LBL:
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.addr.u.lbl);
 			break;
 	}
 	return buf;
@@ -261,6 +272,13 @@ val *val_new_ptr_from_int(int i)
 	val *p = val_new_i(i, 0);
 	p->type = INT_PTR;
 	return p;
+}
+
+val *val_new_lbl(char *lbl)
+{
+	val *v = val_new(LBL);
+	v->u.addr.u.lbl = lbl;
+	return v;
 }
 
 val *val_alloca(void)
