@@ -49,7 +49,29 @@ dynmap_nochk_new(dynmap_cmp_f cmp, dynmap_hash_f hash)
 void
 dynmap_free(dynmap *map)
 {
+	dynmap_clear(map);
 	free(map);
+}
+
+void
+dynmap_clear(dynmap *map)
+{
+	int i;
+
+	if(!map)
+		return;
+
+	for(i = 0; i < HASH_TBL_CNT; i++){
+		struct pair *p = map->pairs[i].next;
+
+		while(p){
+			struct pair *to_free = p;
+			p = p->next;
+			free(to_free);
+		}
+
+		map->pairs[i].key = map->pairs[i].value = map->pairs[i].next = NULL;
+	}
 }
 
 static pair *
