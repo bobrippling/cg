@@ -404,17 +404,9 @@ static int parse_finished(tokeniser *tok)
 	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
 }
 
-static function *parse_function(parse *p)
+static function *parse_function(parse *p, unsigned ret, char *name)
 {
-	unsigned ret;
-	char *name;
 	function *fn;
-
-	eat(p, "function return", tok_int);
-	ret = token_last_int(p->tok);
-
-	eat(p, "function name", tok_ident);
-	name = token_last_ident(p->tok);
 
 	eat(p, "function open paren", tok_lparen);
 	/* TODO: arguments */
@@ -435,6 +427,30 @@ static function *parse_function(parse *p)
 	return fn;
 }
 
+static void parse_variable(parse *p, unsigned sz, char *name)
+{
+	eat(p, "variable end", tok_semi);
+
+	unit_variable_new(p->unit, name, sz);
+}
+
+static void parse_global(parse *p)
+{
+	unsigned sz;
+	char *name;
+
+	eat(p, "global return", tok_int);
+	sz = token_last_int(p->tok);
+
+	eat(p, "global name", tok_ident);
+	name = token_last_ident(p->tok);
+
+	if(token_peek(p->tok) == tok_lparen)
+		parse_function(p, sz, name);
+	else
+		parse_variable(p, sz, name);
+}
+
 unit *parse_code(tokeniser *tok, int *const err)
 {
 	parse state = { 0 };
@@ -443,7 +459,7 @@ unit *parse_code(tokeniser *tok, int *const err)
 	state.unit = unit_new();
 
 	while(!parse_finished(tok)){
-		parse_function(&state);
+		parse_global(&state);
 	}
 
 	if(state.entry && block_unknown_ending(state.entry)){

@@ -18,6 +18,7 @@
 	PUNCT(comma, ',')   \
 	PUNCT(equal, '=')   \
 	PUNCT(colon, ':')   \
+	PUNCT(semi, ';')    \
 	KW(load)            \
 	KW(store)           \
 	KW(alloca)          \

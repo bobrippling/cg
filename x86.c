@@ -802,7 +802,7 @@ static void x86_emit_epilogue(block *exit)
 	printf("\tleave\n" "\tret\n");
 }
 
-void x86_out(function *const func)
+static void x86_out_fn(function *func)
 {
 	struct x86_alloca_ctx ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
@@ -827,4 +827,17 @@ void x86_out(function *const func)
 	x86_emit_epilogue(exit);
 
 	dynmap_free(ctx.alloca2stack);
+}
+
+static void x86_out_var(variable *var)
+{
+	printf("TODO: out %s\n", variable_name(var));
+}
+
+void x86_out(global *const glob)
+{
+	if(glob->is_fn)
+		x86_out_fn(glob->u.fn);
+	else
+		x86_out_var(glob->u.var);
 }

@@ -5,10 +5,6 @@
 
 typedef struct function function;
 
-function *function_new(
-		const char *lbl, unsigned retsz,
-		unsigned *unique_counter);
-
 void function_free(function *);
 
 const char *function_name(function *);

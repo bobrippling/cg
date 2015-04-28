@@ -3,10 +3,13 @@
 #include "mem.h"
 #include "unit.h"
 
+#include "variable_internal.h"
+#include "function_internal.h"
+
 struct unit
 {
-	function **funcs;
-	size_t nfuncs;
+	global *globals;
+	size_t nglobals;
 
 	unsigned uniq_counter;
 };
@@ -28,23 +31,45 @@ void unit_on_functions(unit *u, void fn(function *))
 {
 	size_t i;
 
-	for(i = 0; i < u->nfuncs; i++)
-		fn(u->funcs[i]);
+	for(i = 0; i < u->nglobals; i++)
+		if(u->globals[i].is_fn)
+			fn(u->globals[i].u.fn);
 }
 
-static void unit_add_function(unit *u, function *f)
+void unit_on_globals(unit *u, void fn(global *))
 {
-	u->nfuncs++;
-	u->funcs = xrealloc(u->funcs, u->nfuncs * sizeof *u->funcs);
+	size_t i;
 
-	u->funcs[u->nfuncs - 1] = f;
+	for(i = 0; i < u->nglobals; i++)
+		fn(&u->globals[i]);
+}
+
+static void unit_add_global(unit *u, void *global, int is_fn)
+{
+	u->nglobals++;
+	u->globals = xrealloc(u->globals, u->nglobals * sizeof *u->globals);
+
+	u->globals[u->nglobals - 1].is_fn = is_fn;
+	if(is_fn)
+		u->globals[u->nglobals - 1].u.fn = global;
+	else
+		u->globals[u->nglobals - 1].u.var = global;
 }
 
 function *unit_function_new(unit *u, const char *lbl, unsigned retsz)
 {
 	function *fn = function_new(lbl, retsz, &u->uniq_counter);
 
-	unit_add_function(u, fn);
+	unit_add_global(u, fn, 1);
 
 	return fn;
+}
+
+variable *unit_variable_new(unit *u, const char *lbl, unsigned sz)
+{
+	variable *var = variable_new(lbl, sz);
+
+	unit_add_global(u, var, 0);
+
+	return var;
 }

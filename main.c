@@ -28,9 +28,9 @@
 static struct
 {
 	const char *name;
-	void (*emit)(function *);
+	void (*emit)(global *);
 } backends[] = {
-	{ "ir", function_dump },
+	{ "ir", global_dump },
 	{ "x86_64", x86_out },
 	{ "amd64",  x86_out },
 	{ 0 }
@@ -179,7 +179,7 @@ static void usage(const char *arg0)
 	exit(1);
 }
 
-static void (*find_machine(const char *machine))(function *)
+static void (*find_machine(const char *machine))(global *)
 {
 	int i;
 
@@ -190,10 +190,10 @@ static void (*find_machine(const char *machine))(function *)
 	return NULL;
 }
 
-static void (*default_backend(void))(function *)
+static void (*default_backend(void))(global *)
 {
 	struct utsname unam;
-	void (*fn)(function *);
+	void (*fn)(global *);
 
 	if(uname(&unam))
 		die("uname:");
@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
 {
 	bool opt = false;
 	bool dump_tok = false;
-	void (*emit_fn)(function *) = NULL;
+	void (*emit_fn)(global *) = NULL;
 	unit *unit = NULL;
 	const char *fname = NULL;
 	int i;
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 
 	if(!emit_fn)
 		emit_fn = default_backend();
-	unit_on_functions(unit, emit_fn);
+	unit_on_globals(unit, emit_fn);
 
 	unit_free(unit);
 
