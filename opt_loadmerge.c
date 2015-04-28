@@ -28,6 +28,13 @@ static int cmp_load_addr(const val *a, const val *b)
 				return neq;
 			return eq;
 
+		case ALLOCA:
+			if(a->u.addr.u.alloca.bytesz != b->u.addr.u.alloca.bytesz)
+				return neq;
+			if(a->u.addr.u.alloca.idx != b->u.addr.u.alloca.idx)
+				return neq;
+			return eq;
+
 		case LBL:
 			if(a->u.addr.u.lbl.offset != b->u.addr.u.lbl.offset)
 				return neq;
