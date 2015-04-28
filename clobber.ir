@@ -1,0 +1,26 @@
+4 glob;
+
+4 clobber();
+#{
+#	a = load.4 glob
+#	b = load.4 glob
+#	c = load.4 glob
+#	d = load.4 glob
+#	e = load.4 glob
+#	f = load.4 glob
+#
+#	x = add.4 a, b
+#	y = add.4 c, d
+#	z = add.4 e, f
+#
+#	ret.4 z
+#}
+
+4 main()
+{
+	local = add.4 3, 0
+
+	x = call.4 clobber
+
+	ret.4 local
+}
