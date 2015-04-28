@@ -365,7 +365,7 @@ static void parse_block(parse *p)
 
 				eat(p, "label colon", tok_colon);
 
-				p->entry = function_block_find(p->func, ident, &created);
+				p->entry = function_block_find(p->func, xstrdup(ident), &created);
 
 				if(!created && !block_tenative(p->entry)){
 					parse_error(p, "block '%s' already exists", ident);
@@ -374,6 +374,8 @@ static void parse_block(parse *p)
 					 * in the backend */
 					enter_unreachable_code(p);
 				}
+
+				free(ident), ident = NULL;
 
 				if(p->entry && block_unknown_ending(from)){
 					/* current block is fall-thru */
