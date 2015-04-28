@@ -247,14 +247,33 @@ static void x86_make_eax(val *out, unsigned size)
 	out->u.addr.u.name.val_size = size;
 }
 
+static unsigned resolve_isn_size(val *a, val *b)
+{
+	unsigned a_sz = val_size(a);
+	unsigned b_sz = val_size(b);
+
+	if(a_sz == b_sz)
+		return a_sz;
+
+	if(a_sz != 0){
+		assert(b_sz == 0);
+		return a_sz;
+	}
+
+	assert(b_sz != 0);
+	return b_sz;
+}
+
 static void make_val_temporary_store(
 		val *from,
 		val *write_to,
 		operand_category from_cat,
-		operand_category to_cat)
+		operand_category to_cat,
+		val *other_val)
 {
 	/* move 'from' into category 'to_cat' (from 'from_cat'),
 	 * saving the new value in *write_to */
+	unsigned size = resolve_isn_size(from, other_val);
 
 	if(from_cat == to_cat){
 		*write_to = *from;
@@ -283,7 +302,7 @@ static void make_val_temporary_store(
 		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
 	}
 
-	write_to->u.addr.u.name.val_size = val_size(from);
+	write_to->u.addr.u.name.val_size = size;
 
 out:
 	write_to->retains = 1;
@@ -337,15 +356,18 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 }
 
 static void ready_input(
-		val *orig_val, val *temporary_store,
+		val *orig_val,
+		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
 		int *const deref_val,
+		val *other_val,
 		dynmap *alloca2stack)
 {
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category);
+			orig_val_category, operand_category,
+			other_val);
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
@@ -354,15 +376,18 @@ static void ready_input(
 }
 
 static void ready_output(
-		val *orig_val, val *temporary_store,
+		val *orig_val,
+		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
-		int *const deref_val)
+		int *const deref_val,
+		val *other_val)
 {
 	/* wait to store the value until after the main isn */
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category);
+			orig_val_category, operand_category,
+			other_val);
 
 	/* using a register as a temporary rhs - no dereference */
 	*deref_val = 0;
@@ -402,7 +427,7 @@ static void emit_isn(
 			ready_input(
 					lhs, &temporary_lhs,
 					lhs_cat, operands_target->l,
-					&deref_lhs, alloca2stack);
+					&deref_lhs, rhs, alloca2stack);
 
 			emit_lhs = &temporary_lhs;
 		}
@@ -412,7 +437,7 @@ static void emit_isn(
 			ready_input(
 					rhs, &temporary_rhs,
 					rhs_cat, operands_target->r,
-					&deref_rhs, alloca2stack);
+					&deref_rhs, lhs, alloca2stack);
 
 			emit_rhs = &temporary_rhs;
 		}
@@ -424,7 +449,8 @@ static void emit_isn(
 			ready_output(
 					lhs, &temporary_lhs,
 					lhs_cat, operands_target->l,
-					&deref_lhs);
+					&deref_lhs,
+					rhs);
 
 			emit_lhs = &temporary_lhs;
 		}
@@ -434,7 +460,8 @@ static void emit_isn(
 			ready_output(
 					rhs, &temporary_rhs,
 					rhs_cat, operands_target->r,
-					&deref_rhs);
+					&deref_rhs,
+					lhs);
 
 			emit_rhs = &temporary_rhs;
 		}
