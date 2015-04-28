@@ -462,6 +462,8 @@ static void parse_global(parse *p)
 		parse_function(p, sz, name);
 	else
 		parse_variable(p, sz, name);
+
+	dynmap_clear(p->names2vals);
 }
 
 unit *parse_code(tokeniser *tok, int *const err)
