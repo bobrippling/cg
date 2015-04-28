@@ -1,0 +1,15 @@
+# test=sh test $($ir --emit=ir -O $f | grep -c global_var) -eq 2
+
+4 global_var;
+
+4 loadmerge()
+{
+	a = load.4 global_var
+	b = load.4 global_var
+	c = load.4 global_var
+
+	x = add.4 a, b
+	y = add.4 x, c
+
+	ret.4 y
+}

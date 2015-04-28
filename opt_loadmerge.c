@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "dynmap.h"
 
 #include "opt_loadmerge.h"
@@ -15,17 +17,27 @@ static int cmp_load_addr(const val *a, const val *b)
 	if(a == b)
 		return eq;
 
-	if(a->type != INT_PTR)
-		return neq;
-	if(b->type != INT_PTR)
+	if(a->type != b->type)
 		return neq;
 
-	if(a->u.i.i != b->u.i.i)
-		return neq;
-	if(a->u.i.val_size != b->u.i.val_size)
-		return neq;
+	switch(a->type){
+		case INT_PTR:
+			if(a->u.i.i != b->u.i.i)
+				return neq;
+			if(a->u.i.val_size != b->u.i.val_size)
+				return neq;
+			return eq;
 
-	return eq;
+		case LBL:
+			if(a->u.addr.u.lbl.offset != b->u.addr.u.lbl.offset)
+				return neq;
+			if(strcmp(a->u.addr.u.lbl.spel, b->u.addr.u.lbl.spel))
+				return neq;
+			return eq;
+
+		default:
+			return neq;
+	}
 }
 
 void opt_loadmerge(block *const entry)
