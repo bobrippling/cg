@@ -672,11 +672,10 @@ static void x86_block_enter(block *blk)
 
 static void x86_call(val *into, val *fn, dynmap *alloca2stack)
 {
-	/* TODO: label calls */
-#if 0
-	if(fn->type == NAME && fn->u.addr.u.name.loc.where == NAME_LBL)
-		printf("\tcall %s\n", fn->u.addr.u.name.spel);
-#endif
+	if(fn->type == LBL){
+		printf("\tcall %s\n", fn->u.addr.u.lbl.spel);
+		return;
+	}
 
 	/* TODO: isn */
 	printf("\tcall *%s\n", x86_val_str(fn, 0, alloca2stack, 0));

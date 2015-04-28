@@ -1,0 +1,13 @@
+# test=harness 3
+
+4 f()
+{
+	ret.4 3
+}
+
+4 test()
+{
+	x = call f
+
+	ret.4 x
+}

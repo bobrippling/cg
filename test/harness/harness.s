@@ -30,5 +30,3 @@ _main:
 	popq %rbx
 	leave
 	ret
-
-f:
