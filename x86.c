@@ -26,6 +26,12 @@ typedef struct x86_out_ctx
 	block *exitblk;
 } x86_octx;
 
+struct x86_spill_ctx
+{
+	dynmap *alloca2stack;
+	unsigned call_isn_idx;
+};
+
 static const char *const regs[][4] = {
 	{  "al", "ax", "eax", "rax" },
 	{  "bl", "bx", "ebx", "rbx" },
@@ -699,8 +705,51 @@ static void x86_block_enter(block *blk)
 		printf("%s:\n", blk->lbl);
 }
 
-static void x86_call(val *into, val *fn, dynmap *alloca2stack)
+static void maybe_spill(val *v, isn *isn, void *vctx)
 {
+	const struct x86_spill_ctx *ctx = vctx;
+
+	(void)isn;
+
+	if(v->lifetime.start <= ctx->call_isn_idx
+	&& ctx->call_isn_idx <= v->lifetime.end)
+	{
+		printf("XXX: need to spill %s / %s\n",
+				val_str(v), x86_val_str(v, 0, ctx->alloca2stack, 0));
+	}
+}
+
+static void x86_spillregs(
+		block *blk,
+		val *except[],
+		unsigned call_isn_idx,
+		dynmap *alloca2stack)
+{
+	struct x86_spill_ctx ctx;
+	isn *i;
+
+	(void)except; /* TODO */
+
+	ctx.alloca2stack = alloca2stack;
+	ctx.call_isn_idx = call_isn_idx;
+
+	for(i = block_first_isn(blk); i; i = i->next){
+		if(i->skip)
+			continue;
+
+		isn_on_vals(i, maybe_spill, &ctx);
+	}
+}
+
+static void x86_call(
+		block *blk, unsigned isn_idx,
+		val *into, val *fn,
+		dynmap *alloca2stack)
+{
+	val *except[] = { into, fn, NULL };
+
+	x86_spillregs(blk, except, isn_idx, alloca2stack);
+
 	if(fn->type == LBL){
 		printf("\tcall %s\n", fn->u.addr.u.lbl.spel);
 		return;
@@ -723,10 +772,11 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 	dynmap *alloca2stack = octx->alloca2stack;
 	isn *head = block_first_isn(blk);
 	isn *i;
+	unsigned idx;
 
 	x86_block_enter(blk);
 
-	for(i = head; i; i = i->next){
+	for(i = head, idx = 0; i; i = i->next, idx++){
 		if(i->skip)
 			continue;
 
@@ -800,7 +850,7 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 
 			case ISN_CALL:
 			{
-				x86_call(i->u.call.into, i->u.call.fn, alloca2stack);
+				x86_call(blk, idx, i->u.call.into, i->u.call.fn, alloca2stack);
 				break;
 			}
 		}
