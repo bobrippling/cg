@@ -42,6 +42,7 @@ static void discard_dead_stores(isn *head)
 	for(; head; head = head->next, isn_count++){
 		val *use_val;
 		struct last_access *la;
+		bool check_global = false; /* keep stores to globals? */
 
 		switch(head->type){
 			default:
@@ -49,6 +50,7 @@ static void discard_dead_stores(isn *head)
 
 			case ISN_STORE:
 				use_val = head->u.store.lval;
+				check_global = true;
 				break;
 
 			case ISN_LOAD:
@@ -57,12 +59,17 @@ static void discard_dead_stores(isn *head)
 
 			case ISN_COPY:
 				use_val = head->u.copy.to;
+				check_global = true;
 				break;
 
 			case ISN_ELEM:
 				use_val = head->u.elem.res;
+				check_global = true;
 				break;
 		}
+
+		if(check_global && use_val->type == LBL)
+			continue;
 
 		assert(use_val->pass_data);
 		la = use_val->pass_data;
