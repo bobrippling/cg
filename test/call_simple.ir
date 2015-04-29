@@ -7,7 +7,7 @@
 
 4 test()
 {
-	x = call f
+	x = call.4 f
 
 	ret.4 x
 }

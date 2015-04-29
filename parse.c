@@ -169,14 +169,15 @@ static val *parse_rval(parse *p, unsigned size)
 
 static void parse_call(parse *p, char *ident_or_null)
 {
-	val *target = parse_rval(p, 0);
+	val *target;
 	val *into;
+	unsigned sz = parse_dot_size(p);
 
 	assert(ident_or_null && "TODO: void");
 
-	/* TODO: need function return type/size */
-	into = uniq_val(p, ident_or_null, 0, VAL_CREATE);
+	target = parse_rval(p, 0);
 
+	into = uniq_val(p, ident_or_null, sz, VAL_CREATE);
 
 	isn_call(p->entry, into, target);
 }
