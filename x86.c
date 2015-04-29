@@ -948,17 +948,18 @@ static void x86_emit_epilogue(block *exit)
 
 static void x86_out_fn(function *func)
 {
-	struct x86_alloca_ctx ctx = { 0 };
+	struct x86_alloca_ctx alloca_ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
-	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 	block *entry = function_entry_block(func, false);
 	block *exit = function_exit_block(func);
 	const char *fname;
 
+	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
+
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
 
 	/* gather allocas - must be after regalloc */
-	blocks_iterate(entry, x86_sum_alloca, &ctx);
+	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
 
 	printf(".text\n");
 	fname = function_name(func);
@@ -966,15 +967,15 @@ static void x86_out_fn(function *func)
 	printf("%s:\n", fname);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
-	printf("\tsub $%ld, %%rsp\n", ctx.alloca);
+	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca);
 
-	out_ctx.alloca2stack = ctx.alloca2stack;
+	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
 	x86_out_block(entry, &out_ctx);
 
 	x86_emit_epilogue(exit);
 
-	dynmap_free(ctx.alloca2stack);
+	dynmap_free(alloca_ctx.alloca2stack);
 }
 
 static void x86_out_var(variable *var)
