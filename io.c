@@ -41,3 +41,18 @@ char *read_line(FILE *f)
 
 	return buf;
 }
+
+int cat_file(FILE *from, FILE *to)
+{
+	char buf[512];
+	size_t n;
+
+	if(fseek(from, SEEK_SET, 0))
+		return -1;
+
+	while((n = fread(buf, 1, sizeof buf, from)))
+		if(fwrite(buf, 1, n, to) != n)
+			return -1;
+
+	return 0;
+}

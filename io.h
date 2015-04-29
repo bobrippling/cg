@@ -4,5 +4,6 @@
 #include <stdio.h>
 
 char *read_line(FILE *);
+int cat_file(FILE *, FILE *);
 
 #endif

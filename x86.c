@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include "macros.h"
+#include "die.h"
+#include "io.h"
 
 #include "x86.h"
 
@@ -24,6 +26,7 @@ typedef struct x86_out_ctx
 {
 	dynmap *alloca2stack;
 	block *exitblk;
+	FILE *fout;
 } x86_octx;
 
 struct x86_spill_ctx
@@ -477,7 +480,7 @@ static void emit_isn(
 		/* satisfied */
 	}
 
-	printf("\t%s%s %s, %s\n",
+	fprintf(octx->fout, "\t%s%s %s, %s\n",
 			isn->mnemonic, isn_suffix,
 			x86_val_str(emit_lhs, 0, octx, deref_lhs),
 			x86_val_str(emit_rhs, 1, octx, deref_rhs));
@@ -507,7 +510,7 @@ static void mov_deref(
 	&& to->u.addr.u.name.loc.where == NAME_IN_REG
 	&& from->u.addr.u.name.loc.u.reg == to->u.addr.u.name.loc.u.reg)
 	{
-		printf("\t;");
+		fprintf(octx->fout, "\t;");
 	}
 
 	emit_isn(&isn_mov, octx,
@@ -566,7 +569,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 
 			assert(!err);
 
-			printf("\tlea %s+%u(%%rip), %s\n",
+			fprintf(octx->fout, "\tlea %s+%u(%%rip), %s\n",
 					i->u.elem.lval->u.addr.u.lbl.spel,
 					add_total,
 					x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
@@ -576,7 +579,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 
 	}
 
-	printf("\tlea %d(%%rbp), %s\n",
+	fprintf(octx->fout, "\tlea %d(%%rbp), %s\n",
 			add_total,
 			x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
 }
@@ -678,7 +681,7 @@ static void x86_cmp(
 
 	mov(zero, res, octx);
 
-	printf("\tset%s %s\n",
+	fprintf(octx->fout, "\tset%s %s\n",
 			x86_cmp_str(cmp),
 			x86_val_str(res, 0, octx, 0));
 
@@ -687,8 +690,7 @@ static void x86_cmp(
 
 static void x86_jmp(x86_octx *octx, block *target)
 {
-	(void)octx;
-	printf("\tjmp %s\n", target->lbl);
+	fprintf(octx->fout, "\tjmp %s\n", target->lbl);
 }
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
@@ -698,7 +700,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 			cond, 0,
 			x86_size_suffix(val_size(cond)));
 
-	printf("\tjz %s\n", bf->lbl);
+	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 	x86_jmp(octx, bt);
 }
 
@@ -706,7 +708,7 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 {
 	(void)octx;
 	if(blk->lbl)
-		printf("%s:\n", blk->lbl);
+		fprintf(octx->fout, "%s:\n", blk->lbl);
 }
 
 static void maybe_spill(val *v, isn *isn, void *vctx)
@@ -754,7 +756,7 @@ static dynmap *x86_spillregs(
 	}
 
 	for(idx = 0; (v = dynmap_key(val *, ctx.spill, idx)); idx++){
-		printf("# spill %s [%s]\n",
+		fprintf(octx->fout, "# spill %s [%s]\n",
 				x86_val_str(v, 0, octx, 0),
 				val_str(v));
 	}
@@ -769,7 +771,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	val *v;
 
 	for(idx = 0; (v = dynmap_key(val *, regs, idx)); idx++){
-		printf("# restore %s [%s]\n",
+		fprintf(octx->fout, "# restore %s [%s]\n",
 				x86_val_str(v, 0, octx, 0),
 				val_str(v));
 	}
@@ -788,10 +790,10 @@ static void x86_call(
 	spilt = x86_spillregs(blk, except, isn_idx, octx);
 
 	if(fn->type == LBL){
-		printf("\tcall %s\n", fn->u.addr.u.lbl.spel);
+		fprintf(octx->fout, "\tcall %s\n", fn->u.addr.u.lbl.spel);
 	}else{
 		/* TODO: isn */
-		printf("\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
+		fprintf(octx->fout, "\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
 	}
 
 	if(into){
@@ -829,7 +831,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 				mov(i->u.ret, &veax, octx);
 
-				printf("\tjmp %s\n", octx->exitblk->lbl);
+				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
 				break;
 			}
 
@@ -944,7 +946,7 @@ static void x86_sum_alloca(block *blk, void *vctx)
 static void x86_emit_epilogue(x86_octx *octx, block *exit)
 {
 	x86_block_enter(octx, exit);
-	printf("\tleave\n" "\tret\n");
+	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
 static void x86_out_fn(function *func)
@@ -955,6 +957,10 @@ static void x86_out_fn(function *func)
 	block *exit = function_exit_block(func);
 	const char *fname;
 
+	out_ctx.fout = tmpfile();
+	if(!out_ctx.fout)
+		die("tmpfile():");
+
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
@@ -964,7 +970,12 @@ static void x86_out_fn(function *func)
 
 	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
+	x86_out_block(entry, &out_ctx);
+	x86_emit_epilogue(&out_ctx, exit);
 
+	dynmap_free(alloca_ctx.alloca2stack);
+
+	/* now we spit out the prologue first */
 	printf(".text\n");
 	fname = function_name(func);
 	printf(".globl %s\n", fname);
@@ -973,11 +984,10 @@ static void x86_out_fn(function *func)
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca);
 
-	x86_out_block(entry, &out_ctx);
+	if(cat_file(out_ctx.fout, stdout) != 0)
+		die("cat file:");
 
-	x86_emit_epilogue(&out_ctx, exit);
-
-	dynmap_free(alloca_ctx.alloca2stack);
+	fclose(out_ctx.fout);
 }
 
 static void x86_out_var(variable *var)
