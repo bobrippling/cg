@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 			unit = unit_new();
 			fn = unit_function_new(unit, "main", INT_SIZE);
 
-			(jmp ? egjmp : eg1)(fn, function_entry_block(fn));
+			(jmp ? egjmp : eg1)(fn, function_entry_block(fn, 1));
 
 		}else if(!strcmp(fname, "-")){
 			fname = NULL;

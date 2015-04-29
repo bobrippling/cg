@@ -865,7 +865,7 @@ static void x86_out_fn(function *func)
 	struct x86_alloca_ctx ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
 	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
-	block *entry = function_entry_block(func);
+	block *entry = function_entry_block(func, false);
 	block *exit = function_exit_block(func);
 	const char *fname;
 
@@ -901,8 +901,13 @@ static void x86_out_var(variable *var)
 
 void x86_out(global *const glob)
 {
-	if(glob->is_fn)
-		x86_out_fn(glob->u.fn);
-	else
+	if(glob->is_fn){
+		function *fn = glob->u.fn;
+
+		if(function_entry_block(fn, false))
+			x86_out_fn(fn);
+
+	}else{
 		x86_out_var(glob->u.var);
+	}
 }

@@ -426,11 +426,18 @@ static function *parse_function(parse *p, unsigned ret, char *name)
 	/* TODO: arguments */
 	eat(p, "function close paren", tok_rparen);
 
+	fn = unit_function_new(p->unit, name, ret);
+
+	if(token_peek(p->tok) == tok_semi){
+		/* declaration */
+		eat(p, "function semi", tok_semi);
+		return fn;
+	}
+
 	eat(p, "function open brace", tok_lbrace);
 
-	fn = unit_function_new(p->unit, name, ret);
 	p->func = fn;
-	p->entry = function_entry_block(fn);
+	p->entry = function_entry_block(fn, true);
 
 	while(token_peek(p->tok) != tok_rbrace && !parse_finished(p->tok)){
 		parse_block(p);

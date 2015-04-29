@@ -31,10 +31,7 @@ function *function_new(
 
 	fn->name = xstrdup(lbl);
 	fn->retsz = retsz;
-	fn->entry = block_new_entry();
 	fn->uniq_counter = uniq_counter;
-
-	function_add_block(fn, fn->entry);
 
 	return fn;
 }
@@ -61,15 +58,20 @@ void function_onblocks(function *f, void cb(block *))
 		cb(f->blocks[i]);
 }
 
-block *function_entry_block(function *f)
+block *function_entry_block(function *f, bool create)
 {
+	if(!f->entry && create){
+		f->entry = block_new_entry();
+		function_add_block(f, f->entry);
+	}
+
 	return f->entry;
 }
 
 block *function_exit_block(function *f)
 {
 	if(!f->exit)
-		f->exit = block_new(lbl_new(f->uniq_counter));
+		f->exit = function_block_new(f);
 
 	return f->exit;
 }
@@ -119,11 +121,19 @@ block *function_block_find(
 
 void function_dump(function *f)
 {
-	printf("%u %s()\n{\n", f->retsz, f->name);
+	printf("%u %s()", f->retsz, f->name);
 
-	block_dump(f->entry);
+	if(f->entry){
+		printf("\n{\n");
 
-	printf("}\n");
+		block_dump(f->entry);
+
+		printf("}");
+	}else{
+		printf(";");
+	}
+
+	printf("\n");
 }
 
 const char *function_name(function *f)

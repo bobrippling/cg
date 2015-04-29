@@ -1,6 +1,7 @@
 #ifndef FUNCTION_H
 #define FUNCTION_H
 
+#include <stdbool.h>
 #include "block.h"
 
 typedef struct function function;
@@ -12,7 +13,7 @@ void function_dump(function *);
 
 void function_onblocks(function *, void (block *));
 
-block *function_entry_block(function *);
+block *function_entry_block(function *, bool create);
 block *function_exit_block(function *);
 
 block *function_block_find(
