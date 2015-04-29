@@ -125,7 +125,7 @@ static const struct x86_isn isn_test = {
 
 static void mov_deref(
 		val *from, val *to,
-		dynmap *alloca2stack,
+		x86_octx *,
 		int dl, int dr);
 
 
@@ -184,7 +184,7 @@ static const char *name_in_reg_str(val *val, /*optional*/int size)
 
 static const char *x86_val_str_sized(
 		val *val, int bufchoice,
-		dynmap *alloca2stack,
+		x86_octx *octx,
 		bool dereference, int size)
 {
 	static char bufs[3][256];
@@ -216,7 +216,7 @@ static const char *x86_val_str_sized(
 			break;
 		case ALLOCA:
 		{
-			int off = alloca_offset(alloca2stack, val);
+			int off = alloca_offset(octx->alloca2stack, val);
 			/*assert(!dereference);*/
 			snprintf(buf, sizeof bufs[0], "%d(%%rbp)", (int)off);
 			break;
@@ -236,12 +236,12 @@ static const char *x86_val_str_sized(
 
 static const char *x86_val_str(
 		val *val, int bufchoice,
-		dynmap *alloca2stack,
+		x86_octx *octx,
 		bool dereference)
 {
 	return x86_val_str_sized(
 		val, bufchoice,
-		alloca2stack,
+		octx,
 		dereference, -1);
 }
 
@@ -370,7 +370,7 @@ static void ready_input(
 		operand_category operand_category,
 		int *const deref_val,
 		val *other_val,
-		dynmap *alloca2stack)
+		x86_octx *octx)
 {
 	make_val_temporary_store(
 			orig_val, temporary_store,
@@ -379,7 +379,7 @@ static void ready_input(
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
-	mov_deref(orig_val, temporary_store, alloca2stack, *deref_val, 0);
+	mov_deref(orig_val, temporary_store, octx, *deref_val, 0);
 	*deref_val = 0;
 }
 
@@ -402,7 +402,7 @@ static void ready_output(
 }
 
 static void emit_isn(
-		const struct x86_isn *isn, dynmap *alloca2stack,
+		const struct x86_isn *isn, x86_octx *octx,
 		val *const lhs, int deref_lhs,
 		val *const rhs, int deref_rhs,
 		const char *isn_suffix)
@@ -435,7 +435,7 @@ static void emit_isn(
 			ready_input(
 					lhs, &temporary_lhs,
 					lhs_cat, operands_target->l,
-					&deref_lhs, rhs, alloca2stack);
+					&deref_lhs, rhs, octx);
 
 			emit_lhs = &temporary_lhs;
 		}
@@ -445,7 +445,7 @@ static void emit_isn(
 			ready_input(
 					rhs, &temporary_rhs,
 					rhs_cat, operands_target->r,
-					&deref_rhs, lhs, alloca2stack);
+					&deref_rhs, lhs, octx);
 
 			emit_rhs = &temporary_rhs;
 		}
@@ -479,25 +479,25 @@ static void emit_isn(
 
 	printf("\t%s%s %s, %s\n",
 			isn->mnemonic, isn_suffix,
-			x86_val_str(emit_lhs, 0, alloca2stack, deref_lhs),
-			x86_val_str(emit_rhs, 1, alloca2stack, deref_rhs));
+			x86_val_str(emit_lhs, 0, octx, deref_lhs),
+			x86_val_str(emit_rhs, 1, octx, deref_rhs));
 
 	/* store outputs after the instruction */
 	if(lhs_cat != operands_target->l
 	&& isn->io_l & OPERAND_OUTPUT)
 	{
-		mov_deref(emit_lhs, lhs, alloca2stack, 0, orig_deref_lhs);
+		mov_deref(emit_lhs, lhs, octx, 0, orig_deref_lhs);
 	}
 	if(rhs_cat != operands_target->r
 	&& isn->io_r & OPERAND_OUTPUT)
 	{
-		mov_deref(emit_rhs, rhs, alloca2stack, 0, orig_deref_rhs);
+		mov_deref(emit_rhs, rhs, octx, 0, orig_deref_rhs);
 	}
 }
 
 static void mov_deref(
 		val *from, val *to,
-		dynmap *alloca2stack,
+		x86_octx *octx,
 		int dl, int dr)
 {
 	if(!dl && !dr
@@ -510,18 +510,18 @@ static void mov_deref(
 		printf("\t;");
 	}
 
-	emit_isn(&isn_mov, alloca2stack,
+	emit_isn(&isn_mov, octx,
 			from, dl,
 			to, dr,
 			"");
 }
 
-static void mov(val *from, val *to, dynmap *alloca2stack)
+static void mov(val *from, val *to, x86_octx *octx)
 {
-	mov_deref(from, to, alloca2stack, 0, 0);
+	mov_deref(from, to, octx, 0, 0);
 }
 
-static void emit_elem(isn *i, dynmap *alloca2stack)
+static void emit_elem(isn *i, x86_octx *octx)
 {
 	int add_total;
 
@@ -546,7 +546,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			assert(i->u.elem.add->type == INT);
 
 			add_total = op_exe(op_add,
-					alloca_offset(alloca2stack, i->u.elem.lval),
+					alloca_offset(octx->alloca2stack, i->u.elem.lval),
 					i->u.elem.add->u.i.i, &err);
 
 			assert(!err);
@@ -569,7 +569,7 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 			printf("\tlea %s+%u(%%rip), %s\n",
 					i->u.elem.lval->u.addr.u.lbl.spel,
 					add_total,
-					x86_val_str_sized(i->u.elem.res, 0, alloca2stack, 0, /*ptrsize*/0));
+					x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
 
 			return;
 		}
@@ -578,27 +578,27 @@ static void emit_elem(isn *i, dynmap *alloca2stack)
 
 	printf("\tlea %d(%%rbp), %s\n",
 			add_total,
-			x86_val_str_sized(i->u.elem.res, 0, alloca2stack, 0, /*ptrsize*/0));
+			x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
 }
 
 static void x86_op(
 		enum op op, val *lhs, val *rhs,
-		val *res, dynmap *alloca2stack)
+		val *res, x86_octx *octx)
 {
 	/* no instruction selection / register merging. just this for now */
-	mov(lhs, res, alloca2stack);
+	mov(lhs, res, octx);
 
 	assert(op == op_add && "TODO");
 
 	emit_isn(
 			&isn_add, /* FIXME: op_to_str / op_to_isn_xyz */
-			alloca2stack,
+			octx,
 			rhs, 0,
 			res, 0,
 			"");
 }
 
-static void x86_ext(val *from, val *to, dynmap *alloca2stack)
+static void x86_ext(val *from, val *to, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
@@ -619,7 +619,7 @@ static void x86_ext(val *from, val *to, dynmap *alloca2stack)
 		case 2: buf[1] = 'w'; break;
 		case 4:
 			assert(sz_to == 8);
-			mov(from, to, alloca2stack); /* movl a, b */
+			mov(from, to, octx); /* movl a, b */
 			return;
 
 		default:
@@ -634,7 +634,7 @@ static void x86_ext(val *from, val *to, dynmap *alloca2stack)
 			assert(0 && "bad extension");
 	}
 
-	emit_isn(&isn_movzx, alloca2stack,
+	emit_isn(&isn_movzx, octx,
 			from, 0, to, 0, buf);
 }
 
@@ -665,44 +665,46 @@ static const char *x86_size_suffix(unsigned sz)
 static void x86_cmp(
 		enum op_cmp cmp,
 		val *lhs, val *rhs, val *res,
-		dynmap *alloca2stack)
+		x86_octx *octx)
 {
 	val *zero;
 
-	emit_isn(&isn_cmp, alloca2stack,
+	emit_isn(&isn_cmp, octx,
 			lhs, 0,
 			rhs, 0,
 			x86_size_suffix(val_size(lhs)));
 
 	zero = val_retain(val_new_i(0, val_size(lhs)));
 
-	mov(zero, res, alloca2stack);
+	mov(zero, res, octx);
 
 	printf("\tset%s %s\n",
 			x86_cmp_str(cmp),
-			x86_val_str(res, 0, alloca2stack, 0));
+			x86_val_str(res, 0, octx, 0));
 
 	val_release(zero);
 }
 
-static void x86_jmp(block *target)
+static void x86_jmp(x86_octx *octx, block *target)
 {
+	(void)octx;
 	printf("\tjmp %s\n", target->lbl);
 }
 
-static void x86_branch(val *cond, block *bt, block *bf, dynmap *alloca2stack)
+static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
-	emit_isn(&isn_test, alloca2stack,
+	emit_isn(&isn_test, octx,
 			cond, 0,
 			cond, 0,
 			x86_size_suffix(val_size(cond)));
 
 	printf("\tjz %s\n", bf->lbl);
-	x86_jmp(bt);
+	x86_jmp(octx, bt);
 }
 
-static void x86_block_enter(block *blk)
+static void x86_block_enter(x86_octx *octx, block *blk)
 {
+	(void)octx;
 	if(blk->lbl)
 		printf("%s:\n", blk->lbl);
 }
@@ -727,7 +729,7 @@ static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
 		unsigned call_isn_idx,
-		dynmap *alloca2stack)
+		x86_octx *octx)
 {
 	struct x86_spill_ctx ctx;
 	isn *isn;
@@ -737,7 +739,7 @@ static dynmap *x86_spillregs(
 
 	ctx.spill     = dynmap_new(val *, NULL, val_hash);
 	ctx.dontspill = dynmap_new(val *, NULL, val_hash);
-	ctx.alloca2stack = alloca2stack;
+	ctx.alloca2stack = octx->alloca2stack;
 	ctx.call_isn_idx = call_isn_idx;
 
 	for(vi = except; *vi; vi++){
@@ -753,7 +755,7 @@ static dynmap *x86_spillregs(
 
 	for(idx = 0; (v = dynmap_key(val *, ctx.spill, idx)); idx++){
 		printf("# spill %s [%s]\n",
-				x86_val_str(v, 0, alloca2stack, 0),
+				x86_val_str(v, 0, octx, 0),
 				val_str(v));
 	}
 
@@ -761,14 +763,14 @@ static dynmap *x86_spillregs(
 	return ctx.spill;
 }
 
-static void x86_restoreregs(dynmap *regs, dynmap *alloca2stack)
+static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 {
 	size_t idx;
 	val *v;
 
 	for(idx = 0; (v = dynmap_key(val *, regs, idx)); idx++){
 		printf("# restore %s [%s]\n",
-				x86_val_str(v, 0, alloca2stack, 0),
+				x86_val_str(v, 0, octx, 0),
 				val_str(v));
 	}
 
@@ -778,18 +780,18 @@ static void x86_restoreregs(dynmap *regs, dynmap *alloca2stack)
 static void x86_call(
 		block *blk, unsigned isn_idx,
 		val *into, val *fn,
-		dynmap *alloca2stack)
+		x86_octx *octx)
 {
 	val *except[] = { into, fn, NULL };
 	dynmap *spilt;
 
-	spilt = x86_spillregs(blk, except, isn_idx, alloca2stack);
+	spilt = x86_spillregs(blk, except, isn_idx, octx);
 
 	if(fn->type == LBL){
 		printf("\tcall %s\n", fn->u.addr.u.lbl.spel);
 	}else{
 		/* TODO: isn */
-		printf("\tcall *%s\n", x86_val_str(fn, 0, alloca2stack, 0));
+		printf("\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
 	}
 
 	if(into){
@@ -797,20 +799,19 @@ static void x86_call(
 
 		x86_make_eax(&eax, /* HARDCODED TODO FIXME */ 4);
 
-		mov(&eax, into, alloca2stack);
+		mov(&eax, into, octx);
 	}
 
-	x86_restoreregs(spilt, alloca2stack);
+	x86_restoreregs(spilt, octx);
 }
 
-static void x86_out_block1(block *blk, x86_octx *octx)
+static void x86_out_block1(x86_octx *octx, block *blk)
 {
-	dynmap *alloca2stack = octx->alloca2stack;
 	isn *head = block_first_isn(blk);
 	isn *i;
 	unsigned idx;
 
-	x86_block_enter(blk);
+	x86_block_enter(octx, blk);
 
 	for(i = head, idx = 0; i; i = i->next, idx++){
 		if(i->skip)
@@ -826,7 +827,7 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 
 				x86_make_eax(&veax, val_size(i->u.ret));
 
-				mov(i->u.ret, &veax, alloca2stack);
+				mov(i->u.ret, &veax, octx);
 
 				printf("\tjmp %s\n", octx->exitblk->lbl);
 				break;
@@ -834,43 +835,43 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 
 			case ISN_STORE:
 			{
-				mov_deref(i->u.store.from, i->u.store.lval, alloca2stack, 0, 1);
+				mov_deref(i->u.store.from, i->u.store.lval, octx, 0, 1);
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				mov_deref(i->u.load.lval, i->u.load.to, alloca2stack, 1, 0);
+				mov_deref(i->u.load.lval, i->u.load.to, octx, 1, 0);
 				break;
 			}
 
 			case ISN_ELEM:
-				emit_elem(i, alloca2stack);
+				emit_elem(i, octx);
 				break;
 
 			case ISN_OP:
-				x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, alloca2stack);
+				x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, octx);
 				break;
 
 			case ISN_CMP:
 				x86_cmp(i->u.cmp.cmp,
 						i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
-						alloca2stack);
+						octx);
 				break;
 
 			case ISN_EXT:
-				x86_ext(i->u.ext.from, i->u.ext.to, alloca2stack);
+				x86_ext(i->u.ext.from, i->u.ext.to, octx);
 				break;
 
 			case ISN_COPY:
 			{
-				mov(i->u.copy.from, i->u.copy.to, alloca2stack);
+				mov(i->u.copy.from, i->u.copy.to, octx);
 				break;
 			}
 
 			case ISN_JMP:
 			{
-				x86_jmp(i->u.jmp.target);
+				x86_jmp(octx, i->u.jmp.target);
 				break;
 			}
 
@@ -880,13 +881,13 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 						i->u.branch.cond,
 						i->u.branch.t,
 						i->u.branch.f,
-						alloca2stack);
+						octx);
 				break;
 			}
 
 			case ISN_CALL:
 			{
-				x86_call(blk, idx, i->u.call.into, i->u.call.fn, alloca2stack);
+				x86_call(blk, idx, i->u.call.into, i->u.call.fn, octx);
 				break;
 			}
 		}
@@ -895,7 +896,7 @@ static void x86_out_block1(block *blk, x86_octx *octx)
 
 static void x86_out_block(block *const blk, x86_octx *octx)
 {
-	x86_out_block1(blk, octx);
+	x86_out_block1(octx, blk);
 	switch(blk->type){
 		case BLK_UNKNOWN:
 			assert(0 && "unknown block type");
@@ -940,9 +941,9 @@ static void x86_sum_alloca(block *blk, void *vctx)
 	}
 }
 
-static void x86_emit_epilogue(block *exit)
+static void x86_emit_epilogue(x86_octx *octx, block *exit)
 {
-	x86_block_enter(exit);
+	x86_block_enter(octx, exit);
 	printf("\tleave\n" "\tret\n");
 }
 
@@ -961,6 +962,9 @@ static void x86_out_fn(function *func)
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
 
+	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
+	out_ctx.exitblk = exit;
+
 	printf(".text\n");
 	fname = function_name(func);
 	printf(".globl %s\n", fname);
@@ -969,11 +973,9 @@ static void x86_out_fn(function *func)
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
 	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca);
 
-	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
-	out_ctx.exitblk = exit;
 	x86_out_block(entry, &out_ctx);
 
-	x86_emit_epilogue(exit);
+	x86_emit_epilogue(&out_ctx, exit);
 
 	dynmap_free(alloca_ctx.alloca2stack);
 }
