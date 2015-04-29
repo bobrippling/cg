@@ -718,6 +718,9 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
+	if(v->type != NAME)
+		return; /* no need to spill */
+
 	if(dynmap_exists(val *, ctx->dontspill, v))
 		return;
 
