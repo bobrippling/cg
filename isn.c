@@ -490,14 +490,51 @@ static void isn_dump1(isn *i)
 	}
 }
 
+#include "dynmap.h"
+#include "val_struct.h"
+static void get_val(val *v, isn *isn, void *ctx)
+{
+	(void)isn;
+	if(v->type != NAME)
+		return;
+
+	dynmap_set(val *, long, ctx, v, 0l);
+}
+
+#define SHOW_LIFE 1
 void isn_dump(isn *const head)
 {
+	size_t idx = 0;
 	isn *i;
 
 	for(i = head; i; i = i->next){
 		if(i->skip)
 			continue;
 
+		if(SHOW_LIFE)
+			printf("[%zu] ", idx++);
+
 		isn_dump1(i);
+	}
+
+	if(SHOW_LIFE){
+		dynmap *vals = dynmap_new(val *, 0, val_hash);
+
+		for(i = head; i; i = i->next){
+			if(i->skip)
+				continue;
+
+			isn_on_vals(i, get_val, vals);
+		}
+
+		val *v;
+		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
+			printf("[-] %s: %u - %u\n",
+					val_str(v),
+					v->lifetime.start,
+					v->lifetime.end);
+		}
+
+		dynmap_free(vals);
 	}
 }
