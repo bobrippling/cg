@@ -27,6 +27,7 @@ typedef struct x86_out_ctx
 	dynmap *alloca2stack;
 	block *exitblk;
 	FILE *fout;
+	unsigned spill_alloca;
 } x86_octx;
 
 struct x86_spill_ctx
@@ -727,42 +728,71 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 	}
 }
 
+static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
+{
+	if(sz == 0)
+		sz = 8;
+
+	stack_slot->type = NAME;
+	stack_slot->retains = 1;
+	stack_slot->u.addr.u.name.val_size = sz;
+	stack_slot->u.addr.u.name.loc.where = NAME_SPILT;
+	stack_slot->u.addr.u.name.loc.u.off = off;
+}
+
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
 		unsigned call_isn_idx,
 		x86_octx *octx)
 {
-	struct x86_spill_ctx ctx;
+	struct x86_spill_ctx spillctx;
 	isn *isn;
 	val **vi;
 	size_t idx;
 	val *v;
 
-	ctx.spill     = dynmap_new(val *, NULL, val_hash);
-	ctx.dontspill = dynmap_new(val *, NULL, val_hash);
-	ctx.alloca2stack = octx->alloca2stack;
-	ctx.call_isn_idx = call_isn_idx;
+	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
+	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
+	spillctx.alloca2stack = octx->alloca2stack;
+	spillctx.call_isn_idx = call_isn_idx;
 
 	for(vi = except; *vi; vi++){
-		dynmap_set(val *, void *, ctx.dontspill, *vi, (void *)NULL);
+		dynmap_set(val *, void *, spillctx.dontspill, *vi, (void *)NULL);
 	}
 
 	for(isn = block_first_isn(blk); isn; isn = isn->next){
 		if(isn->skip)
 			continue;
 
-		isn_on_vals(isn, maybe_spill, &ctx);
+		isn_on_vals(isn, maybe_spill, &spillctx);
 	}
 
-	for(idx = 0; (v = dynmap_key(val *, ctx.spill, idx)); idx++){
-		fprintf(octx->fout, "# spill %s [%s]\n",
-				x86_val_str(v, 0, octx, 0),
-				val_str(v));
+	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
+		unsigned sz = val_size(v);
+		val stack_slot = { 0 };
+
+		if(sz == 0)
+			sz = 8; /* XXX: pointer size */
+
+		/* FIXME: account for local allocas */
+		make_stack_slot(&stack_slot, octx->spill_alloca + sz, sz);
+
+		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
+
+		mov_deref(v, &stack_slot, octx, 0, 1);
+
+		octx->spill_alloca += sz;
+
+		dynmap_set(
+				val *, uintptr_t,
+				spillctx.spill,
+				v,
+				(uintptr_t)stack_slot.u.addr.u.name.loc.u.off);
 	}
 
-	dynmap_free(ctx.dontspill);
-	return ctx.spill;
+	dynmap_free(spillctx.dontspill);
+	return spillctx.spill;
 }
 
 static void x86_restoreregs(dynmap *regs, x86_octx *octx)
@@ -771,9 +801,14 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	val *v;
 
 	for(idx = 0; (v = dynmap_key(val *, regs, idx)); idx++){
-		fprintf(octx->fout, "# restore %s [%s]\n",
-				x86_val_str(v, 0, octx, 0),
-				val_str(v));
+		unsigned off = dynmap_value(uintptr_t, regs, idx);
+		val stack_slot = { 0 };
+
+		fprintf(octx->fout, "\t# restore '%s'\n", val_str(v));
+
+		make_stack_slot(&stack_slot, off, val_size(v));
+
+		mov_deref(&stack_slot, v, octx, 1, 0);
 	}
 
 	dynmap_free(regs);
@@ -982,7 +1017,7 @@ static void x86_out_fn(function *func)
 	printf("%s:\n", fname);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
-	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca);
+	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca + out_ctx.spill_alloca);
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
