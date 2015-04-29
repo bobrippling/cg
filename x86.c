@@ -29,6 +29,8 @@ typedef struct x86_out_ctx
 struct x86_spill_ctx
 {
 	dynmap *alloca2stack;
+	dynmap *dontspill;
+	dynmap *spill;
 	unsigned call_isn_idx;
 };
 
@@ -711,34 +713,66 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
+	if(dynmap_exists(val *, ctx->dontspill, v))
+		return;
+
 	if(v->lifetime.start <= ctx->call_isn_idx
 	&& ctx->call_isn_idx <= v->lifetime.end)
 	{
-		printf("XXX: need to spill %s / %s\n",
-				val_str(v), x86_val_str(v, 0, ctx->alloca2stack, 0));
+		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
 	}
 }
 
-static void x86_spillregs(
+static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
 		unsigned call_isn_idx,
 		dynmap *alloca2stack)
 {
 	struct x86_spill_ctx ctx;
-	isn *i;
+	isn *isn;
+	val **vi;
+	size_t idx;
+	val *v;
 
-	(void)except; /* TODO */
-
+	ctx.spill     = dynmap_new(val *, NULL, val_hash);
+	ctx.dontspill = dynmap_new(val *, NULL, val_hash);
 	ctx.alloca2stack = alloca2stack;
 	ctx.call_isn_idx = call_isn_idx;
 
-	for(i = block_first_isn(blk); i; i = i->next){
-		if(i->skip)
+	for(vi = except; *vi; vi++){
+		dynmap_set(val *, void *, ctx.dontspill, *vi, (void *)NULL);
+	}
+
+	for(isn = block_first_isn(blk); isn; isn = isn->next){
+		if(isn->skip)
 			continue;
 
-		isn_on_vals(i, maybe_spill, &ctx);
+		isn_on_vals(isn, maybe_spill, &ctx);
 	}
+
+	for(idx = 0; (v = dynmap_key(val *, ctx.spill, idx)); idx++){
+		printf("# spill %s [%s]\n",
+				x86_val_str(v, 0, alloca2stack, 0),
+				val_str(v));
+	}
+
+	dynmap_free(ctx.dontspill);
+	return ctx.spill;
+}
+
+static void x86_restoreregs(dynmap *regs, dynmap *alloca2stack)
+{
+	size_t idx;
+	val *v;
+
+	for(idx = 0; (v = dynmap_key(val *, regs, idx)); idx++){
+		printf("# restore %s [%s]\n",
+				x86_val_str(v, 0, alloca2stack, 0),
+				val_str(v));
+	}
+
+	dynmap_free(regs);
 }
 
 static void x86_call(
@@ -747,16 +781,16 @@ static void x86_call(
 		dynmap *alloca2stack)
 {
 	val *except[] = { into, fn, NULL };
+	dynmap *spilt;
 
-	x86_spillregs(blk, except, isn_idx, alloca2stack);
+	spilt = x86_spillregs(blk, except, isn_idx, alloca2stack);
 
 	if(fn->type == LBL){
 		printf("\tcall %s\n", fn->u.addr.u.lbl.spel);
-		return;
+	}else{
+		/* TODO: isn */
+		printf("\tcall *%s\n", x86_val_str(fn, 0, alloca2stack, 0));
 	}
-
-	/* TODO: isn */
-	printf("\tcall *%s\n", x86_val_str(fn, 0, alloca2stack, 0));
 
 	if(into){
 		val eax;
@@ -765,6 +799,8 @@ static void x86_call(
 
 		mov(&eax, into, alloca2stack);
 	}
+
+	x86_restoreregs(spilt, alloca2stack);
 }
 
 static void x86_out_block1(block *blk, x86_octx *octx)
