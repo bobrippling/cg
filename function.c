@@ -119,6 +119,11 @@ block *function_block_find(
 	return b;
 }
 
+void function_finalize(function *f)
+{
+	function_onblocks(f, block_finalize);
+}
+
 void function_dump(function *f)
 {
 	printf("%u %s()", f->retsz, f->name);

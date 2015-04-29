@@ -445,6 +445,8 @@ static function *parse_function(parse *p, unsigned ret, char *name)
 
 	eat(p, "function close brace", tok_rbrace);
 
+	function_finalize(fn);
+
 	return fn;
 }
 

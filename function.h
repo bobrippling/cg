@@ -11,6 +11,8 @@ void function_free(function *);
 const char *function_name(function *);
 void function_dump(function *);
 
+void function_finalize(function *);
+
 void function_onblocks(function *, void (block *));
 
 block *function_entry_block(function *, bool create);

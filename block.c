@@ -8,6 +8,7 @@
 #include "block_struct.h"
 #include "block_internal.h"
 #include "isn_struct.h"
+#include "val_struct.h"
 
 block *block_new(char *lbl)
 {
@@ -93,6 +94,48 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 			blocks_iterate(blk->u.jmp.target, fn, ctx);
 			break;
 	}
+}
+
+static void assign_lifetime(val *v, isn *isn, void *ctx)
+{
+	const unsigned isn_count = *(unsigned *)ctx;
+
+	(void)isn;
+
+	if(v->type != NAME)
+		return;
+
+	if(!v->pass_data){
+		v->pass_data = /*anything non-null*/&assign_lifetime;
+
+		v->lifetime.start = isn_count;
+	}
+
+	v->lifetime.end = isn_count;
+}
+
+static void reset_lifetime_passdata(val *v, isn *isn, void *ctx)
+{
+	(void)isn;
+	(void)ctx;
+	v->pass_data = NULL;
+}
+
+static void assign_lifetimes(isn *const head)
+{
+	unsigned isn_count = 0;
+	isn *i;
+
+	for(i = head; i; i = i->next, isn_count++)
+		isn_on_vals(i, assign_lifetime, &isn_count);
+
+	for(i = head; i; i = i->next, isn_count++)
+		isn_on_vals(i, reset_lifetime_passdata, NULL);
+}
+
+void block_finalize(block *blk)
+{
+	assign_lifetimes(block_first_isn(blk));
 }
 
 static void block_dump1(block *blk)

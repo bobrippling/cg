@@ -13,50 +13,6 @@
 
 #define VAL_REG(v) (v)->u.addr.u.name.loc.u.reg
 
-static void init_regalloc_data(val *v)
-{
-	v->pass_data = /*anything non-null:*/&init_regalloc_data;
-}
-
-static void free_regalloc_data1(val *v, isn *isn, void *ctx)
-{
-	(void)ctx;
-	(void)isn;
-	v->pass_data = NULL;
-}
-
-static void free_regalloc_data(isn *head)
-{
-	for(; head; head = head->next)
-		isn_on_vals(head, free_regalloc_data1, NULL);
-}
-
-static void assign_lifetime(val *v, isn *isn, void *ctx)
-{
-	const unsigned isn_count = *(unsigned *)ctx;
-
-	(void)isn;
-
-	if(v->type != NAME)
-		return;
-
-	if(!v->pass_data){
-		init_regalloc_data(v);
-
-		v->lifetime.start = isn_count;
-	}
-
-	v->lifetime.end = isn_count;
-}
-
-static void assign_lifetimes(isn *head)
-{
-	unsigned isn_count = 0;
-
-	for(; head; head = head->next, isn_count++)
-		isn_on_vals(head, assign_lifetime, &isn_count);
-}
-
 struct greedy_ctx
 {
 	char *in_use;
@@ -71,10 +27,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	if(!v->pass_data)
+	if(v->type != NAME)
 		return; /* not something we need to regalloc */
-
-	assert(v->type == NAME);
 
 	if(v->lifetime.start == ctx->isn_num && VAL_REG(v) == -1){
 		int i;
@@ -166,11 +120,7 @@ static void simple_regalloc(block *blk, const struct regalloc_ctx *ctx)
 {
 	isn *head = block_first_isn(blk);
 
-	assign_lifetimes(head);
-
 	regalloc_greedy(blk, head, ctx);
-
-	free_regalloc_data(head);
 }
 
 void isn_regalloc(block *blk, const struct regalloc_ctx *ctx)
