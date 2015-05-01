@@ -86,29 +86,48 @@ static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
 	ctx->offset += size;
 }
 
+static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
+{
+	char *in_use = vctx;
+	int idx;
+
+	(void)isn;
+
+	if(v->type != NAME)
+		return;
+
+	idx = VAL_REG(v);
+	if(idx == -1)
+		return;
+
+	in_use[idx] = 1;
+}
+
+static void mark_other_block_vals_as_used(char *in_use, isn *isn)
+{
+	for(; isn; isn = isn->next)
+		isn_on_vals(isn, mark_other_block_val_as_used, in_use);
+}
+
 static void regalloc_greedy(
 		block *blk, isn *const head,
 		const struct regalloc_ctx *regs_ctx)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
-	int i;
 	isn *isn_iter;
 
 	alloc_ctx.in_use = xcalloc(regs_ctx->nregs, 1);
 	alloc_ctx.nregs = regs_ctx->nregs;
 	alloc_ctx.blk = blk;
 
+	/* mark scratch as in use */
 	alloc_ctx.in_use[regs_ctx->scratch_reg] = 1;
+
+	/* mark values who are in use in other blocks as in use */
+	mark_other_block_vals_as_used(alloc_ctx.in_use, head);
 
 	for(isn_iter = head; isn_iter; isn_iter = isn_iter->next, alloc_ctx.isn_num++)
 		isn_on_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
-
-	for(i = 0; i < regs_ctx->nregs; i++){
-		int expected = 0;
-		if(i == regs_ctx->scratch_reg)
-			expected = 1;
-		assert(alloc_ctx.in_use[i] == expected);
-	}
 
 	free(alloc_ctx.in_use);
 
