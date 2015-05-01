@@ -21,20 +21,26 @@ unit *unit_new(void)
 	return u;
 }
 
+static void unit_function_free(function *f, void *ctx)
+{
+	(void)ctx;
+	function_free(f);
+}
+
 void unit_free(unit *unit)
 {
-	unit_on_functions(unit, function_free);
+	unit_on_functions(unit, unit_function_free, NULL);
 
 	free(unit);
 }
 
-void unit_on_functions(unit *u, void fn(function *))
+void unit_on_functions(unit *u, void fn(function *, void *), void *ctx)
 {
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
 		if(u->globals[i].is_fn)
-			fn(u->globals[i].u.fn);
+			fn(u->globals[i].u.fn, ctx);
 }
 
 void unit_on_globals(unit *u, void fn(global *))

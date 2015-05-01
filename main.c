@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -40,6 +41,30 @@ enum
 {
 	INT_SIZE = 4
 };
+
+#define OPTS          \
+	X(cprop)            \
+	X(storeprop)        \
+	X(dse)              \
+	X(loadmerge)
+
+struct optflags
+{
+#define X(n) bool n;
+	OPTS
+#undef X
+};
+
+static const struct
+{
+	const char *name;
+	unsigned long offset;
+} optstrings[] = {
+#define X(n) { #n, offsetof(struct optflags, n) },
+	OPTS
+#undef X
+};
+
 
 static void eg1(function *fn, block *const entry)
 {
@@ -163,7 +188,7 @@ static unit *read_and_parse(
 
 static void usage(const char *arg0)
 {
-	int i;
+	size_t i;
 
 	fprintf(stderr,
 			"Usage: %s [options] [file | --eg[-jmp]]\n"
@@ -175,6 +200,11 @@ static void usage(const char *arg0)
 
 	for(i = 0; backends[i].name; i++)
 		fprintf(stderr, "    %s\n", backends[i].name);
+
+	fprintf(stderr, "  -O<optimisation>: enable optimisation\n");
+
+	for(i = 0; i < countof(optstrings); i++)
+		fprintf(stderr, "    %s\n", optstrings[i].name);
 
 	exit(1);
 }
@@ -205,17 +235,18 @@ static void (*default_backend(void))(global *)
 	return fn;
 }
 
-static void run_opts(function *fn)
+static void run_opts(function *fn, void *vctx)
 {
-	function_onblocks(fn, opt_cprop);
-	function_onblocks(fn, opt_storeprop);
-	function_onblocks(fn, opt_dse);
-	function_onblocks(fn, opt_loadmerge);
+	struct optflags *opts = vctx;
+
+#define X(n) if(opts->n) function_onblocks(fn, opt_ ## n);
+	OPTS
+#undef X
 }
 
 int main(int argc, char *argv[])
 {
-	bool opt = false;
+	struct optflags opts = { 0 };
 	bool dump_tok = false;
 	void (*emit_fn)(global *) = NULL;
 	unit *unit = NULL;
@@ -224,8 +255,31 @@ int main(int argc, char *argv[])
 	int parse_err = 0;
 
 	for(i = 1; i < argc; i++){
-		if(!strcmp(argv[i], "-O")){
-			opt = true;
+		if(!strncmp(argv[i], "-O", 2)){
+			if(argv[i][2]){
+				size_t j;
+				bool found = false;
+				const char *opt = argv[i] + 2;
+
+				for(j = 0; j < countof(optstrings); j++){
+					if(!strcmp(optstrings[j].name, opt)){
+						bool *p = (bool *)((char *)&opts + optstrings[j].offset);
+						*p = true;
+						found = true;
+						break;
+					}
+				}
+
+				if(!found){
+					fprintf(stderr, "optimise: unknown option '%s'\n", argv[i]);
+					usage(*argv);
+				}
+
+			}else{
+				/* all on */
+				memset(&opts, 1, sizeof opts);
+			}
+
 		}else if(!strcmp(argv[i], "--dump-tokens")){
 			dump_tok = true;
 
@@ -277,9 +331,7 @@ int main(int argc, char *argv[])
 		assert(unit);
 	}
 
-	if(opt){
-		unit_on_functions(unit, run_opts);
-	}
+	unit_on_functions(unit, run_opts, &opts);
 
 	if(parse_err)
 		return 1;
