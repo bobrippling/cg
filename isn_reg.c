@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "mem.h"
+#include "dynmap.h"
 
 #include "isn_reg.h"
 
@@ -10,11 +11,13 @@
 #include "isn_internal.h"
 #include "isn.h"
 #include "val_struct.h"
+#include "lifetime_struct.h"
 
 #define VAL_REG(v) (v)->u.addr.u.name.loc.u.reg
 
 struct greedy_ctx
 {
+	block *blk;
 	char *in_use;
 	int nregs;
 	unsigned isn_num;
@@ -24,13 +27,17 @@ struct greedy_ctx
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
+	struct lifetime *lt;
 
 	(void)isn;
 
 	if(v->type != NAME)
 		return; /* not something we need to regalloc */
 
-	if(v->lifetime.start == ctx->isn_num && VAL_REG(v) == -1){
+	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
+	assert(lt);
+
+	if(lt->start == ctx->isn_num && VAL_REG(v) == -1){
 		int i;
 
 		for(i = 0; i < ctx->nregs; i++)
@@ -51,7 +58,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	}
 
-	if(v->lifetime.end == ctx->isn_num && VAL_REG(v) >= 0){
+	if(!v->live_across_blocks && lt->end == ctx->isn_num && VAL_REG(v) >= 0){
 		ctx->in_use[VAL_REG(v)] = 0;
 	}
 }
@@ -89,6 +96,7 @@ static void regalloc_greedy(
 
 	alloc_ctx.in_use = xcalloc(regs_ctx->nregs, 1);
 	alloc_ctx.nregs = regs_ctx->nregs;
+	alloc_ctx.blk = blk;
 
 	alloc_ctx.in_use[regs_ctx->scratch_reg] = 1;
 

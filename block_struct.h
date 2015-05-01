@@ -2,11 +2,14 @@
 #define BLOCK_STRUCT_H
 
 #include "isn_internal.h"
+#include "lifetime_struct.h"
 
 struct block
 {
 	isn *isn1, **isntail; /* isntail = &isn1 initially */
 	char *lbl; /* NULL if entry block */
+
+	struct dynmap *val_lifetimes; /* val => struct lifetime */
 
 	enum block_type
 	{

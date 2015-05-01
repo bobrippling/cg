@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "mem.h"
+#include "dynmap.h"
 
 #include "backend.h"
 #include "val_internal.h"
@@ -10,6 +12,7 @@
 #include "isn_struct.h"
 #include "block_struct.h"
 #include "block_internal.h"
+#include "block.h"
 
 static isn *isn_new(enum isn_type t, block *blk)
 {
@@ -502,7 +505,7 @@ static void get_val(val *v, isn *isn, void *ctx)
 }
 
 #define SHOW_LIFE 1
-void isn_dump(isn *const head)
+void isn_dump(isn *const head, block *blk)
 {
 	size_t idx = 0;
 	isn *i;
@@ -529,10 +532,18 @@ void isn_dump(isn *const head)
 
 		val *v;
 		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
-			printf("[-] %s: %u - %u\n",
+			struct lifetime *lt = dynmap_get(
+					val *, struct lifetime *,
+					block_lifetime_map(blk),
+					v);
+
+			assert(lt && "val doesn't have a lifetime");
+
+			printf("[-] %s: %u - %u. inter-block = %d\n",
 					val_str(v),
-					v->lifetime.start,
-					v->lifetime.end);
+					lt->start,
+					lt->end,
+					v->live_across_blocks);
 		}
 
 		dynmap_free(vals);

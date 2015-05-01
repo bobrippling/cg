@@ -1,6 +1,8 @@
 #ifndef VAL_STRUCT_H
 #define VAL_STRUCT_H
 
+#include <stdbool.h>
+
 struct name_loc
 {
 	enum
@@ -13,11 +15,6 @@ struct name_loc
 		int reg;
 		unsigned off;
 	} u;
-};
-
-struct lifetime
-{
-	unsigned start, end;
 };
 
 struct val
@@ -71,9 +68,9 @@ struct val
 		} addr;
 	} u;
 
-	struct lifetime lifetime;
-
 	void *pass_data;
+
+	bool live_across_blocks;
 };
 
 #endif

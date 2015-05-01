@@ -7,6 +7,7 @@
 #include "function_internal.h"
 #include "lbl.h"
 #include "block_internal.h"
+#include "blk_reg.h"
 
 static void function_add_block(function *, block *);
 
@@ -122,6 +123,9 @@ block *function_block_find(
 void function_finalize(function *f)
 {
 	function_onblocks(f, block_finalize);
+
+	if(f->entry)
+		blk_lifecheck(f->entry);
 }
 
 void function_dump(function *f)

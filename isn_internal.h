@@ -9,6 +9,6 @@ void isn_free_r(isn *);
 
 void isn_on_vals(isn *, void (val *, isn *, void *), void *);
 
-void isn_dump(isn *head);
+void isn_dump(isn *, block *);
 
 #endif

@@ -35,6 +35,7 @@ struct x86_spill_ctx
 	dynmap *alloca2stack;
 	dynmap *dontspill;
 	dynmap *spill;
+	block *blk;
 	unsigned call_isn_idx;
 };
 
@@ -715,6 +716,7 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 static void maybe_spill(val *v, isn *isn, void *vctx)
 {
 	const struct x86_spill_ctx *ctx = vctx;
+	struct lifetime *lt;
 
 	(void)isn;
 
@@ -724,9 +726,10 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 	if(dynmap_exists(val *, ctx->dontspill, v))
 		return;
 
-	if(v->lifetime.start <= ctx->call_isn_idx
-	&& ctx->call_isn_idx <= v->lifetime.end)
-	{
+	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
+	assert(lt && "val doesn't have a lifetime");
+
+	if(lt->start <= ctx->call_isn_idx && ctx->call_isn_idx <= lt->end){
 		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
 	}
 }
@@ -759,6 +762,7 @@ static dynmap *x86_spillregs(
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
 	spillctx.alloca2stack = octx->alloca2stack;
 	spillctx.call_isn_idx = call_isn_idx;
+	spillctx.blk = blk;
 
 	for(vi = except; *vi; vi++){
 		dynmap_set(val *, void *, spillctx.dontspill, *vi, (void *)NULL);

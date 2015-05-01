@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "mem.h"
+#include "dynmap.h"
 
 #include "block.h"
 #include "block_struct.h"
@@ -15,6 +16,9 @@ block *block_new(char *lbl)
 	block *b = xcalloc(1, sizeof *b);
 	b->isntail = &b->isn1;
 	b->lbl = lbl;
+
+	b->val_lifetimes = dynmap_new(val *, NULL, val_hash);
+
 	return b;
 }
 
@@ -25,8 +29,16 @@ static void branch_free(block *b)
 
 void block_free(block *b)
 {
+	size_t i;
+	struct lifetime *lt;
+
 	if(b->type == BLK_BRANCH)
 		branch_free(b);
+
+	for(i = 0; (lt = dynmap_value(struct lifetime *, b->val_lifetimes, i)); i++)
+		free(lt);
+
+	dynmap_free(b->val_lifetimes);
 
 	isn_free_r(b->isn1);
 	free(b->lbl);
@@ -37,6 +49,11 @@ block *block_new_entry(void)
 {
 	block *b = block_new(NULL);
 	return b;
+}
+
+dynmap *block_lifetime_map(block *b)
+{
+	return b->val_lifetimes;
 }
 
 const char *block_label(block *b)
@@ -96,51 +113,53 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 	}
 }
 
-static void assign_lifetime(val *v, isn *isn, void *ctx)
+struct lifetime_assign_ctx
 {
-	const unsigned isn_count = *(unsigned *)ctx;
+	unsigned isn_count;
+	block *blk;
+};
+
+static void assign_lifetime(val *v, isn *isn, void *vctx)
+{
+	struct lifetime_assign_ctx *ctx = vctx;
+	struct lifetime *lt;
 
 	(void)isn;
 
 	if(v->type != NAME)
 		return;
 
-	if(!v->pass_data){
-		v->pass_data = /*anything non-null*/&assign_lifetime;
+	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
 
-		v->lifetime.start = isn_count;
+	if(!lt){
+		lt = xcalloc(1, sizeof *lt);
+		dynmap_set(val *, struct lifetime *, ctx->blk->val_lifetimes, v, lt);
+
+		lt->start = ctx->isn_count;
 	}
 
-	v->lifetime.end = isn_count;
+	lt->end = ctx->isn_count;
 }
 
-static void reset_lifetime_passdata(val *v, isn *isn, void *ctx)
+static void assign_lifetimes(block *const blk, isn *const head)
 {
-	(void)isn;
-	(void)ctx;
-	v->pass_data = NULL;
-}
-
-static void assign_lifetimes(isn *const head)
-{
-	unsigned isn_count = 0;
+	struct lifetime_assign_ctx ctx = { 0 };
 	isn *i;
 
-	for(i = head; i; i = i->next, isn_count++)
-		isn_on_vals(i, assign_lifetime, &isn_count);
+	ctx.blk = blk;
 
-	for(i = head; i; i = i->next, isn_count++)
-		isn_on_vals(i, reset_lifetime_passdata, NULL);
+	for(i = head; i; i = i->next, ctx.isn_count++)
+		isn_on_vals(i, assign_lifetime, &ctx);
 }
 
 void block_finalize(block *blk)
 {
-	assign_lifetimes(block_first_isn(blk));
+	assign_lifetimes(blk, block_first_isn(blk));
 }
 
 static void block_dump1(block *blk)
 {
-	isn_dump(block_first_isn(blk));
+	isn_dump(block_first_isn(blk), blk);
 }
 
 static void block_dump_lbl(block *blk)

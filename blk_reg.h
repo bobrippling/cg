@@ -4,5 +4,6 @@
 #include "block.h"
 
 void blk_regalloc(block *, int nregs, int scratch_reg);
+void blk_lifecheck(block *);
 
 #endif

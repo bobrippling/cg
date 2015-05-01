@@ -17,6 +17,10 @@ int block_tenative(block *);
 void blocks_iterate(block *, void (block *, void *), void *);
 struct isn *block_first_isn(block *);
 
+#ifdef DYNMAP_H
+dynmap *block_lifetime_map(block *);
+#endif
+
 void block_dump(block *);
 
 #endif
