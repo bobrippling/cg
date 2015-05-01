@@ -590,17 +590,27 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
+	struct x86_isn opisn;
+
 	/* no instruction selection / register merging. just this for now */
 	mov(lhs, res, octx);
 
-	assert(op == op_add && "TODO");
+	opisn = isn_add;
 
-	emit_isn(
-			&isn_add, /* FIXME: op_to_str / op_to_isn_xyz */
-			octx,
-			rhs, 0,
-			res, 0,
-			"");
+	switch(op){
+		case op_add:
+			break;
+		case op_sub:
+			opisn.mnemonic = "sub";
+			break;
+		case op_mul:
+			opisn.mnemonic = "mul";
+			break;
+		default:
+			assert(0 && "TODO: other ops");
+	}
+
+	emit_isn(&opisn, octx, rhs, 0, res, 0, "");
 }
 
 static void x86_ext(val *from, val *to, x86_octx *octx)
