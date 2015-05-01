@@ -298,6 +298,21 @@ int main(int argc, char *argv[])
 		}else if(!strcmp(argv[i], "--help")){
 			usage(*argv);
 
+		}else if(!strcmp(argv[i], "--")){
+			i++;
+
+			/* only expect one filename after "--" */
+
+			if(argv[i] && !fname){
+				fname = argv[i];
+				i++;
+			}
+
+			if(argv[i])
+				usage(*argv);
+
+			break;
+
 		}else if(!fname){
 			fname = argv[i];
 
