@@ -27,7 +27,8 @@ typedef struct x86_out_ctx
 	dynmap *alloca2stack;
 	block *exitblk;
 	FILE *fout;
-	unsigned spill_alloca;
+	long alloca_bottom; /* max of ALLOCA instructions */
+	long spill_alloca_max; /* max of spill space */
 } x86_octx;
 
 struct x86_spill_ctx
@@ -767,6 +768,7 @@ static dynmap *x86_spillregs(
 	val **vi;
 	size_t idx;
 	val *v;
+	long spill_alloca = 0;
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
@@ -792,14 +794,13 @@ static dynmap *x86_spillregs(
 		if(sz == 0)
 			sz = 8; /* XXX: pointer size */
 
-		/* FIXME: account for local allocas */
-		make_stack_slot(&stack_slot, octx->spill_alloca + sz, sz);
+		spill_alloca += sz;
+
+		make_stack_slot(&stack_slot, octx->alloca_bottom + spill_alloca, sz);
 
 		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
 
 		mov_deref(v, &stack_slot, octx, 0, 1);
-
-		octx->spill_alloca += sz;
 
 		dynmap_set(
 				val *, uintptr_t,
@@ -807,6 +808,9 @@ static dynmap *x86_spillregs(
 				v,
 				(uintptr_t)stack_slot.u.addr.u.name.loc.u.off);
 	}
+
+	if(spill_alloca > octx->spill_alloca_max)
+		octx->spill_alloca_max = spill_alloca;
 
 	dynmap_free(spillctx.dontspill);
 	return spillctx.spill;
@@ -1028,6 +1032,10 @@ static void x86_out_fn(function *func)
 
 	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
+
+	/* start at the bottom of allocas */
+	out_ctx.alloca_bottom = alloca_ctx.alloca;
+
 	x86_out_block(entry, &out_ctx);
 	x86_emit_epilogue(&out_ctx, exit);
 
@@ -1040,7 +1048,8 @@ static void x86_out_fn(function *func)
 	printf("%s:\n", fname);
 
 	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
-	printf("\tsub $%ld, %%rsp\n", alloca_ctx.alloca + out_ctx.spill_alloca);
+	printf("\tsub $%ld, %%rsp\n",
+			out_ctx.alloca_bottom + out_ctx.spill_alloca_max);
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
