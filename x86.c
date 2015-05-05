@@ -604,7 +604,7 @@ static void x86_op(
 			opisn.mnemonic = "sub";
 			break;
 		case op_mul:
-			opisn.mnemonic = "mul";
+			opisn.mnemonic = "imul";
 			break;
 		default:
 			assert(0 && "TODO: other ops");
