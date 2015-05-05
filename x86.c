@@ -1052,10 +1052,11 @@ static void x86_out_fn(function *func)
 
 static void x86_out_var(variable *var)
 {
+	const char *name = variable_name(var);
+
 	printf(".bss\n");
-	printf("%s: .space %u\n",
-			variable_name(var),
-			variable_size(var));
+	printf(".globl %s\n", name);
+	printf("%s: .space %u\n", name, variable_size(var));
 }
 
 void x86_out(global *const glob)
