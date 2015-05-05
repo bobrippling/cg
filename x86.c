@@ -29,6 +29,7 @@ typedef struct x86_out_ctx
 	FILE *fout;
 	long alloca_bottom; /* max of ALLOCA instructions */
 	long spill_alloca_max; /* max of spill space */
+	unsigned max_align;
 } x86_octx;
 
 struct x86_spill_ctx
@@ -843,6 +844,8 @@ static void x86_call(
 	val *except[] = { into, fn, NULL };
 	dynmap *spilt;
 
+	octx->max_align = 16; /* ensure 16-byte alignment for calls */
+
 	spilt = x86_spillregs(blk, except, isn_idx, octx);
 
 	if(fn->type == LBL){
@@ -1011,7 +1014,7 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
-static void x86_emit_prologue(function *func, long alloca_total)
+static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 {
 	const char *fname;
 
@@ -1022,6 +1025,10 @@ static void x86_emit_prologue(function *func, long alloca_total)
 
 	printf("\tpush %%rbp\n"
 			"\tmov %%rsp, %%rbp\n");
+
+	if(align){
+		alloca_total = (alloca_total + align) & ~(align - 1);
+	}
 
 	printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
@@ -1056,7 +1063,10 @@ static void x86_out_fn(function *func)
 	dynmap_free(alloca_ctx.alloca2stack);
 
 	/* now we spit out the prologue first */
-	x86_emit_prologue(func, out_ctx.alloca_bottom + out_ctx.spill_alloca_max);
+	x86_emit_prologue(
+			func,
+			out_ctx.alloca_bottom + out_ctx.spill_alloca_max,
+			out_ctx.max_align);
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
