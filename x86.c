@@ -1011,13 +1011,27 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
+static void x86_emit_prologue(function *func, long alloca_total)
+{
+	const char *fname;
+
+	printf(".text\n");
+	fname = function_name(func);
+	printf(".globl %s\n", fname);
+	printf("%s:\n", fname);
+
+	printf("\tpush %%rbp\n"
+			"\tmov %%rsp, %%rbp\n");
+
+	printf("\tsub $%ld, %%rsp\n", alloca_total);
+}
+
 static void x86_out_fn(function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
-	const char *fname;
 
 	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
@@ -1042,14 +1056,7 @@ static void x86_out_fn(function *func)
 	dynmap_free(alloca_ctx.alloca2stack);
 
 	/* now we spit out the prologue first */
-	printf(".text\n");
-	fname = function_name(func);
-	printf(".globl %s\n", fname);
-	printf("%s:\n", fname);
-
-	printf("\tpush %%rbp\n\tmov %%rsp, %%rbp\n");
-	printf("\tsub $%ld, %%rsp\n",
-			out_ctx.alloca_bottom + out_ctx.spill_alloca_max);
+	x86_emit_prologue(func, out_ctx.alloca_bottom + out_ctx.spill_alloca_max);
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
