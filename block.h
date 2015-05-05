@@ -14,6 +14,9 @@ void block_free(block *);
 
 int block_tenative(block *);
 
+bool *block_flag(block *);
+void blocks_clear_flags(block *);
+
 void blocks_iterate(block *, void (block *, void *), void *);
 struct isn *block_first_isn(block *);
 

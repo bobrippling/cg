@@ -93,8 +93,19 @@ void block_set_type(block *blk, enum block_type type)
 	blk->type = type;
 }
 
+bool *block_flag(block *blk)
+{
+	return &blk->flag_user;
+}
+
 void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 {
+	bool *const flag = &blk->flag_iter;
+
+	if(*flag)
+		return;
+	*flag = true;
+
 	fn(blk, ctx);
 
 	switch(blk->type){
@@ -111,6 +122,19 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 			blocks_iterate(blk->u.jmp.target, fn, ctx);
 			break;
 	}
+
+	*flag = false;
+}
+
+static void clear_flag(block *blk, void *ctx)
+{
+	(void)ctx;
+	blk->flag_user = false;
+}
+
+void blocks_clear_flags(block *blk)
+{
+	blocks_iterate(blk, clear_flag, NULL);
 }
 
 struct lifetime_assign_ctx

@@ -1,6 +1,8 @@
 #ifndef BLOCK_STRUCT_H
 #define BLOCK_STRUCT_H
 
+#include <stdbool.h>
+
 #include "isn_internal.h"
 #include "lifetime_struct.h"
 
@@ -19,6 +21,8 @@ struct block
 		BLK_BRANCH,
 		BLK_JMP
 	} type;
+
+	bool flag_user, flag_iter;
 
 	union
 	{

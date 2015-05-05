@@ -950,6 +950,12 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 static void x86_out_block(block *const blk, x86_octx *octx)
 {
+	bool *const flag = block_flag(blk);
+
+	if(*flag)
+		return;
+	*flag = true;
+
 	x86_out_block1(octx, blk);
 	switch(blk->type){
 		case BLK_UNKNOWN:
@@ -1005,8 +1011,8 @@ static void x86_out_fn(function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
-	block *entry = function_entry_block(func, false);
-	block *exit = function_exit_block(func);
+	block *const entry = function_entry_block(func, false);
+	block *const exit = function_exit_block(func);
 	const char *fname;
 
 	out_ctx.fout = tmpfile();
@@ -1040,6 +1046,8 @@ static void x86_out_fn(function *func)
 		die("cat file:");
 
 	fclose(out_ctx.fout);
+
+	blocks_clear_flags(entry);
 }
 
 static void x86_out_var(variable *var)
