@@ -70,11 +70,17 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	isn_regalloc(blk, ctx);
 }
 
-void blk_regalloc(block *blk, int nregs, int scratch_reg)
+void blk_regalloc(
+		block *blk,
+		int nregs, int scratch_reg,
+		const int *callee_save, unsigned callee_save_cnt)
 {
 	struct regalloc_ctx ctx_regalloc;
 	ctx_regalloc.nregs = nregs;
 	ctx_regalloc.scratch_reg = scratch_reg;
+
+	ctx_regalloc.callee_save = callee_save;
+	ctx_regalloc.callee_save_cnt = callee_save_cnt;
 
 	blocks_iterate(blk, blk_regalloc_pass, &ctx_regalloc);
 }

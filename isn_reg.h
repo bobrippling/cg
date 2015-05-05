@@ -7,6 +7,9 @@
 struct regalloc_ctx
 {
 	int nregs, scratch_reg;
+
+	const int *callee_save;
+	unsigned callee_save_cnt;
 };
 
 void isn_regalloc(block *blk, const struct regalloc_ctx *);

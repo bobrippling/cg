@@ -52,6 +52,10 @@ static const char *const regs[][4] = {
 
 #define SCRATCH_REG 2 /* ecx */
 
+static const int callee_saves[] = {
+	1 /* ebx */
+};
+
 typedef enum operand_category
 {
 	/* 0 means no entry / end of entries */
@@ -1046,7 +1050,10 @@ static void x86_out_fn(function *func)
 
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
-	blk_regalloc(entry, countof(regs), SCRATCH_REG);
+	blk_regalloc(
+			entry,
+			countof(regs), SCRATCH_REG,
+			callee_saves, countof(callee_saves));
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);

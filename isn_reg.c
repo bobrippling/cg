@@ -109,6 +109,13 @@ static void mark_other_block_vals_as_used(char *in_use, isn *isn)
 		isn_on_vals(isn, mark_other_block_val_as_used, in_use);
 }
 
+static void mark_callee_save_as_used(
+		char *in_use, const int *callee_save, unsigned callee_save_cnt)
+{
+	for(; callee_save_cnt > 0; callee_save_cnt--, callee_save++)
+		in_use[*callee_save] = 1;
+}
+
 static void regalloc_greedy(
 		block *blk, isn *const head,
 		const struct regalloc_ctx *regs_ctx)
@@ -125,6 +132,11 @@ static void regalloc_greedy(
 
 	/* mark values who are in use in other blocks as in use */
 	mark_other_block_vals_as_used(alloc_ctx.in_use, head);
+
+	mark_callee_save_as_used(
+			alloc_ctx.in_use,
+			regs_ctx->callee_save,
+			regs_ctx->callee_save_cnt);
 
 	for(isn_iter = head; isn_iter; isn_iter = isn_iter->next, alloc_ctx.isn_num++)
 		isn_on_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
