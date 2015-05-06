@@ -420,6 +420,9 @@ static void parse_decl_start(parse *p, unsigned *const sz, char **const name)
 
 	eat(p, "decl name", tok_ident);
 	*name = token_last_ident(p->tok);
+
+	if(!*name)
+		*name = xstrdup("_error");
 }
 
 static int parse_finished(tokeniser *tok)
