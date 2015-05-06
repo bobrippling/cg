@@ -413,6 +413,15 @@ static void parse_block(parse *p)
 	}
 }
 
+static void parse_decl_start(parse *p, unsigned *const sz, char **const name)
+{
+	eat(p, "decl type", tok_int);
+	*sz = token_last_int(p->tok);
+
+	eat(p, "decl name", tok_ident);
+	*name = token_last_ident(p->tok);
+}
+
 static int parse_finished(tokeniser *tok)
 {
 	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
@@ -462,11 +471,7 @@ static void parse_global(parse *p)
 	unsigned sz;
 	char *name;
 
-	eat(p, "global return", tok_int);
-	sz = token_last_int(p->tok);
-
-	eat(p, "global name", tok_ident);
-	name = token_last_ident(p->tok);
+	parse_decl_start(p, &sz, &name);
 
 	if(token_peek(p->tok) == tok_lparen)
 		parse_function(p, sz, name);
