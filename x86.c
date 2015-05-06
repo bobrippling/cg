@@ -1034,7 +1034,8 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 		alloca_total = (alloca_total + align) & ~(align - 1);
 	}
 
-	printf("\tsub $%ld, %%rsp\n", alloca_total);
+	if(alloca_total)
+		printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
 
 static void x86_out_fn(function *func)
