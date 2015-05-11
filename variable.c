@@ -33,9 +33,10 @@ unsigned variable_size(variable *v)
 	return v->sz;
 }
 
-void variable_dump(variable *v)
+void variable_dump(variable *v, const char *post)
 {
-	printf("%u %s;\n",
+	printf("%u %s%s",
 			v->sz,
-			variable_name(v));
+			variable_name(v),
+			post);
 }

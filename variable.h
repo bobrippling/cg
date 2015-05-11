@@ -7,6 +7,6 @@ void variable_free(variable *);
 
 const char *variable_name(variable *);
 unsigned variable_size(variable *);
-void variable_dump(variable *);
+void variable_dump(variable *, const char *post);
 
 #endif

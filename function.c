@@ -135,7 +135,13 @@ void function_finalize(function *f)
 
 void function_dump(function *f)
 {
-	printf("%u %s()", f->retsz, f->name);
+	size_t i;
+
+	printf("%u %s(", f->retsz, f->name);
+	for(i = 0; i < f->nargs; i++)
+		variable_dump(&f->args[i], i == f->nargs - 1 ? "" : ", ");
+
+	printf(")");
 
 	if(f->entry){
 		printf("\n{\n");

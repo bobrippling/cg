@@ -8,5 +8,5 @@ void global_dump(global *glob)
 	if(glob->is_fn)
 		function_dump(glob->u.fn);
 	else
-		variable_dump(glob->u.var);
+		variable_dump(glob->u.var, ";\n");
 }
