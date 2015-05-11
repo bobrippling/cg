@@ -1,6 +1,7 @@
 function arguments
 	- r8 and r9 handling
 	- arguments > 6 handling
+	- calling
 
 identifiers vs. keywords - @add vs. add
 callee save registers
