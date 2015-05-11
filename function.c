@@ -124,7 +124,7 @@ void function_dump(function *f)
 
 	printf("%u %s(", f->retsz, f->name);
 	for(i = 0; i < f->nargs; i++)
-		variable_dump(&f->args[i], i == f->nargs - 1 ? "" : ", ");
+		variable_dump(&f->args[i].var, i == f->nargs - 1 ? "" : ", ");
 
 	printf(")");
 
@@ -151,15 +151,20 @@ void function_arg_add(function *f, unsigned sz, char *name)
 	f->nargs++;
 	f->args = xrealloc(f->args, f->nargs * sizeof *f->args);
 
-	f->args[f->nargs - 1].sz = sz;
-	f->args[f->nargs - 1].name = name;
+	f->args[f->nargs - 1].var.sz = sz;
+	f->args[f->nargs - 1].var.name = name;
+
+	memset(
+			&f->args[f->nargs - 1].val,
+			0,
+			sizeof f->args[f->nargs - 1].val);
 }
 
 bool function_arg_find(function *f, const char *name, size_t *const idx)
 {
 	size_t i;
 	for(i = 0; i < f->nargs; i++){
-		if(!strcmp(name, f->args[i].name)){
+		if(!strcmp(name, f->args[i].var.name)){
 			*idx = i;
 			return true;
 		}

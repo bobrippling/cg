@@ -1,6 +1,9 @@
 #ifndef FUNCTION_STRUCT_H
 #define FUNCTION_STRUCT_H
 
+#include "variable_struct.h"
+#include "val_struct.h"
+
 struct function
 {
 	char *name;
@@ -11,7 +14,11 @@ struct function
 	block **blocks;
 	size_t nblocks;
 
-	variable *args;
+	struct
+	{
+		variable var;
+		val val;
+	} *args;
 	size_t nargs;
 
 	unsigned retsz;

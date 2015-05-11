@@ -29,6 +29,7 @@ typedef struct x86_out_ctx
 	dynmap *alloca2stack;
 	block *exitblk;
 	FILE *fout;
+	function *func;
 	long alloca_bottom; /* max of ALLOCA instructions */
 	long spill_alloca_max; /* max of spill space */
 	unsigned max_align;
@@ -151,8 +152,8 @@ static operand_category val_category(val *v)
 	switch(v->type){
 		case INT:  return OPERAND_INT;
 		case NAME: return OPERAND_REG; /* not mem from val_is_mem() */
-		case ARG:  return OPERAND_REG;
 
+		case ARG:
 		case INT_PTR:
 		case ALLOCA:
 		case LBL:
@@ -248,8 +249,9 @@ static const char *x86_val_str_sized(
 		}
 		case ARG:
 		{
-			snprintf(buf, sizeof bufs[0], "<arg %zu>", val->u.arg.idx);
-			break;
+			return x86_val_str_sized(
+					&octx->func->args[val->u.arg.idx].val,
+					bufchoice, octx, dereference, size);
 		}
 	}
 
@@ -1042,14 +1044,9 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
-static void x86_emit_prologue(
-		function *func,
-		x86_octx *octx,
-		long alloca_total, unsigned align)
+static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 {
 	const char *fname;
-	size_t i;
-	unsigned current_slot = 0;
 
 	printf(".text\n");
 	fname = function_name(func);
@@ -1065,9 +1062,28 @@ static void x86_emit_prologue(
 
 	if(alloca_total)
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
+}
+
+static void alloca_for_args(
+		function *func,
+		struct x86_alloca_ctx *alloca_ctx)
+{
+	size_t i;
 
 	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i]);
+		unsigned arg_sz = variable_size(&func->args[i].var);
+
+		alloca_ctx->alloca += arg_sz;
+	}
+}
+
+static void emit_arg_spills(function *func, x86_octx *octx)
+{
+	size_t i;
+	unsigned current_slot = 0;
+
+	for(i = 0; i < func->nargs; i++){
+		unsigned arg_sz = variable_size(&func->args[i].var);
 
 		if(i < 6){
 			val stack_slot = { 0 };
@@ -1089,22 +1105,12 @@ static void x86_emit_prologue(
 			make_reg(&arg_reg, call_regs[i], arg_sz);
 
 			mov_deref(&arg_reg, &stack_slot, octx, 0, 1);
+
+			func->args[i].val = stack_slot;
+
 		}else{
 			assert(0 && "TODO: reference arg space");
 		}
-	}
-}
-
-static void alloca_for_args(
-		function *func,
-		struct x86_alloca_ctx *alloca_ctx)
-{
-	size_t i;
-
-	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i]);
-
-		alloca_ctx->alloca += arg_sz;
 	}
 }
 
@@ -1114,9 +1120,9 @@ static void x86_out_fn(function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
-	FILE *ftmp;
 
-	ftmp = out_ctx.fout = tmpfile();
+	out_ctx.func = func; /* for arg backreferences */
+	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
 		die("tmpfile():");
 
@@ -1129,6 +1135,8 @@ static void x86_out_fn(function *func)
 
 	/* alloca argument spill space */
 	alloca_for_args(func, &alloca_ctx);
+
+	emit_arg_spills(func, &out_ctx);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
@@ -1145,13 +1153,10 @@ static void x86_out_fn(function *func)
 	dynmap_free(alloca_ctx.alloca2stack);
 
 	/* now we spit out the prologue first */
-	out_ctx.fout = stdout;
 	x86_emit_prologue(
 			func,
-			&out_ctx,
 			out_ctx.alloca_bottom + out_ctx.spill_alloca_max,
 			out_ctx.max_align);
-	out_ctx.fout = ftmp;
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
