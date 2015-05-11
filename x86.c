@@ -15,6 +15,8 @@
 #include "val_struct.h"
 #include "blk_reg.h"
 #include "block_struct.h"
+#include "function_struct.h"
+#include "variable_struct.h"
 
 struct x86_alloca_ctx
 {
@@ -772,6 +774,18 @@ static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
 	stack_slot->u.addr.u.name.loc.u.off = off;
 }
 
+static void make_reg(val *reg, int regidx, unsigned sz)
+{
+	if(sz == 0)
+		sz = 8;
+
+	reg->type = NAME;
+	reg->retains = 1;
+	reg->u.addr.u.name.val_size = sz;
+	reg->u.addr.u.name.loc.where = NAME_IN_REG;
+	reg->u.addr.u.name.loc.u.reg = regidx;
+}
+
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
@@ -1028,9 +1042,14 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
-static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
+static void x86_emit_prologue(
+		function *func,
+		x86_octx *octx,
+		long alloca_total, unsigned align)
 {
 	const char *fname;
+	size_t i;
+	unsigned current_slot = 0;
 
 	printf(".text\n");
 	fname = function_name(func);
@@ -1046,6 +1065,47 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 
 	if(alloca_total)
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
+
+	for(i = 0; i < func->nargs; i++){
+		unsigned arg_sz = variable_size(&func->args[i]);
+
+		if(i < 6){
+			val stack_slot = { 0 };
+			val arg_reg = { 0 };
+
+			current_slot += arg_sz;
+			make_stack_slot(&stack_slot, current_slot, arg_sz);
+
+			static const int call_regs[6] = {
+				4,
+				5,
+				3,
+				2,
+				/* TODO: r8, r9 */
+				-1,
+				-1
+			};
+
+			make_reg(&arg_reg, call_regs[i], arg_sz);
+
+			mov_deref(&arg_reg, &stack_slot, octx, 0, 1);
+		}else{
+			assert(0 && "TODO: reference arg space");
+		}
+	}
+}
+
+static void alloca_for_args(
+		function *func,
+		struct x86_alloca_ctx *alloca_ctx)
+{
+	size_t i;
+
+	for(i = 0; i < func->nargs; i++){
+		unsigned arg_sz = variable_size(&func->args[i]);
+
+		alloca_ctx->alloca += arg_sz;
+	}
 }
 
 static void x86_out_fn(function *func)
@@ -1054,8 +1114,9 @@ static void x86_out_fn(function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
+	FILE *ftmp;
 
-	out_ctx.fout = tmpfile();
+	ftmp = out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
 		die("tmpfile():");
 
@@ -1065,6 +1126,9 @@ static void x86_out_fn(function *func)
 			entry,
 			countof(regs), SCRATCH_REG,
 			callee_saves, countof(callee_saves));
+
+	/* alloca argument spill space */
+	alloca_for_args(func, &alloca_ctx);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
@@ -1081,10 +1145,13 @@ static void x86_out_fn(function *func)
 	dynmap_free(alloca_ctx.alloca2stack);
 
 	/* now we spit out the prologue first */
+	out_ctx.fout = stdout;
 	x86_emit_prologue(
 			func,
+			&out_ctx,
 			out_ctx.alloca_bottom + out_ctx.spill_alloca_max,
 			out_ctx.max_align);
+	out_ctx.fout = ftmp;
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");

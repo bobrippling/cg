@@ -10,24 +10,9 @@
 #include "blk_reg.h"
 #include "variable.h"
 #include "variable_struct.h"
+#include "function_struct.h"
 
 static void function_add_block(function *, block *);
-
-struct function
-{
-	char *name;
-	block *entry, *exit;
-
-	unsigned *uniq_counter;
-
-	block **blocks;
-	size_t nblocks;
-
-	variable *args;
-	size_t nargs;
-
-	unsigned retsz;
-};
 
 function *function_new(
 		const char *lbl, unsigned retsz,
