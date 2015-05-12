@@ -1070,9 +1070,22 @@ static void alloca_for_args(
 	size_t i;
 
 	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i].var, PTR_SZ);
+		unsigned sz, align;
 
-		alloca_ctx->alloca += arg_sz;
+		variable_size_align(&func->args[i].var, PTR_SZ, &sz, &align);
+
+		if((alloca_ctx->alloca + sz) & (align - 1)){
+			/* not aligned */
+			fprintf(stderr, "NOT ALIGN %s. sz=%d align=%d\n",
+					variable_name(&func->args[i].var),
+					sz, align);
+
+			sz = (sz + align) & ~(align - 1);
+
+			fprintf(stderr, "          now sz=%d\n", sz);
+		}
+
+		alloca_ctx->alloca += sz;
 	}
 }
 
