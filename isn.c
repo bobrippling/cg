@@ -384,7 +384,7 @@ static void isn_dump1(isn *i)
 		case ISN_STORE:
 		{
 			printf("\tstore.%u %s, %s\n",
-					val_size(i->u.store.from),
+					val_size(i->u.store.from, 0),
 					val_str_rn(0, i->u.store.lval),
 					val_str_rn(1, i->u.store.from));
 			break;
@@ -394,7 +394,7 @@ static void isn_dump1(isn *i)
 		{
 			printf("\t%s = load.%u %s\n",
 					val_str_rn(0, i->u.load.to),
-					val_size(i->u.load.to),
+					val_size(i->u.load.to, 0),
 					val_str_rn(1, i->u.load.lval));
 
 			break;
@@ -422,7 +422,7 @@ static void isn_dump1(isn *i)
 			printf("\t%s = %s.%u %s, %s\n",
 					val_str_rn(0, i->u.cmp.res),
 					op_cmp_to_str(i->u.cmp.cmp),
-					val_size(i->u.cmp.lhs),
+					val_size(i->u.cmp.lhs, 0),
 					val_str_rn(1, i->u.cmp.lhs),
 					val_str_rn(2, i->u.cmp.rhs));
 			break;
@@ -433,7 +433,7 @@ static void isn_dump1(isn *i)
 			printf("\t%s = %s.%u %s, %s\n",
 					val_str_rn(0, i->u.op.res),
 					op_to_str(i->u.op.op),
-					val_size(i->u.op.lhs),
+					val_size(i->u.op.lhs, 0),
 					val_str_rn(1, i->u.op.lhs),
 					val_str_rn(2, i->u.op.rhs));
 			break;
@@ -451,7 +451,7 @@ static void isn_dump1(isn *i)
 		{
 			printf("\t%s = zext %u, %s\n",
 					val_str_rn(0, i->u.copy.to),
-					val_size(i->u.copy.to),
+					val_size(i->u.copy.to, 0),
 					val_str_rn(1, i->u.copy.from));
 			break;
 		}
@@ -459,7 +459,7 @@ static void isn_dump1(isn *i)
 		case ISN_RET:
 		{
 			printf("\tret.%u %s\n",
-					val_size(i->u.ret),
+					val_size(i->u.ret, 0),
 					val_str(i->u.ret));
 			break;
 		}

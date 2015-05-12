@@ -22,6 +22,7 @@ struct greedy_ctx
 	int nregs;
 	unsigned isn_num;
 	unsigned spill_space;
+	unsigned ptrsz;
 };
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
@@ -46,7 +47,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->nregs){
 			/* no reg available */
-			unsigned vsz = val_size(v);
+			unsigned vsz = val_size(v, ctx->ptrsz);
 
 			ctx->spill_space += vsz;
 			assert(vsz && "unsized name val in regalloc");
@@ -66,6 +67,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 struct spill_ctx
 {
 	unsigned offset;
+	unsigned ptrsz;
 };
 
 static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
@@ -78,7 +80,7 @@ static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
 	if(v->type != NAME || VAL_REG(v) != -1)
 		return;
 
-	size = val_size(v);
+	size = val_size(v, ctx->ptrsz);
 
 	v->u.addr.u.name.loc.where = NAME_SPILT;
 	v->u.addr.u.name.loc.u.off = ctx->offset + size;
@@ -126,6 +128,7 @@ static void regalloc_greedy(
 	alloc_ctx.in_use = xcalloc(regs_ctx->nregs, 1);
 	alloc_ctx.nregs = regs_ctx->nregs;
 	alloc_ctx.blk = blk;
+	alloc_ctx.ptrsz = regs_ctx->ptrsz;
 
 	/* mark scratch as in use */
 	alloc_ctx.in_use[regs_ctx->scratch_reg] = 1;
@@ -147,6 +150,8 @@ static void regalloc_greedy(
 	if(alloc_ctx.spill_space){
 		struct spill_ctx spill_ctx = { 0 };
 		val *spill_alloca = val_alloca();
+
+		spill_ctx.ptrsz = alloc_ctx.ptrsz;
 
 		isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);
 

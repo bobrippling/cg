@@ -43,13 +43,13 @@ val *val_need(val *v, enum val_to to, const char *from)
 	assert(0);
 }
 
-int val_size(val *v)
+int val_size(val *v, unsigned ptrsz)
 {
 	switch(v->type){
 		case INT_PTR:
 		case ALLOCA:
 		case LBL:
-			return 0;
+			return ptrsz;
 		case INT:
 			return v->u.i.val_size;
 		case ARG:
@@ -361,8 +361,8 @@ val *val_element_noop(val *lval, int i, unsigned elemsz)
 
 val *val_add(block *blk, val *a, val *b)
 {
-	int sz_a = val_size(a);
-	int sz_b = val_size(b);
+	int sz_a = val_size(a, 0);
+	int sz_b = val_size(b, 0);
 	val *named;
 
 	assert(sz_a != -1 && sz_b != -1);
@@ -377,7 +377,7 @@ val *val_add(block *blk, val *a, val *b)
 
 val *val_zext(block *blk, val *v, unsigned to)
 {
-	unsigned sz = val_size(v);
+	unsigned sz = val_size(v, 0);
 	val *named;
 
 	assert(sz < to);

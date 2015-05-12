@@ -28,9 +28,9 @@ const char *variable_name(variable *v)
 	return v->name;
 }
 
-unsigned variable_size(variable *v)
+unsigned variable_size(variable *v, unsigned ptrsz)
 {
-	return v->sz;
+	return v->sz ? v->sz : ptrsz;
 }
 
 void variable_dump(variable *v, const char *post)

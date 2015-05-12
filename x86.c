@@ -54,6 +54,7 @@ static const char *const regs[][4] = {
 };
 
 #define SCRATCH_REG 2 /* ecx */
+#define PTR_SZ 8
 
 static const int callee_saves[] = {
 	1 /* ebx */
@@ -281,11 +282,12 @@ static void x86_make_eax(val *out, unsigned size)
 
 static unsigned resolve_isn_size(val *a, val *b)
 {
-	unsigned a_sz = val_size(a);
-	unsigned b_sz = val_size(b);
+	unsigned a_sz = val_size(a, 0);
+	unsigned b_sz = val_size(b, 0);
 
-	if(a_sz == b_sz)
-		return a_sz;
+	if(a_sz == b_sz){
+		return a_sz > 0 ? a_sz : PTR_SZ;
+	}
 
 	if(a_sz != 0){
 		assert(b_sz == 0);
@@ -635,8 +637,8 @@ static void x86_op(
 
 static void x86_ext(val *from, val *to, x86_octx *octx)
 {
-	unsigned sz_from = val_size(from);
-	unsigned sz_to = val_size(to);
+	unsigned sz_from = val_size(from, PTR_SZ);
+	unsigned sz_to = val_size(to, PTR_SZ);
 	char buf[4] = "z";
 
 	assert(sz_to > sz_from);
@@ -707,9 +709,9 @@ static void x86_cmp(
 	emit_isn(&isn_cmp, octx,
 			lhs, 0,
 			rhs, 0,
-			x86_size_suffix(val_size(lhs)));
+			x86_size_suffix(val_size(lhs, PTR_SZ)));
 
-	zero = val_retain(val_new_i(0, val_size(lhs)));
+	zero = val_retain(val_new_i(0, val_size(lhs, PTR_SZ)));
 
 	mov(zero, res, octx);
 
@@ -730,7 +732,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 	emit_isn(&isn_test, octx,
 			cond, 0,
 			cond, 0,
-			x86_size_suffix(val_size(cond)));
+			x86_size_suffix(val_size(cond, PTR_SZ)));
 
 	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 	x86_jmp(octx, bt);
@@ -766,8 +768,7 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 
 static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
 {
-	if(sz == 0)
-		sz = 8;
+	assert(sz);
 
 	stack_slot->type = NAME;
 	stack_slot->retains = 1;
@@ -778,8 +779,7 @@ static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
 
 static void make_reg(val *reg, int regidx, unsigned sz)
 {
-	if(sz == 0)
-		sz = 8;
+	assert(sz);
 
 	reg->type = NAME;
 	reg->retains = 1;
@@ -819,11 +819,10 @@ static dynmap *x86_spillregs(
 	}
 
 	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
-		unsigned sz = val_size(v);
+		unsigned sz = val_size(v, PTR_SZ);
 		val stack_slot = { 0 };
 
-		if(sz == 0)
-			sz = 8; /* XXX: pointer size */
+		assert(sz);
 
 		spill_alloca += sz;
 
@@ -858,7 +857,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 
 		fprintf(octx->fout, "\t# restore '%s'\n", val_str(v));
 
-		make_stack_slot(&stack_slot, off, val_size(v));
+		make_stack_slot(&stack_slot, off, val_size(v, PTR_SZ));
 
 		mov_deref(&stack_slot, v, octx, 1, 0);
 	}
@@ -916,7 +915,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 			{
 				val veax;
 
-				x86_make_eax(&veax, val_size(i->u.ret));
+				x86_make_eax(&veax, val_size(i->u.ret, PTR_SZ));
 
 				mov(i->u.ret, &veax, octx);
 
@@ -1071,7 +1070,7 @@ static void alloca_for_args(
 	size_t i;
 
 	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i].var);
+		unsigned arg_sz = variable_size(&func->args[i].var, PTR_SZ);
 
 		alloca_ctx->alloca += arg_sz;
 	}
@@ -1083,13 +1082,15 @@ static void emit_arg_spills(function *func, x86_octx *octx)
 	unsigned current_slot = 0;
 
 	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i].var);
+		unsigned arg_sz = variable_size(&func->args[i].var, PTR_SZ);
+		assert(arg_sz);
 
 		if(i < 6){
 			val stack_slot = { 0 };
 			val arg_reg = { 0 };
 
 			current_slot += arg_sz;
+
 			make_stack_slot(&stack_slot, current_slot, arg_sz);
 
 			static const int call_regs[6] = {
@@ -1131,6 +1132,7 @@ static void x86_out_fn(function *func)
 	blk_regalloc(
 			entry,
 			countof(regs), SCRATCH_REG,
+			PTR_SZ,
 			callee_saves, countof(callee_saves));
 
 	/* alloca argument spill space */
@@ -1172,7 +1174,7 @@ static void x86_out_var(variable *var)
 
 	printf(".bss\n");
 	printf(".globl %s\n", name);
-	printf("%s: .space %u\n", name, variable_size(var));
+	printf("%s: .space %u\n", name, variable_size(var, PTR_SZ));
 }
 
 void x86_out(global *const glob)

@@ -73,11 +73,13 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 void blk_regalloc(
 		block *blk,
 		int nregs, int scratch_reg,
+		unsigned ptrsz,
 		const int *callee_save, unsigned callee_save_cnt)
 {
 	struct regalloc_ctx ctx_regalloc;
 	ctx_regalloc.nregs = nregs;
 	ctx_regalloc.scratch_reg = scratch_reg;
+	ctx_regalloc.ptrsz = ptrsz;
 
 	ctx_regalloc.callee_save = callee_save;
 	ctx_regalloc.callee_save_cnt = callee_save_cnt;

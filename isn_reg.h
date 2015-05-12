@@ -7,6 +7,7 @@
 struct regalloc_ctx
 {
 	int nregs, scratch_reg;
+	unsigned ptrsz;
 
 	const int *callee_save;
 	unsigned callee_save_cnt;
