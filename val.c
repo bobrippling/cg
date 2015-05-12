@@ -292,11 +292,12 @@ val *val_new_lbl(char *lbl)
 	return v;
 }
 
-val *val_new_arg(size_t idx, char *name)
+val *val_new_arg(size_t idx, char *name, unsigned size)
 {
 	val *v = val_new(ARG);
 	v->u.arg.idx = idx;
 	v->u.arg.name = name;
+	v->u.arg.val_size = size;
 	return v;
 }
 

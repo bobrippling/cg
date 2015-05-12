@@ -75,6 +75,7 @@ static val *uniq_val(
 {
 	val *v;
 	global *glob;
+	variable *var;
 	size_t arg_idx;
 
 	if(p->names2vals){
@@ -91,8 +92,8 @@ found:
 	}
 
 	/* check args */
-	if(function_arg_find(p->func, name, &arg_idx)){
-		v = val_new_arg(arg_idx, name);
+	if((var = function_arg_find(p->func, name, &arg_idx))){
+		v = val_new_arg(arg_idx, name, variable_size(var, 0));
 		name = NULL;
 		goto found;
 	}

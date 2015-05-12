@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "block.h"
+#include "variable.h"
 
 typedef struct function function;
 
@@ -33,6 +34,6 @@ block *function_block_n(function *, size_t);
 			blk = function_block_n(fn, i))
 
 void function_arg_add(function *, unsigned sz, char *name);
-bool function_arg_find(function *, const char *, size_t *);
+variable *function_arg_find(function *, const char *, size_t *);
 
 #endif

@@ -160,15 +160,15 @@ void function_arg_add(function *f, unsigned sz, char *name)
 			sizeof f->args[f->nargs - 1].val);
 }
 
-bool function_arg_find(function *f, const char *name, size_t *const idx)
+variable *function_arg_find(function *f, const char *name, size_t *const idx)
 {
 	size_t i;
 	for(i = 0; i < f->nargs; i++){
 		if(!strcmp(name, f->args[i].var.name)){
 			*idx = i;
-			return true;
+			return &f->args[i].var;
 		}
 	}
 
-	return false;
+	return NULL;
 }
