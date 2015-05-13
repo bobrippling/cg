@@ -44,6 +44,9 @@ static void discard_dead_stores(isn *head)
 		struct last_access *la;
 		bool check_global = false; /* keep stores to globals? */
 
+		if(head->skip)
+			continue;
+
 		switch(head->type){
 			default:
 				continue;
