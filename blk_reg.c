@@ -50,7 +50,7 @@ static void check_val_life_block(block *blk, void *vctx)
 	ctx_lifecheck.values_to_block = values_to_block;
 
 	for(isn = block_first_isn(blk); isn; isn = isn->next)
-		isn_on_vals(isn, check_val_life_isn, &ctx_lifecheck);
+		isn_on_live_vals(isn, check_val_life_isn, &ctx_lifecheck);
 }
 
 void blk_lifecheck(block *blk)

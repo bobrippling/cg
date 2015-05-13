@@ -815,7 +815,7 @@ static dynmap *x86_spillregs(
 		if(isn->skip)
 			continue;
 
-		isn_on_vals(isn, maybe_spill, &spillctx);
+		isn_on_live_vals(isn, maybe_spill, &spillctx);
 	}
 
 	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){

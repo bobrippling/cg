@@ -173,7 +173,7 @@ static void assign_lifetimes(block *const blk, isn *const head)
 	ctx.blk = blk;
 
 	for(i = head; i; i = i->next, ctx.isn_count++)
-		isn_on_vals(i, assign_lifetime, &ctx);
+		isn_on_live_vals(i, assign_lifetime, &ctx);
 }
 
 void block_finalize(block *blk)

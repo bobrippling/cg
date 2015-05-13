@@ -108,7 +108,7 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 static void mark_other_block_vals_as_used(char *in_use, isn *isn)
 {
 	for(; isn; isn = isn->next)
-		isn_on_vals(isn, mark_other_block_val_as_used, in_use);
+		isn_on_live_vals(isn, mark_other_block_val_as_used, in_use);
 }
 
 static void mark_callee_save_as_used(
@@ -142,7 +142,7 @@ static void regalloc_greedy(
 			regs_ctx->callee_save_cnt);
 
 	for(isn_iter = head; isn_iter; isn_iter = isn_iter->next, alloc_ctx.isn_num++)
-		isn_on_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
+		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
 
 	free(alloc_ctx.in_use);
 
@@ -156,7 +156,7 @@ static void regalloc_greedy(
 		isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);
 
 		for(isn_iter = head; isn_iter; isn_iter = isn_iter->next)
-			isn_on_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);
+			isn_on_live_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);
 	}
 }
 

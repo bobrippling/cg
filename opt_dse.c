@@ -88,10 +88,10 @@ void opt_dse(block *const entry)
 	isn *i;
 
 	for(i = head; i; i = i->next, isn_count++)
-		isn_on_vals(i, store_access_times, &isn_count);
+		isn_on_live_vals(i, store_access_times, &isn_count);
 
 	discard_dead_stores(head);
 
 	for(i = head; i; i = i->next)
-		isn_on_vals(i, free_access_times, NULL);
+		isn_on_all_vals(i, free_access_times, NULL);
 }

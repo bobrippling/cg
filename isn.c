@@ -315,8 +315,15 @@ void isn_jmp(block *current, block *new)
 	current->u.jmp.target = new; /* weak ref */
 }
 
-void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
+static void isn_on_vals(
+		isn *current,
+		void fn(val *, isn *, void *),
+		void *ctx,
+		bool include_dead)
 {
+	if(!include_dead && current->skip)
+		return;
+
 	switch(current->type){
 		case ISN_STORE:
 			fn(current->u.store.lval, current, ctx);
@@ -377,6 +384,17 @@ void isn_on_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 			break;
 	}
 }
+
+void isn_on_all_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
+{
+	isn_on_vals(current, fn, ctx, true);
+}
+
+void isn_on_live_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
+{
+	isn_on_vals(current, fn, ctx, false);
+}
+
 
 static void isn_dump1(isn *i)
 {
@@ -523,12 +541,8 @@ void isn_dump(isn *const head, block *blk)
 	if(SHOW_LIFE){
 		dynmap *vals = dynmap_new(val *, 0, val_hash);
 
-		for(i = head; i; i = i->next){
-			if(i->skip)
-				continue;
-
-			isn_on_vals(i, get_val, vals);
-		}
+		for(i = head; i; i = i->next)
+			isn_on_live_vals(i, get_val, vals);
 
 		val *v;
 		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
