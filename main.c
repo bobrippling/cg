@@ -10,6 +10,7 @@
 
 #include "die.h"
 #include "str.h"
+#include "dynarray.h"
 
 #include "backend.h"
 #include "isn.h"
@@ -48,23 +49,17 @@ enum
 	X(dse)              \
 	X(loadmerge)
 
-struct optflags
-{
-#define X(n) bool n;
-	OPTS
-#undef X
-};
-
 static const struct
 {
-	const char *name;
-	unsigned long offset;
-} optstrings[] = {
-#define X(n) { #n, offsetof(struct optflags, n) },
+	const char *spel;
+	void (*fn)(block *);
+} optimisations[] = {
+#define X(n) { #n, opt_ ## n },
 	OPTS
 #undef X
 };
 
+static const char *argv0;
 
 static void eg1(function *fn, block *const entry)
 {
@@ -203,8 +198,8 @@ static void usage(const char *arg0)
 
 	fprintf(stderr, "  -O<optimisation>: enable optimisation\n");
 
-	for(i = 0; i < countof(optstrings); i++)
-		fprintf(stderr, "    %s\n", optstrings[i].name);
+	for(i = 0; i < countof(optimisations); i++)
+		fprintf(stderr, "    %s\n", optimisations[i].spel);
 
 	exit(1);
 }
@@ -237,16 +232,33 @@ static void (*default_backend(void))(global *)
 
 static void run_opts(function *fn, void *vctx)
 {
-	struct optflags *opts = vctx;
+	dynarray *passes = vctx;
+	size_t i;
 
-#define X(n) if(opts->n) function_onblocks(fn, opt_ ## n);
-	OPTS
-#undef X
+	dynarray_iter(passes, i){
+		size_t j;
+		bool found = false;
+		const char *opt = dynarray_ent(passes, i);
+
+		for(j = 0; j < countof(optimisations); j++){
+			if(!strcmp(optimisations[j].spel, opt)){
+				found = true;
+				break;
+			}
+		}
+
+		if(!found){
+			fprintf(stderr, "optimise: unknown option '%s'\n", opt);
+			usage(argv0);
+		}
+
+		function_onblocks(fn, optimisations[j].fn);
+	}
 }
 
 int main(int argc, char *argv[])
 {
-	struct optflags opts = { 0 };
+	dynarray passes = DYNARRAY_INIT;
 	bool dump_tok = false;
 	void (*emit_fn)(global *) = NULL;
 	unit *unit = NULL;
@@ -254,30 +266,16 @@ int main(int argc, char *argv[])
 	int i;
 	int parse_err = 0;
 
+	argv0 = argv[0];
+
 	for(i = 1; i < argc; i++){
 		if(!strncmp(argv[i], "-O", 2)){
 			if(argv[i][2]){
-				size_t j;
-				bool found = false;
-				const char *opt = argv[i] + 2;
-
-				for(j = 0; j < countof(optstrings); j++){
-					if(!strcmp(optstrings[j].name, opt)){
-						bool *p = (bool *)((char *)&opts + optstrings[j].offset);
-						*p = true;
-						found = true;
-						break;
-					}
-				}
-
-				if(!found){
-					fprintf(stderr, "optimise: unknown option '%s'\n", argv[i]);
-					usage(*argv);
-				}
-
+				dynarray_add(&passes, argv[i] + 2);
 			}else{
-				/* all on */
-				memset(&opts, 1, sizeof opts);
+#define X(n) dynarray_add(&passes, #n);
+				OPTS
+#undef X
 			}
 
 		}else if(!strcmp(argv[i], "--dump-tokens")){
@@ -346,7 +344,7 @@ int main(int argc, char *argv[])
 		assert(unit);
 	}
 
-	unit_on_functions(unit, run_opts, &opts);
+	unit_on_functions(unit, run_opts, &passes);
 
 	if(parse_err)
 		return 1;
@@ -356,6 +354,8 @@ int main(int argc, char *argv[])
 	unit_on_globals(unit, emit_fn);
 
 	unit_free(unit);
+
+	dynarray_reset(&passes);
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-OBJ = val.o val_allocas.o main.o mem.o op.o \
+OBJ = val.o val_allocas.o main.o mem.o dynarray.o op.o \
       dynmap.o opt_cprop.o opt_storeprop.o opt_dse.o \
       opt_loadmerge.o \
       isn.o isn_reg.o \
