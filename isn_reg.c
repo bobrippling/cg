@@ -32,8 +32,13 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	if(v->type != NAME)
-		return; /* not something we need to regalloc */
+	switch(v->type){
+		case NAME:
+		case ARG:
+			break;
+		default:
+			return; /* not something we need to regalloc */
+	}
 
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
@@ -95,8 +100,14 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	if(v->type != NAME)
-		return;
+	switch(v->type){
+		case NAME:
+			break;
+		case ARG:
+			break;
+		default:
+			return;
+	}
 
 	idx = VAL_REG(v);
 	if(idx == -1)
@@ -118,6 +129,34 @@ static void mark_callee_save_as_used(
 		in_use[*callee_save] = 1;
 }
 
+static void assign_arg_reg(val *v, isn *isn, void *vctx)
+{
+	const struct backend_traits *backend = vctx;
+
+	(void)isn;
+
+	if(v->type != ARG)
+		return;
+
+	/* TODO: in use check */
+
+	if(v->u.arg.idx >= backend->arg_regs_cnt){
+		assert(0 && "TODO: arg on stack");
+	}else{
+		v->u.arg.loc.where = NAME_IN_REG;
+		v->u.arg.loc.u.reg = backend->arg_regs[v->u.arg.idx];
+	}
+}
+
+static void assign_argument_registers(
+		isn *const head,
+		const struct backend_traits *backend)
+{
+	isn *isn;
+	for(isn = head; isn; isn = isn->next)
+		isn_on_live_vals(isn, assign_arg_reg, (void *)backend);
+}
+
 static void regalloc_greedy(
 		block *blk, isn *const head,
 		const struct backend_traits *backend)
@@ -129,6 +168,8 @@ static void regalloc_greedy(
 	alloc_ctx.nregs = backend->nregs;
 	alloc_ctx.blk = blk;
 	alloc_ctx.ptrsz = backend->ptrsz;
+
+	assign_argument_registers(head, backend);
 
 	/* mark scratch as in use */
 	alloc_ctx.in_use[backend->scratch_reg] = 1;

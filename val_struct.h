@@ -41,6 +41,7 @@ struct val
 		{
 			char *name;
 			size_t idx;
+			struct name_loc loc;
 			unsigned val_size;
 		} arg;
 		struct

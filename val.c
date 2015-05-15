@@ -67,7 +67,7 @@ bool val_is_mem(val *v)
 		case ALLOCA:  return true;
 		case LBL:     return true;
 		case INT:     return false;
-		case ARG:     return true;
+		case ARG:     return v->u.arg.loc.where == NAME_SPILT;
 		case NAME:    return v->u.addr.u.name.loc.where == NAME_SPILT;
 	}
 	assert(0);

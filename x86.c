@@ -29,7 +29,6 @@ typedef struct x86_out_ctx
 	dynmap *alloca2stack;
 	block *exitblk;
 	FILE *fout;
-	function *func;
 	long alloca_bottom; /* max of ALLOCA instructions */
 	long spill_alloca_max; /* max of spill space */
 	unsigned max_align;
@@ -153,8 +152,8 @@ static operand_category val_category(val *v)
 	switch(v->type){
 		case INT:  return OPERAND_INT;
 		case NAME: return OPERAND_REG; /* not mem from val_is_mem() */
+		case ARG:  return OPERAND_REG; /* ditto */
 
-		case ARG:
 		case INT_PTR:
 		case ALLOCA:
 		case LBL:
@@ -170,20 +169,21 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 	return off;
 }
 
-static const char *name_in_reg_str(val *val, /*optional*/int size)
+static const char *name_in_reg_str(
+		const struct name_loc *loc, /*optional*/int size, val *v)
 {
 	int sz_idx;
-	int reg = val->u.addr.u.name.loc.u.reg;
+	int reg = loc->u.reg;
 
-	assert(val->u.addr.u.name.loc.where == NAME_IN_REG);
+	assert(loc->where == NAME_IN_REG);
 
 	if(reg == -1)
-		return val->u.addr.u.name.spel;
+		return NULL;
 
 	assert(reg < (int)countof(regs));
 
 	if(size < 0)
-		size = val->u.addr.u.name.val_size;
+		size = val_size(v, PTR_SZ);
 
 	switch(size){
 		case 0:
@@ -199,6 +199,30 @@ static const char *name_in_reg_str(val *val, /*optional*/int size)
 	}
 
 	return regs[reg][sz_idx];
+}
+
+static const char *x86_name_str(
+		const struct name_loc *loc,
+		char *buf, size_t bufsz,
+		bool dereference, unsigned size,
+		val *val)
+{
+	switch(loc->where){
+		case NAME_IN_REG:
+			snprintf(buf, bufsz, "%s%%%s%s",
+					dereference ? "(" : "",
+					name_in_reg_str(loc, dereference ? 0 : size, val),
+					dereference ? ")" : "");
+			break;
+
+		case NAME_SPILT:
+			assert(dereference);
+
+			snprintf(buf, bufsz, "-%u(%%rbp)", loc->u.off);
+			break;
+	}
+
+	return buf;
 }
 
 static const char *x86_val_str_sized(
@@ -221,17 +245,8 @@ static const char *x86_val_str_sized(
 			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
 			break;
 		case NAME:
-			if(val->u.addr.u.name.loc.where == NAME_IN_REG){
-				snprintf(buf, sizeof bufs[0], "%s%%%s%s",
-						dereference ? "(" : "",
-						name_in_reg_str(val, dereference ? 0 : size),
-						dereference ? ")" : "");
-			}else{
-				assert(dereference);
-
-				snprintf(buf, sizeof bufs[0], "-%u(%%rbp)",
-						val->u.addr.u.name.loc.u.off);
-			}
+			return x86_name_str(&val->u.addr.u.name.loc,
+					buf, sizeof bufs[0], dereference, size, val);
 			break;
 		case ALLOCA:
 		{
@@ -250,9 +265,8 @@ static const char *x86_val_str_sized(
 		}
 		case ARG:
 		{
-			return x86_val_str_sized(
-					&octx->func->args[val->u.arg.idx].val,
-					bufchoice, octx, dereference, size);
+			return x86_name_str(&val->u.arg.loc,
+					buf, sizeof bufs[0], dereference, size, val);
 		}
 	}
 
@@ -777,17 +791,6 @@ static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
 	stack_slot->u.addr.u.name.loc.u.off = off;
 }
 
-static void make_reg(val *reg, int regidx, unsigned sz)
-{
-	assert(sz);
-
-	reg->type = NAME;
-	reg->retains = 1;
-	reg->u.addr.u.name.val_size = sz;
-	reg->u.addr.u.name.loc.where = NAME_IN_REG;
-	reg->u.addr.u.name.loc.u.reg = regidx;
-}
-
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
@@ -1063,80 +1066,21 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
 
-static void alloca_for_args(
-		function *func,
-		struct x86_alloca_ctx *alloca_ctx)
-{
-	size_t i;
-
-	for(i = 0; i < func->nargs; i++){
-		unsigned sz, align;
-
-		variable_size_align(&func->args[i].var, PTR_SZ, &sz, &align);
-
-		if((alloca_ctx->alloca + sz) & (align - 1)){
-			/* not aligned */
-			fprintf(stderr, "NOT ALIGN %s. sz=%d align=%d\n",
-					variable_name(&func->args[i].var),
-					sz, align);
-
-			sz = (sz + align) & ~(align - 1);
-
-			fprintf(stderr, "          now sz=%d\n", sz);
-		}
-
-		alloca_ctx->alloca += sz;
-	}
-}
-
-static void emit_arg_spills(function *func, x86_octx *octx)
-{
-	size_t i;
-	unsigned current_slot = 0;
-
-	for(i = 0; i < func->nargs; i++){
-		unsigned arg_sz = variable_size(&func->args[i].var, PTR_SZ);
-		assert(arg_sz);
-
-		if(i < 6){
-			val stack_slot = { 0 };
-			val arg_reg = { 0 };
-
-			current_slot += arg_sz;
-
-			make_stack_slot(&stack_slot, current_slot, arg_sz);
-
-			static const int call_regs[6] = {
-				4,
-				5,
-				3,
-				2,
-				/* TODO: r8, r9 */
-				-1,
-				-1
-			};
-
-			make_reg(&arg_reg, call_regs[i], arg_sz);
-
-			mov_deref(&arg_reg, &stack_slot, octx, 0, 1);
-
-			func->args[i].val = stack_slot;
-
-		}else{
-			assert(0 && "TODO: reference arg space");
-		}
-	}
-}
-
 static void x86_out_fn(function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
+	static const int arg_regs[6] = {
+		4,
+		5,
+		3,
+		2,
+		/* TODO: r8, r9 */
+	};
 	struct backend_traits backend;
 
-	out_ctx.func = func; /* for arg backreferences */
 	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
 		die("tmpfile():");
@@ -1148,13 +1092,10 @@ static void x86_out_fn(function *func)
 	backend.ptrsz = PTR_SZ;
 	backend.callee_save = callee_saves;
 	backend.callee_save_cnt = countof(callee_saves);
+	backend.arg_regs = arg_regs;
+	backend.arg_regs_cnt = countof(arg_regs);
 
 	blk_regalloc(entry, &backend);
-
-	/* alloca argument spill space */
-	alloca_for_args(func, &alloca_ctx);
-
-	emit_arg_spills(func, &out_ctx);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);

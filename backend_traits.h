@@ -9,6 +9,9 @@ struct backend_traits
 
 	const int *callee_save;
 	unsigned callee_save_cnt;
+
+	const int *arg_regs;
+	unsigned arg_regs_cnt;
 };
 
 #endif
