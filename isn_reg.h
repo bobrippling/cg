@@ -3,16 +3,8 @@
 
 #include "isn_internal.h"
 #include "block.h"
+#include "backend_traits.h"
 
-struct regalloc_ctx
-{
-	int nregs, scratch_reg;
-	unsigned ptrsz;
-
-	const int *callee_save;
-	unsigned callee_save_cnt;
-};
-
-void isn_regalloc(block *blk, const struct regalloc_ctx *);
+void isn_regalloc(block *blk, const struct backend_traits *);
 
 #endif

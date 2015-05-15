@@ -120,26 +120,26 @@ static void mark_callee_save_as_used(
 
 static void regalloc_greedy(
 		block *blk, isn *const head,
-		const struct regalloc_ctx *regs_ctx)
+		const struct backend_traits *backend)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
 	isn *isn_iter;
 
-	alloc_ctx.in_use = xcalloc(regs_ctx->nregs, 1);
-	alloc_ctx.nregs = regs_ctx->nregs;
+	alloc_ctx.in_use = xcalloc(backend->nregs, 1);
+	alloc_ctx.nregs = backend->nregs;
 	alloc_ctx.blk = blk;
-	alloc_ctx.ptrsz = regs_ctx->ptrsz;
+	alloc_ctx.ptrsz = backend->ptrsz;
 
 	/* mark scratch as in use */
-	alloc_ctx.in_use[regs_ctx->scratch_reg] = 1;
+	alloc_ctx.in_use[backend->scratch_reg] = 1;
 
 	/* mark values who are in use in other blocks as in use */
 	mark_other_block_vals_as_used(alloc_ctx.in_use, head);
 
 	mark_callee_save_as_used(
 			alloc_ctx.in_use,
-			regs_ctx->callee_save,
-			regs_ctx->callee_save_cnt);
+			backend->callee_save,
+			backend->callee_save_cnt);
 
 	for(isn_iter = head; isn_iter; isn_iter = isn_iter->next, alloc_ctx.isn_num++)
 		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
@@ -160,14 +160,14 @@ static void regalloc_greedy(
 	}
 }
 
-static void simple_regalloc(block *blk, const struct regalloc_ctx *ctx)
+static void simple_regalloc(block *blk, const struct backend_traits *backend)
 {
 	isn *head = block_first_isn(blk);
 
-	regalloc_greedy(blk, head, ctx);
+	regalloc_greedy(blk, head, backend);
 }
 
-void isn_regalloc(block *blk, const struct regalloc_ctx *ctx)
+void isn_regalloc(block *blk, const struct backend_traits *backend)
 {
-	simple_regalloc(blk, ctx);
+	simple_regalloc(blk, backend);
 }

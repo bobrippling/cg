@@ -65,24 +65,14 @@ void blk_lifecheck(block *blk)
 
 static void blk_regalloc_pass(block *blk, void *vctx)
 {
-	const struct regalloc_ctx *ctx = vctx;
+	const struct backend_traits *ctx = vctx;
 
 	isn_regalloc(blk, ctx);
 }
 
 void blk_regalloc(
 		block *blk,
-		int nregs, int scratch_reg,
-		unsigned ptrsz,
-		const int *callee_save, unsigned callee_save_cnt)
+		struct backend_traits *backend)
 {
-	struct regalloc_ctx ctx_regalloc;
-	ctx_regalloc.nregs = nregs;
-	ctx_regalloc.scratch_reg = scratch_reg;
-	ctx_regalloc.ptrsz = ptrsz;
-
-	ctx_regalloc.callee_save = callee_save;
-	ctx_regalloc.callee_save_cnt = callee_save_cnt;
-
-	blocks_iterate(blk, blk_regalloc_pass, &ctx_regalloc);
+	blocks_iterate(blk, blk_regalloc_pass, backend);
 }

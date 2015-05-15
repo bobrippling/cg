@@ -2,12 +2,9 @@
 #define BLK_REG_H
 
 #include "block.h"
+#include "backend_traits.h"
 
-void blk_regalloc(
-		block *,
-		int nregs, int scratch_reg,
-		unsigned ptrsz,
-		const int *callee_save, unsigned callee_save_cnt);
+void blk_regalloc(block *, struct backend_traits *);
 
 void blk_lifecheck(block *);
 

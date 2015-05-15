@@ -1134,6 +1134,7 @@ static void x86_out_fn(function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
+	struct backend_traits backend;
 
 	out_ctx.func = func; /* for arg backreferences */
 	out_ctx.fout = tmpfile();
@@ -1142,11 +1143,13 @@ static void x86_out_fn(function *func)
 
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
-	blk_regalloc(
-			entry,
-			countof(regs), SCRATCH_REG,
-			PTR_SZ,
-			callee_saves, countof(callee_saves));
+	backend.nregs = countof(regs);
+	backend.scratch_reg = SCRATCH_REG;
+	backend.ptrsz = PTR_SZ;
+	backend.callee_save = callee_saves;
+	backend.callee_save_cnt = countof(callee_saves);
+
+	blk_regalloc(entry, &backend);
 
 	/* alloca argument spill space */
 	alloca_for_args(func, &alloca_ctx);
