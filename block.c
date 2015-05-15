@@ -147,11 +147,20 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 {
 	struct lifetime_assign_ctx *ctx = vctx;
 	struct lifetime *lt;
+	unsigned start;
 
 	(void)isn;
 
-	if(v->type != NAME)
-		return;
+	switch(v->type){
+		case NAME:
+			start = ctx->isn_count;
+			break;
+		case ARG:
+			start = 0;
+			break;
+		default:
+			return;
+	}
 
 	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
 
@@ -159,7 +168,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 		lt = xcalloc(1, sizeof *lt);
 		dynmap_set(val *, struct lifetime *, ctx->blk->val_lifetimes, v, lt);
 
-		lt->start = ctx->isn_count;
+		lt->start = start;
 	}
 
 	lt->end = ctx->isn_count;

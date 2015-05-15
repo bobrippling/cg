@@ -516,8 +516,13 @@ static void isn_dump1(isn *i)
 static void get_val(val *v, isn *isn, void *ctx)
 {
 	(void)isn;
-	if(v->type != NAME)
-		return;
+	switch(v->type){
+		case NAME:
+		case ARG:
+			break;
+		default:
+			return;
+	}
 
 	dynmap_set(val *, long, ctx, v, 0l);
 }
