@@ -70,9 +70,17 @@ static void isn_free_1(isn *isn)
 		case ISN_JMP:
 			break;
 		case ISN_CALL:
+		{
+			size_t i;
+
 			val_release(isn->u.call.into);
 			val_release(isn->u.call.fn);
+
+			dynarray_iter(&isn->u.call.args, i){
+				val_release(dynarray_ent(&isn->u.call.args, i));
+			}
 			break;
+		}
 	}
 
 	free(isn);
@@ -259,22 +267,32 @@ void isn_ret(block *blk, val *r)
 	block_set_type(blk, BLK_EXIT);
 }
 
-void isn_call(block *blk, val *into, val *fn)
+void isn_call(block *blk, val *into, val *fn, dynarray *args)
 {
 	isn *isn;
+	size_t i;
 
 	val_retain(into);
 	val_retain(fn);
 
+	dynarray_iter(args, i){
+		val_retain(dynarray_ent(args, i));
+	}
+
 	if(!blk){
 		val_release(into);
 		val_release(fn);
+
+		dynarray_iter(args, i){
+			val_release(dynarray_ent(args, i));
+		}
 		return;
 	}
 
 	isn = isn_new(ISN_CALL, blk);
 	isn->u.call.fn = fn;
 	isn->u.call.into = into;
+	dynarray_move(&isn->u.call.args, args);
 }
 
 void isn_br(block *current, val *cond, block *btrue, block *bfalse)
@@ -379,9 +397,17 @@ static void isn_on_vals(
 			break;
 
 		case ISN_CALL:
+		{
+			size_t i;
+
 			fn(current->u.call.into, current, ctx);
 			fn(current->u.call.fn, current, ctx);
+
+			dynarray_iter(&current->u.call.args, i){
+				fn(dynarray_ent(&current->u.call.args, i), current, ctx);
+			}
 			break;
+		}
 	}
 }
 
@@ -490,13 +516,26 @@ static void isn_dump1(isn *i)
 
 		case ISN_CALL:
 		{
+			size_t argi;
+			const char *sep = "";
+
+			printf("\t");
+
 			if(i->u.call.into){
-				printf("\t%s = call %s\n",
-						val_str_rn(0, i->u.call.into),
-						val_str_rn(1, i->u.call.fn));
-			}else{
-				printf("\tcall %s\n", val_str(i->u.call.fn));
+				printf("%s = ", val_str(i->u.call.into));
 			}
+
+			printf("call %s(", val_str(i->u.call.fn));
+
+			dynarray_iter(&i->u.call.args, argi){
+				val *arg = dynarray_ent(&i->u.call.args, argi);
+
+				printf("%s%s", sep, val_str(arg));
+
+				sep = ", ";
+			}
+
+			printf(")\n");
 			break;
 		}
 

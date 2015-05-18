@@ -26,3 +26,13 @@ void dynarray_reset(dynarray *d)
 	free(d->entries);
 	memset(d, 0, sizeof *d);
 }
+
+void dynarray_move(dynarray *dest, dynarray *src)
+{
+	dynarray_reset(dest);
+
+	memcpy(dest, src, sizeof *dest);
+
+	src->entries = NULL;
+	dynarray_reset(src);
+}

@@ -129,6 +129,11 @@ static void eat(parse *p, const char *desc, enum token expect)
 			token_to_str(expect), desc, token_to_str(got));
 }
 
+static int parse_finished(tokeniser *tok)
+{
+	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
+}
+
 static val *parse_lval(parse *p)
 {
 	enum token t = token_next(p->tok);
@@ -181,6 +186,7 @@ static void parse_call(parse *p, char *ident_or_null)
 	val *target;
 	val *into;
 	unsigned sz = parse_dot_size(p);
+	dynarray args = DYNARRAY_INIT;
 
 	assert(ident_or_null && "TODO: void");
 
@@ -188,7 +194,31 @@ static void parse_call(parse *p, char *ident_or_null)
 
 	into = uniq_val(p, ident_or_null, sz, VAL_CREATE);
 
-	isn_call(p->entry, into, target);
+	eat(p, "call paren", tok_lparen);
+
+	while(1){
+		val *arg;
+
+		if(dynarray_is_empty(&args)){
+			if(token_peek(p->tok) == tok_rparen)
+				break; /* call x() */
+		}else{
+			eat(p, "call comma", tok_comma);
+		}
+
+		arg = parse_rval(p, 0);
+
+		dynarray_add(&args, arg);
+
+		if(token_peek(p->tok) == tok_rparen || parse_finished(p->tok))
+			break;
+	}
+
+	eat(p, "call paren", tok_rparen);
+
+	isn_call(p->entry, into, target, &args);
+
+	dynarray_reset(&args);
 }
 
 static void parse_ident(parse *p)
@@ -432,11 +462,6 @@ static void parse_decl_start(parse *p, unsigned *const sz, char **const name)
 
 	if(!*name)
 		*name = xstrdup("_error");
-}
-
-static int parse_finished(tokeniser *tok)
-{
-	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
 }
 
 static function *parse_function(parse *p, unsigned ret, char *name)

@@ -15,6 +15,7 @@ typedef struct dynarray
 
 void dynarray_add(dynarray *, void *);
 void dynarray_reset(dynarray *);
+void dynarray_move(dynarray *dest, dynarray *src);
 
 #define dynarray_is_empty(d) ((d)->n == 0)
 #define dynarray_ent(d, i) ((d)->entries[i])

@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "dynarray.h"
+
 struct isn
 {
 	enum isn_type
@@ -74,6 +76,7 @@ struct isn
 		struct
 		{
 			val *into, *fn;
+			dynarray args;
 		} call;
 
 		val *ret;
