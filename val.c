@@ -98,6 +98,22 @@ unsigned val_hash(val *v)
 	return h;
 }
 
+struct name_loc *val_location(val *v)
+{
+	switch(v->type){
+		case NAME:
+			return &v->u.addr.u.name.loc;
+		case ARG:
+			return &v->u.arg.loc;
+		case INT:
+		case INT_PTR:
+		case ALLOCA:
+		case LBL:
+			break;
+	}
+	return NULL;
+}
+
 static bool val_both_ints(val *l, val *r)
 {
 	if(l->type != INT || r->type != INT)

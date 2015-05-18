@@ -540,14 +540,19 @@ static void mov_deref(
 		x86_octx *octx,
 		int dl, int dr)
 {
-	if(!dl && !dr
-	&& from->type == NAME
-	&& to->type == NAME
-	&& from->u.addr.u.name.loc.where == NAME_IN_REG
-	&& to->u.addr.u.name.loc.where == NAME_IN_REG
-	&& from->u.addr.u.name.loc.u.reg == to->u.addr.u.name.loc.u.reg)
-	{
-		fprintf(octx->fout, "\t;");
+	if(!dl && !dr){
+		struct name_loc *loc_from, *loc_to;
+
+		loc_from = val_location(from);
+		loc_to = val_location(to);
+
+		if(loc_from && loc_to
+		&& loc_from->where == NAME_IN_REG
+		&& loc_to->where == NAME_IN_REG
+		&& loc_from->u.reg == loc_to->u.reg)
+		{
+			fprintf(octx->fout, "\t;");
+		}
 	}
 
 	emit_isn(&isn_mov, octx,

@@ -27,4 +27,6 @@ val *val_need(val *v, enum val_to to, const char *from);
 int val_size(val *, unsigned ptrsz);
 bool val_is_mem(val *);
 
+struct name_loc *val_location(val *);
+
 #endif
