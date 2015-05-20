@@ -94,7 +94,11 @@ found:
 	/* check args */
 	if((var = function_arg_find(p->func, name, &arg_idx))){
 		v = val_new_arg(arg_idx, name, variable_size(var, 0));
+
+		map_val(p, name, v);
+
 		name = NULL;
+
 		goto found;
 	}
 
