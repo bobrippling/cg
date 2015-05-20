@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -6,10 +7,11 @@
 #include "macros.h"
 #include "die.h"
 #include "io.h"
+#include "mem.h"
+#include "dynmap.h"
 
 #include "x86.h"
 
-#include "dynmap.h"
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
@@ -57,6 +59,14 @@ static const char *const regs[][4] = {
 
 static const int callee_saves[] = {
 	1 /* ebx */
+};
+
+static const int arg_regs[] = {
+	4,
+	5,
+	3,
+	2,
+	/* TODO: r8, r9 */
 };
 
 typedef enum operand_category
@@ -804,6 +814,17 @@ static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
 	stack_slot->u.addr.u.name.loc.u.off = off;
 }
 
+static void make_reg(val *reg, int regidx, unsigned sz)
+{
+	assert(sz);
+
+	reg->type = NAME;
+	reg->retains = 1;
+	reg->u.addr.u.name.val_size = sz;
+	reg->u.addr.u.name.loc.where = NAME_IN_REG;
+	reg->u.addr.u.name.loc.u.reg = regidx;
+}
+
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
@@ -884,14 +905,36 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 static void x86_call(
 		block *blk, unsigned isn_idx,
 		val *into, val *fn,
+		dynarray *args,
 		x86_octx *octx)
 {
-	val *except[] = { into, fn, NULL };
+	val *except[3];
 	dynmap *spilt;
+	size_t i;
+
+	except[0] = into;
+	except[1] = fn;
+	except[2] = NULL;
 
 	octx->max_align = 16; /* ensure 16-byte alignment for calls */
 
 	spilt = x86_spillregs(blk, except, isn_idx, octx);
+
+	/* all regs spilt, can now shift arguments into arg regs */
+	dynarray_iter(args, i){
+		val *arg = dynarray_ent(args, i);
+
+		if(i < countof(arg_regs)){
+			val reg;
+
+			make_reg(&reg, arg_regs[i], val_size(arg, PTR_SZ));
+
+			mov(arg, &reg, octx);
+
+		}else{
+			assert(0 && "TODO: stack args");
+		}
+	}
 
 	if(fn->type == LBL){
 		fprintf(octx->fout, "\tcall %s\n", fn->u.addr.u.lbl.spel);
@@ -993,7 +1036,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_CALL:
 			{
-				x86_call(blk, idx, i->u.call.into, i->u.call.fn, octx);
+				x86_call(blk, idx, i->u.call.into, i->u.call.fn, &i->u.call.args, octx);
 				break;
 			}
 		}
@@ -1085,13 +1128,6 @@ static void x86_out_fn(function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
-	static const int arg_regs[6] = {
-		4,
-		5,
-		3,
-		2,
-		/* TODO: r8, r9 */
-	};
 	struct backend_traits backend;
 
 	out_ctx.fout = tmpfile();

@@ -20,5 +20,6 @@ void dynarray_move(dynarray *dest, dynarray *src);
 #define dynarray_is_empty(d) ((d)->n == 0)
 #define dynarray_ent(d, i) ((d)->entries[i])
 #define dynarray_iter(d, i) for(i = 0; i < (d)->n; i++)
+#define dynarray_count(d) ((d)->n)
 
 #endif
