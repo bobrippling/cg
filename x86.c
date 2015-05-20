@@ -780,7 +780,10 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
 	assert(lt && "val doesn't have a lifetime");
 
-	if(lt->start <= ctx->call_isn_idx && ctx->call_isn_idx <= lt->end){
+	/* don't spill if the value ends on the isn */
+	if(lt->start <= ctx->call_isn_idx
+	&& lt->end > ctx->call_isn_idx)
+	{
 		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
 	}
 }
