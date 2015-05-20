@@ -1,4 +1,4 @@
-Makefile.dep
+*.d
 Makefile.cfg
 ir
 *.o

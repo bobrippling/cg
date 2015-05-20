@@ -34,12 +34,15 @@ tags: ${SRC}
 
 clean:
 	make -C test clean
-	rm -f ir ${OBJ}
+	rm -f ir ${OBJ} ${OBJ:%.o=.%.d}
 
 Makefile.dep: ${SRC} ${HEADERS}
 	${CC} -MM ${SRC} > $@
 
--include Makefile.dep
+.%.d: %.c
+	${CC} -MM ${CFLAGS} $< > $@
+
+-include ${OBJ:%.o=.%.d}
 -include Makefile.cfg
 
 .PHONY: clean all check
