@@ -10,7 +10,6 @@ block *block_new(char *lbl /* consumed */);
 void block_add_isn(block *, struct isn *);
 
 void block_finalize(block *);
-void block_lifecheck(block *);
 
 const char *block_label(block *);
 
