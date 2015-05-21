@@ -5,6 +5,7 @@
 
 #include "isn_internal.h"
 #include "lifetime_struct.h"
+#include "dynarray.h"
 
 struct block
 {
@@ -12,6 +13,7 @@ struct block
 	char *lbl; /* NULL if entry block */
 
 	struct dynmap *val_lifetimes; /* val => struct lifetime */
+	dynarray preds;
 
 	enum block_type
 	{

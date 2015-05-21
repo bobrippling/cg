@@ -313,6 +313,9 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 
 	block_set_type(current, BLK_BRANCH);
 
+	block_add_pred(btrue, current);
+	block_add_pred(bfalse, current);
+
 	current->u.branch.cond = val_retain(cond);
 	current->u.branch.t = btrue;
 	current->u.branch.f = bfalse;
@@ -329,6 +332,8 @@ void isn_jmp(block *current, block *new)
 	isn->u.jmp.target = new;
 
 	block_set_type(current, BLK_JMP);
+
+	block_add_pred(new, current);
 
 	current->u.jmp.target = new; /* weak ref */
 }

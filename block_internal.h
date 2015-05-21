@@ -13,4 +13,6 @@ void block_finalize(block *);
 
 const char *block_label(block *);
 
+void block_add_pred(block *, block *);
+
 #endif

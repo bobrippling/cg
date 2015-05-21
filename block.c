@@ -25,6 +25,7 @@ block *block_new(char *lbl)
 static void branch_free(block *b)
 {
 	val_release(b->u.branch.cond);
+	dynarray_reset(&b->preds);
 }
 
 void block_free(block *b)
@@ -188,6 +189,11 @@ static void assign_lifetimes(block *const blk, isn *const head)
 void block_finalize(block *blk)
 {
 	assign_lifetimes(blk, block_first_isn(blk));
+}
+
+void block_add_pred(block *b, block *pred)
+{
+	dynarray_add(&b->preds, pred);
 }
 
 static void block_dump1(block *blk)
