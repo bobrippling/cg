@@ -73,6 +73,8 @@ static void discard_dead_stores(isn *head)
 
 		if(check_global && use_val->type == LBL)
 			continue;
+		if(use_val->live_across_blocks)
+			continue;
 
 		assert(use_val->pass_data);
 		la = use_val->pass_data;
