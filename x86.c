@@ -684,9 +684,26 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 		case 1: buf[1] = 'b'; break;
 		case 2: buf[1] = 'w'; break;
 		case 4:
+		{
+			val to_shrunk;
+
+			to_shrunk = *to;
+			switch(to_shrunk.type){
+				case INT:  to_shrunk.u.i.val_size = 4; break;
+				case NAME: to_shrunk.u.addr.u.name.val_size = 4; break;
+				case ARG:  to_shrunk.u.arg.val_size = 4; break;
+				case INT_PTR:
+				case ALLOCA:
+				case LBL:
+					/* not sized - no-op */
+					break;
+			}
+
 			assert(sz_to == 8);
-			mov(from, to, octx); /* movl a, b */
+			fprintf(octx->fout, "\t# zext:\n");
+			mov(from, &to_shrunk, octx); /* movl a, b */
 			return;
+		}
 
 		default:
 			assert(0 && "bad extension");
