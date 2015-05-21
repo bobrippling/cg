@@ -4,7 +4,13 @@
 #include "block.h"
 #include "backend_traits.h"
 
-void blk_regalloc(block *, struct backend_traits *);
+struct regalloc_context
+{
+	struct backend_traits backend;
+	struct function *func;
+};
+
+void blk_regalloc(block *, struct regalloc_context *);
 
 void blk_lifecheck(block *);
 

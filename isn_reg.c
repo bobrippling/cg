@@ -12,6 +12,7 @@
 #include "isn.h"
 #include "val_struct.h"
 #include "lifetime_struct.h"
+#include "function_struct.h"
 
 struct greedy_ctx
 {
@@ -23,12 +24,28 @@ struct greedy_ctx
 	unsigned ptrsz;
 };
 
+static void regalloc_spill(val *v, struct greedy_ctx *ctx)
+{
+	unsigned vsz = val_size(v, ctx->ptrsz);
+
+	ctx->spill_space += vsz;
+	assert(vsz && "unsized name val in regalloc");
+}
+
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
 
 	(void)isn;
+
+	/* if it lives across blocks we must use memory */
+	if(v->live_across_blocks){
+		/* optimisation - ensure the value is in the same register for all blocks
+		 * mem2reg or something similar should do this */
+		regalloc_spill(v, ctx);
+		return;
+	}
 
 	switch(v->type){
 		case NAME:
@@ -50,10 +67,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->nregs){
 			/* no reg available */
-			unsigned vsz = val_size(v, ctx->ptrsz);
-
-			ctx->spill_space += vsz;
-			assert(vsz && "unsized name val in regalloc");
+			regalloc_spill(v, ctx);
 
 		}else{
 			ctx->in_use[i] = 1;
@@ -105,6 +119,7 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 	char *in_use = vctx;
 	int idx;
 
+	/* isn may be null from mark_arg_vals_as_used() */
 	(void)isn;
 
 	switch(v->type){
@@ -132,6 +147,17 @@ static void mark_other_block_vals_as_used(char *in_use, isn *isn)
 {
 	for(; isn; isn = isn->next)
 		isn_on_live_vals(isn, mark_other_block_val_as_used, in_use);
+}
+
+static void mark_arg_vals_as_used(char *in_use, function *func)
+{
+	size_t i;
+
+	for(i = 0; i < func->nargs; i++){
+		val *arg = &func->args[i].val;
+
+		mark_other_block_val_as_used(arg, NULL, in_use);
+	}
 }
 
 static void mark_callee_save_as_used(
@@ -170,7 +196,7 @@ static void assign_argument_registers(
 }
 
 static void regalloc_greedy(
-		block *blk, isn *const head,
+		block *blk, function *func, isn *const head,
 		const struct backend_traits *backend)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
@@ -188,6 +214,8 @@ static void regalloc_greedy(
 
 	/* mark values who are in use in other blocks as in use */
 	mark_other_block_vals_as_used(alloc_ctx.in_use, head);
+
+	mark_arg_vals_as_used(alloc_ctx.in_use, func);
 
 	mark_callee_save_as_used(
 			alloc_ctx.in_use,
@@ -213,14 +241,16 @@ static void regalloc_greedy(
 	}
 }
 
-static void simple_regalloc(block *blk, const struct backend_traits *backend)
+static void simple_regalloc(
+		block *blk, function *func, const struct backend_traits *backend)
 {
 	isn *head = block_first_isn(blk);
 
-	regalloc_greedy(blk, head, backend);
+	regalloc_greedy(blk, func, head, backend);
 }
 
-void isn_regalloc(block *blk, const struct backend_traits *backend)
+void isn_regalloc(
+		block *blk, function *func, const struct backend_traits *backend)
 {
-	simple_regalloc(blk, backend);
+	simple_regalloc(blk, func, backend);
 }

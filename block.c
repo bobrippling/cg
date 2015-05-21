@@ -74,8 +74,6 @@ int block_tenative(block *b)
 
 void block_add_isn(block *blk, isn *isn)
 {
-	assert(blk->type != BLK_BRANCH && "already branched - no more isns");
-
 	*blk->isntail = isn;
 	blk->isntail = &isn->next;
 }

@@ -1145,7 +1145,7 @@ static void x86_out_fn(function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
-	struct backend_traits backend;
+	struct regalloc_context regalloc;
 
 	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
@@ -1153,15 +1153,16 @@ static void x86_out_fn(function *func)
 
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
-	backend.nregs = countof(regs);
-	backend.scratch_reg = SCRATCH_REG;
-	backend.ptrsz = PTR_SZ;
-	backend.callee_save = callee_saves;
-	backend.callee_save_cnt = countof(callee_saves);
-	backend.arg_regs = arg_regs;
-	backend.arg_regs_cnt = countof(arg_regs);
+	regalloc.backend.nregs = countof(regs);
+	regalloc.backend.scratch_reg = SCRATCH_REG;
+	regalloc.backend.ptrsz = PTR_SZ;
+	regalloc.backend.callee_save = callee_saves;
+	regalloc.backend.callee_save_cnt = countof(callee_saves);
+	regalloc.backend.arg_regs = arg_regs;
+	regalloc.backend.arg_regs_cnt = countof(arg_regs);
+	regalloc.func = func;
 
-	blk_regalloc(entry, &backend);
+	blk_regalloc(entry, &regalloc);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);

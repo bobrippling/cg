@@ -4,7 +4,8 @@
 #include "isn_internal.h"
 #include "block.h"
 #include "backend_traits.h"
+#include "function.h"
 
-void isn_regalloc(block *blk, const struct backend_traits *);
+void isn_regalloc(block *blk, function *, const struct backend_traits *);
 
 #endif

@@ -65,14 +65,12 @@ void blk_lifecheck(block *blk)
 
 static void blk_regalloc_pass(block *blk, void *vctx)
 {
-	const struct backend_traits *ctx = vctx;
+	const struct regalloc_context *ctx = vctx;
 
-	isn_regalloc(blk, ctx);
+	isn_regalloc(blk, ctx->func, &ctx->backend);
 }
 
-void blk_regalloc(
-		block *blk,
-		struct backend_traits *backend)
+void blk_regalloc(block *blk, struct regalloc_context *ctx)
 {
-	blocks_iterate(blk, blk_regalloc_pass, backend);
+	blocks_iterate(blk, blk_regalloc_pass, ctx);
 }
