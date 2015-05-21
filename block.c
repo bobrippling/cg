@@ -198,6 +198,24 @@ void block_add_pred(block *b, block *pred)
 
 static void block_dump1(block *blk)
 {
+	if(!dynarray_is_empty(&blk->preds)){
+		size_t i;
+		const char *comma = "";
+
+		printf("# predecessors: ");
+
+		dynarray_iter(&blk->preds, i){
+			block *pred = dynarray_ent(&blk->preds, i);
+
+			printf("%s%p", comma, pred);
+			comma = ", ";
+		}
+
+		putchar('\n');
+	}
+
+	printf("# block: %p\n", blk);
+
 	isn_dump(block_first_isn(blk), blk);
 }
 
