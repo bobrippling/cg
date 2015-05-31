@@ -4,7 +4,7 @@ try_cflag(){
 	flag="$1"
 
 	printf 'checking whether compiler accepts %s... ' "$flag"
-	echo "typedef int abc;" > "$ctmp"
+	echo "typedef int abc;" >&$tmpfd
 
 	if $CC "$flag" -c -o /dev/null "$ctmp" >/dev/null 2>&1
 	then
@@ -27,7 +27,25 @@ then
 	CC=cc
 fi
 
-ctmp="$TMPDIR"/1.c
+tmpfd=5
+found=0
+
+for i in $(seq 1 100)
+do
+	ctmp="$TMPDIR"/$i.c
+	if 2>/dev/null $tmpfd>|$ctmp
+	then
+		found=1
+		break
+	fi
+done
+
+if [ $found -eq 0 ]
+then
+	echo "couldn't find unused temporary file in $TMPDIR"
+	exit 1
+fi
+
 trap "rm -f '$ctmp'" EXIT
 
 echo > Makefile.cfg
