@@ -23,6 +23,7 @@ static bool val_in(val *v, enum val_to to)
 			return to & LITERAL;
 		case INT_PTR:
 			return to & (LITERAL | ADDRESSABLE);
+		case ARG:
 		case NAME:
 			return to & NAMED;
 		case ALLOCA:
@@ -51,6 +52,8 @@ int val_size(val *v)
 			return 0;
 		case INT:
 			return v->u.i.val_size;
+		case ARG:
+			return v->u.arg.val_size;
 		case NAME:
 			return v->u.addr.u.name.val_size;
 	}
@@ -64,6 +67,7 @@ bool val_is_mem(val *v)
 		case ALLOCA:  return true;
 		case LBL:     return true;
 		case INT:     return false;
+		case ARG:     return false;
 		case NAME:    return v->u.addr.u.name.loc.where == NAME_SPILT;
 	}
 	assert(0);
@@ -85,6 +89,9 @@ unsigned val_hash(val *v)
 			break;
 		case LBL:
 			h ^= dynmap_strhash(v->u.addr.u.lbl.spel);
+			break;
+		case ARG:
+			h ^= v->u.arg.idx;
 			break;
 	}
 
@@ -165,6 +172,7 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 
 		case LBL:
 		case NAME:
+		case ARG:
 			assert(0 && "can't add to name vals");
 	}
 	assert(0);
@@ -185,6 +193,9 @@ char *val_str_r(char buf[32], val *v)
 			break;
 		case LBL:
 			snprintf(buf, VAL_STR_SZ, "%s", v->u.addr.u.lbl.spel);
+			break;
+		case ARG:
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.arg.name);
 			break;
 	}
 	return buf;
@@ -278,6 +289,14 @@ val *val_new_lbl(char *lbl)
 {
 	val *v = val_new(LBL);
 	v->u.addr.u.lbl.spel = lbl;
+	return v;
+}
+
+val *val_new_arg(size_t idx, char *name)
+{
+	val *v = val_new(ARG);
+	v->u.arg.idx = idx;
+	v->u.arg.name = name;
 	return v;
 }
 

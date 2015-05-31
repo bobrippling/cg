@@ -8,6 +8,8 @@
 #include "lbl.h"
 #include "block_internal.h"
 #include "blk_reg.h"
+#include "variable.h"
+#include "variable_struct.h"
 
 static void function_add_block(function *, block *);
 
@@ -20,6 +22,9 @@ struct function
 
 	block **blocks;
 	size_t nblocks;
+
+	variable *args;
+	size_t nargs;
 
 	unsigned retsz;
 };
@@ -148,4 +153,26 @@ void function_dump(function *f)
 const char *function_name(function *f)
 {
 	return f->name;
+}
+
+void function_arg_add(function *f, unsigned sz, char *name)
+{
+	f->nargs++;
+	f->args = xrealloc(f->args, f->nargs * sizeof *f->args);
+
+	f->args[f->nargs - 1].sz = sz;
+	f->args[f->nargs - 1].name = name;
+}
+
+bool function_arg_find(function *f, const char *name, size_t *const idx)
+{
+	size_t i;
+	for(i = 0; i < f->nargs; i++){
+		if(!strcmp(name, f->args[i].name)){
+			*idx = i;
+			return true;
+		}
+	}
+
+	return false;
 }

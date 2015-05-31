@@ -149,7 +149,11 @@ static operand_category val_category(val *v)
 	switch(v->type){
 		case INT:  return OPERAND_INT;
 		case NAME: return OPERAND_REG; /* not mem from val_is_mem() */
-		default:
+		case ARG:  return OPERAND_REG;
+
+		case INT_PTR:
+		case ALLOCA:
+		case LBL:
 			assert(0 && "unreachable");
 	}
 	assert(0);
@@ -238,6 +242,11 @@ static const char *x86_val_str_sized(
 			snprintf(buf, sizeof bufs[0], "%s+%u(%%rip)",
 					val->u.addr.u.lbl.spel,
 					val->u.addr.u.lbl.offset);
+			break;
+		}
+		case ARG:
+		{
+			snprintf(buf, sizeof bufs[0], "<arg %zu>", val->u.arg.idx);
 			break;
 		}
 	}
@@ -539,6 +548,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 	switch(i->u.elem.lval->type){
 		case INT:
 		case NAME:
+		case ARG:
 			assert(0 && "element of INT/NAME");
 
 		case INT_PTR:

@@ -5,12 +5,7 @@
 
 #include "variable.h"
 #include "variable_internal.h"
-
-struct variable
-{
-	char *name;
-	unsigned sz;
-};
+#include "variable_struct.h"
 
 variable *variable_new(const char *name, unsigned sz)
 {

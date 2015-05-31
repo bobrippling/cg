@@ -75,6 +75,7 @@ static val *uniq_val(
 {
 	val *v;
 	global *glob;
+	size_t arg_idx;
 
 	if(p->names2vals){
 		v = dynmap_get(char *, val *, p->names2vals, name);
@@ -87,6 +88,13 @@ found:
 
 			return v;
 		}
+	}
+
+	/* check args */
+	if(function_arg_find(p->func, name, &arg_idx)){
+		v = val_new_arg(arg_idx, name);
+		name = NULL;
+		goto found;
 	}
 
 	/* check globals */
@@ -432,13 +440,24 @@ static int parse_finished(tokeniser *tok)
 
 static function *parse_function(parse *p, unsigned ret, char *name)
 {
-	function *fn;
+	function *fn = unit_function_new(p->unit, name, ret);
 
 	eat(p, "function open paren", tok_lparen);
-	/* TODO: arguments */
-	eat(p, "function close paren", tok_rparen);
 
-	fn = unit_function_new(p->unit, name, ret);
+	while(token_peek(p->tok) != tok_rparen && !parse_finished(p->tok)){
+		char *arg_name;
+		unsigned arg_sz;
+		parse_decl_start(p, &arg_sz, &arg_name);
+
+		function_arg_add(fn, arg_sz, arg_name);
+
+		if(token_peek(p->tok) != tok_comma)
+			break;
+
+		eat(p, "arg comma", tok_comma);
+	}
+
+	eat(p, "function close paren", tok_rparen);
 
 	if(token_peek(p->tok) == tok_semi){
 		/* declaration */

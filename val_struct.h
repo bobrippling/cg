@@ -25,7 +25,8 @@ struct val
 		INT_PTR,
 		NAME,      /* sized */
 		ALLOCA,
-		LBL
+		LBL,
+		ARG        /* sized */
 	} type;
 	unsigned retains;
 
@@ -36,6 +37,12 @@ struct val
 			int i;
 			int val_size;
 		} i;
+		struct
+		{
+			char *name;
+			size_t idx;
+			unsigned val_size;
+		} arg;
 		struct
 		{
 			union

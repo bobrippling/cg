@@ -32,4 +32,7 @@ block *function_block_n(function *, size_t);
 			blk;                                  \
 			blk = function_block_n(fn, i))
 
+void function_arg_add(function *, unsigned sz, char *name);
+bool function_arg_find(function *, const char *, size_t *);
+
 #endif

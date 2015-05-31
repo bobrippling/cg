@@ -10,6 +10,8 @@ val *val_new_ptr_from_int(int);
 
 val *val_new_lbl(char * /*consumed*/);
 
+val *val_new_arg(size_t idx, char * /*consumed*/);
+
 val *val_make_alloca(block *, int n, unsigned elemsz);
 
 val *val_element(
