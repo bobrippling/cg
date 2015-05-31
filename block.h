@@ -3,8 +3,7 @@
 
 typedef struct block block;
 
-block *block_new(void);
-block *block_new_entry(void);
+block *block_new(const char *lbl);
 
 void block_free(block *);
 

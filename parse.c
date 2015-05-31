@@ -15,6 +15,7 @@
 
 typedef struct {
 	tokeniser *tok;
+	function *func;
 	block *entry;
 	dynmap *names2vals;
 	int err;
@@ -266,6 +267,80 @@ static void parse_store(parse *p)
 	isn_store(p->entry, rval, lval);
 }
 
+static void parse_block(parse *p)
+{
+	enum token ct = token_next(p->tok);
+
+	switch(ct){
+		default:
+			parse_error(p, "unexpected token %s", token_to_str(ct));
+			break;
+
+		case tok_eof:
+			break;
+
+		case tok_ret:
+			parse_ret(p);
+			break;
+
+		case tok_ident:
+		{
+			char *ident = token_last_ident(p->tok);
+
+			if(token_peek(p->tok) == tok_colon){
+				eat(p, "label colon", tok_colon);
+
+				p->entry = block_new(ident);
+
+				function_add_block(p->func, p->entry);
+			}else{
+				parse_ident(p);
+			}
+			break;
+		}
+
+		case tok_store:
+			parse_store(p);
+			break;
+	}
+}
+
+static int parse_finished(tokeniser *tok)
+{
+	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
+}
+
+static function *parse_function(parse *p)
+{
+	unsigned ret;
+	char *name;
+	function *fn;
+
+	eat(p, "function return", tok_int);
+	ret = token_last_int(p->tok);
+
+	eat(p, "function name", tok_ident);
+	name = token_last_ident(p->tok);
+
+	eat(p, "function open paren", tok_lparen);
+	/* TODO: arguments */
+	eat(p, "function close paren", tok_rparen);
+
+	eat(p, "function open brace", tok_lbrace);
+
+	fn = function_new(name, ret);
+	p->func = fn;
+	p->entry = function_entry_block(fn);
+
+	while(token_peek(p->tok) != tok_rbrace && !parse_finished(p->tok)){
+		parse_block(p);
+	}
+
+	eat(p, "function close brace", tok_rbrace);
+
+	return fn;
+}
+
 static void free_names2vals(dynmap *names2vals)
 {
 	size_t i;
@@ -277,40 +352,23 @@ static void free_names2vals(dynmap *names2vals)
 	dynmap_free(names2vals);
 }
 
-void parse_code(tokeniser *tok, block *entry, int *const err)
+unit *parse_code(tokeniser *tok, int *const err)
 {
 	parse state = { 0 };
+	unit *unit = unit_new();
 
 	state.tok = tok;
-	state.entry = entry;
 
-	for(;;){
-		enum token ct = token_next(tok);
+	while(!parse_finished(tok)){
+		function *f = parse_function(&state);
 
-		switch(ct){
-			default:
-				parse_error(&state, "unexpected token %s", token_to_str(ct));
-				goto fin;
-
-			case tok_eof:
-				goto fin;
-
-			case tok_ret:
-				parse_ret(&state);
-				break;
-
-			case tok_ident:
-				parse_ident(&state);
-				break;
-
-			case tok_store:
-				parse_store(&state);
-				break;
-		}
+		if(f)
+			unit_add_function(unit, f);
 	}
 
-fin:
 	free_names2vals(state.names2vals);
 
 	*err = state.err;
+
+	return unit;
 }

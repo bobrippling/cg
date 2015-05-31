@@ -12,9 +12,12 @@
 	OTHER(unknown)      \
 	PUNCT(lparen, '(')  \
 	PUNCT(rparen, ')')  \
+	PUNCT(lbrace, '{')  \
+	PUNCT(rbrace, '}')  \
 	PUNCT(dot, '.')     \
 	PUNCT(comma, ',')   \
 	PUNCT(equal, '=')   \
+	PUNCT(colon, ':')   \
 	KW(load)            \
 	KW(store)           \
 	KW(alloca)          \

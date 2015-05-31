@@ -6,7 +6,7 @@
 struct block
 {
 	isn *isn1, **isntail; /* isntail = &isn1 initially */
-	int is_entry;
+	char *lbl; /* NULL if entry block */
 
 	enum block_type
 	{

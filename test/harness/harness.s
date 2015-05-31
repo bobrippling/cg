@@ -20,7 +20,7 @@ _main:
 	mov %rsp, %rbp
 	push %rbx
 
-	call f
+	call test
 
 	# mov %eax, %ebx
 	# mov %eax, %esi

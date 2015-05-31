@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <errno.h>
 
 #include <sys/utsname.h>
@@ -11,7 +12,7 @@
 
 #include "backend.h"
 #include "isn.h"
-#include "block.h"
+#include "unit.h"
 #include "branch.h"
 
 #include "tokenise.h"
@@ -28,9 +29,9 @@
 static struct
 {
 	const char *name;
-	void (*emit)(block *);
+	void (*emit)(function *);
 } backends[] = {
-	{ "ir", block_dump },
+	{ "ir", function_dump },
 	{ "x86_64", x86_out },
 	{ "amd64",  x86_out },
 	{ 0 }
@@ -97,7 +98,7 @@ static void egjmp(block *const entry)
 
 	val *cmp = val_equal(entry, arg, val_new_i(3, INT_SIZE));
 
-	block *btrue = block_new(), *bfalse = block_new();
+	block *btrue = block_new("true"), *bfalse = block_new("false");
 
 	branch_cond(cmp, entry, btrue, bfalse);
 
@@ -118,12 +119,13 @@ static void egjmp(block *const entry)
 	}
 }
 
-static int read_and_parse(const char *fname, block *entry, bool dump_tok)
+static unit *read_and_parse(
+		const char *fname, bool dump_tok, int *const err)
 {
-	int err = 0;
 	FILE *f;
 	tokeniser *tok;
 	int ferr;
+	unit *unit = NULL;
 
 	if(fname){
 		f = fopen(fname, "r");
@@ -144,17 +146,17 @@ static int read_and_parse(const char *fname, block *entry, bool dump_tok)
 			printf("token %s\n", token_to_str(ct));
 		}
 	}else{
-		parse_code(tok, entry, &err);
+		unit = parse_code(tok, err);
 	}
 
 	token_fin(tok, &ferr);
 	if(ferr){
 		errno = ferr;
 		die("read %s:", fname);
-		err = 1;
+		*err = 1;
 	}
 
-	return err;
+	return unit;
 }
 
 static void usage(const char *arg0)
@@ -175,7 +177,7 @@ static void usage(const char *arg0)
 	exit(1);
 }
 
-static void (*find_machine(const char *machine))(block *)
+static void (*find_machine(const char *machine))(function *)
 {
 	int i;
 
@@ -186,10 +188,10 @@ static void (*find_machine(const char *machine))(block *)
 	return NULL;
 }
 
-static void (*default_backend(void))(block *)
+static void (*default_backend(void))(function *)
 {
 	struct utsname unam;
-	void (*fn)(block *);
+	void (*fn)(function *);
 
 	if(uname(&unam))
 		die("uname:");
@@ -201,14 +203,20 @@ static void (*default_backend(void))(block *)
 	return fn;
 }
 
+static void run_opts(function *fn)
+{
+	function_onblocks(fn, opt_cprop);
+	function_onblocks(fn, opt_storeprop);
+	function_onblocks(fn, opt_dse);
+}
+
 int main(int argc, char *argv[])
 {
 	bool opt = false;
 	bool dump_tok = false;
-	void (*emit_fn)(block *) = NULL;
-	bool skip_read = false;
+	void (*emit_fn)(function *) = NULL;
+	unit *unit = NULL;
 	const char *fname = NULL;
-	block *entry = block_new_entry();
 	int i;
 	int parse_err = 0;
 
@@ -242,27 +250,32 @@ int main(int argc, char *argv[])
 	}
 
 	if(fname){
-		if(!strcmp(fname, "--eg")){
-			eg1(entry);
-			skip_read = true;
-		}else if(!strcmp(fname, "--eg-jmp")){
-			egjmp(entry);
-			skip_read = true;
+		int jmp = 0;
+
+		if(!strcmp(fname, "--eg") || (jmp = 1, !strcmp(fname, "--eg-jmp"))){
+			function *fn = function_new("main", INT_SIZE);
+
+			unit = unit_new();
+			unit_add_function(unit, fn);
+
+			(jmp ? egjmp : eg1)(function_entry_block(fn));
+
 		}else if(!strcmp(fname, "-")){
 			fname = NULL;
 		}
 	}
 
-	if(!skip_read){
-		parse_err = read_and_parse(fname, entry, dump_tok);
-		if(dump_tok)
+	if(!unit){
+		unit = read_and_parse(fname, dump_tok, &parse_err);
+		if(dump_tok){
+			assert(!unit);
 			return 0;
+		}
+		assert(unit);
 	}
 
 	if(opt){
-		opt_cprop(entry);
-		opt_storeprop(entry);
-		opt_dse(entry);
+		unit_on_functions(unit, run_opts);
 	}
 
 	if(parse_err)
@@ -270,7 +283,9 @@ int main(int argc, char *argv[])
 
 	if(!emit_fn)
 		emit_fn = default_backend();
-	emit_fn(entry);
+	unit_on_functions(unit, emit_fn);
+
+	unit_free(unit);
 
 	return 0;
 }

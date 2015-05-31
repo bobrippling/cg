@@ -1,24 +1,27 @@
 # test=harness 45
-r0 = load.4 0
-r1 = load.4 1
-r2 = load.4 2
-r3 = load.4 3
-r4 = load.4 4
-r5 = load.4 5
-r6 = load.4 6
-r7 = load.4 7
-r8 = load.4 8
-r9 = load.4 9
+4 test()
+{
+	r0 = load.4 0
+	r1 = load.4 1
+	r2 = load.4 2
+	r3 = load.4 3
+	r4 = load.4 4
+	r5 = load.4 5
+	r6 = load.4 6
+	r7 = load.4 7
+	r8 = load.4 8
+	r9 = load.4 9
 
-r10 = add.4 r0, r1
-r11 = add.4 r10, r2
-r12 = add.4 r11, r3
-r13 = add.4 r12, r4
-r14 = add.4 r13, r5
-r15 = add.4 r14, r6
-r16 = add.4 r15, r7
-r17 = add.4 r16, r8
-r18 = add.4 r17, r9
+	r10 = add.4 r0, r1
+	r11 = add.4 r10, r2
+	r12 = add.4 r11, r3
+	r13 = add.4 r12, r4
+	r14 = add.4 r13, r5
+	r15 = add.4 r14, r6
+	r16 = add.4 r15, r7
+	r17 = add.4 r16, r8
+	r18 = add.4 r17, r9
 
-# 45
-ret.8 r18
+	# 45
+	ret.8 r18
+}

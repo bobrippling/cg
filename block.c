@@ -10,10 +10,11 @@
 #include "isn_struct.h"
 #include "branch_internal.h"
 
-block *block_new(void)
+block *block_new(const char *lbl)
 {
 	block *b = xcalloc(1, sizeof *b);
 	b->isntail = &b->isn1;
+	b->lbl = lbl ? xstrdup(lbl) : NULL;
 	return b;
 }
 
@@ -23,13 +24,13 @@ void block_free(block *b)
 		branch_free(b);
 
 	isn_free_r(b->isn1);
+	free(b->lbl);
 	free(b);
 }
 
 block *block_new_entry(void)
 {
-	block *b = block_new();
-	b->is_entry = 1;
+	block *b = block_new(NULL);
 	return b;
 }
 
@@ -83,14 +84,14 @@ void block_dump(block *blk)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			printf("\tbr %s t:%p f:%p\n",
+			printf("\tbr %s, %s, %s\n",
 					val_str(blk->u.branch.cond),
-					blk->u.branch.t,
-					blk->u.branch.f);
+					blk->u.branch.t->lbl,
+					blk->u.branch.f->lbl);
 
-			printf("\n<%p>:\n", blk->u.branch.t);
+			printf("\n%s:\n", blk->u.branch.t->lbl);
 			block_dump(blk->u.branch.t);
-			printf("\n<%p>:\n", blk->u.branch.f);
+			printf("\n%s:\n", blk->u.branch.f->lbl);
 			block_dump(blk->u.branch.f);
 	}
 }

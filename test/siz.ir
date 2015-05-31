@@ -1,4 +1,6 @@
 # test=irdiff
+4 main()
+{
 	store.4 0, 3
 	tmp_0 = load.4 0
 	alloca_0 = alloca 8
@@ -15,3 +17,4 @@
 	tmp_9 = load.4 tmp_1
 	tmp_10 = add.4 tmp_9, tmp_8
 	ret.4 tmp_10
+}

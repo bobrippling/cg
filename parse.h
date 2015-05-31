@@ -1,6 +1,8 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-void parse_code(tokeniser *tok, block *entry, int *const err);
+#include "unit.h"
+
+unit *parse_code(tokeniser *tok, int *const err);
 
 #endif

@@ -1,11 +1,14 @@
 # test=sh $ir --emit=ir -O $f | grep -F 'ret.4 22' >/dev/null
 
-a = alloca 8
+4 main()
+{
+	a = alloca 8
 
-second = elem a, 4
+	second = elem a, 4
 
-store.4 second, 22
+	store.4 second, 22
 
-to_ret = load.4 second
+	to_ret = load.4 second
 
-ret.4 to_ret
+	ret.4 to_ret
+}

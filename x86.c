@@ -574,10 +574,11 @@ static void x86_sum_alloca(block *blk, void *vctx)
 	}
 }
 
-void x86_out(block *const entry)
+void x86_out(function *const func)
 {
 	struct x86_alloca_ctx ctx = { 0 };
 	ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
+	block *entry = function_entry_block(func);
 
 	blk_regalloc(entry, countof(regs), SCRATCH_REG);
 
