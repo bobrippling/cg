@@ -5,6 +5,8 @@
 
 #ifdef __GNUC__
 #  define attr_printf(x, y) __attribute__((format(printf, x, y)))
+#else
+#  define attr_printf(x, y)
 #endif
 
 #endif
