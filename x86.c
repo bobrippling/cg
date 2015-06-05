@@ -30,6 +30,7 @@ typedef struct x86_out_ctx
 {
 	dynmap *alloca2stack;
 	block *exitblk;
+	function *func;
 	FILE *fout;
 	long alloca_bottom; /* max of ALLOCA instructions */
 	long spill_alloca_max; /* max of spill space */
@@ -889,6 +890,11 @@ static dynmap *x86_spillregs(
 		isn_on_live_vals(isn, maybe_spill, &spillctx);
 	}
 
+	/* can't just spill regs in this block, need to spill 'live' regs,
+	 * e.g.  argument regs */
+	for(idx = 0; idx < octx->func->nargs; idx++)
+		maybe_spill(&octx->func->args[idx].val, NULL, &spillctx);
+
 	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
 		unsigned sz = val_size(v, PTR_SZ);
 		val stack_slot = { 0 };
@@ -1186,6 +1192,7 @@ static void x86_out_fn(function *func)
 
 	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
+	out_ctx.func = func;
 
 	/* start at the bottom of allocas */
 	out_ctx.alloca_bottom = alloca_ctx.alloca;
