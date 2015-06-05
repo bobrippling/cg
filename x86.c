@@ -69,6 +69,13 @@ static const int arg_regs[] = {
 	/* TODO: r8, r9 */
 };
 
+enum deref_type
+{
+	DEREFERENCE_FALSE, /* match 0 for false */
+	DEREFERENCE_TRUE,  /* match 1 for true */
+	DEREFERENCE_ANY    /* for debugging - don't crash */
+};
+
 typedef enum operand_category
 {
 	/* 0 means no entry / end of entries */
@@ -211,22 +218,33 @@ static const char *name_in_reg_str(
 	return regs[reg][sz_idx];
 }
 
+static void assert_deref(enum deref_type got, enum deref_type expected)
+{
+	if(got == DEREFERENCE_ANY)
+		return;
+	assert(got == expected && "wrong deref");
+}
+
 static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
-		bool dereference, unsigned size,
+		enum deref_type dereference_ty, unsigned size,
 		val *val)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
+		{
+			const bool deref = (dereference_ty == DEREFERENCE_TRUE);
+
 			snprintf(buf, bufsz, "%s%%%s%s",
-					dereference ? "(" : "",
-					name_in_reg_str(loc, dereference ? 0 : size, val),
-					dereference ? ")" : "");
+					deref ? "(" : "",
+					name_in_reg_str(loc, deref ? 0 : size, val),
+					deref ? ")" : "");
 			break;
+		}
 
 		case NAME_SPILT:
-			assert(dereference);
+			assert_deref(dereference_ty, DEREFERENCE_TRUE);
 
 			snprintf(buf, bufsz, "-%u(%%rbp)", loc->u.off);
 			break;
@@ -238,7 +256,7 @@ static const char *x86_name_str(
 static const char *x86_val_str_sized(
 		val *val, int bufchoice,
 		x86_octx *octx,
-		bool dereference, int size)
+		enum deref_type dereference, int size)
 {
 	static char bufs[3][256];
 
@@ -247,11 +265,11 @@ static const char *x86_val_str_sized(
 
 	switch(val->type){
 		case INT:
-			assert(!dereference);
+			assert_deref(dereference, DEREFERENCE_FALSE);
 			snprintf(buf, sizeof bufs[0], "$%d", val->u.i.i);
 			break;
 		case INT_PTR:
-			assert(dereference);
+			assert_deref(dereference, DEREFERENCE_TRUE);
 			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
 			break;
 		case NAME:
@@ -260,13 +278,13 @@ static const char *x86_val_str_sized(
 		case ALLOCA:
 		{
 			int off = alloca_offset(octx->alloca2stack, val);
-			/*assert(!dereference);*/
+			/*assert_deref(dereference, DEREFERENCE_FALSE);*/
 			snprintf(buf, sizeof bufs[0], "%d(%%rbp)", (int)off);
 			break;
 		}
 		case LBL:
 		{
-			/*assert(!dereference);*/
+			/*assert_deref(dereference, DEREFERENCE_FALSE);*/
 			snprintf(buf, sizeof bufs[0], "%s+%u(%%rip)",
 					val->u.addr.u.lbl.spel,
 					val->u.addr.u.lbl.offset);
@@ -285,7 +303,7 @@ static const char *x86_val_str_sized(
 static const char *x86_val_str(
 		val *val, int bufchoice,
 		x86_octx *octx,
-		bool dereference)
+		enum deref_type dereference)
 {
 	return x86_val_str_sized(
 		val, bufchoice,
