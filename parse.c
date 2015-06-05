@@ -263,17 +263,18 @@ static void parse_ident(parse *p)
 			val *vlhs;
 			char *ident = lhs ? xstrdup(lhs) : NULL;
 			val *index_into = parse_lval(p);
-			unsigned idx;
+			val *idx;
 
 			eat(p, "elem", tok_comma);
-			eat(p, "elem", tok_int);
 
-			idx = token_last_int(p->tok);
-			vlhs = val_element(NULL, index_into, idx, 0, ident);
+			idx = parse_rval(p, 0);
+
+			/*vlhs = val_element(NULL, index_into, idx, 0, ident);*/
+			vlhs = val_name_new(0, ident);
 
 			map_val(p, lhs, vlhs);
 
-			isn_elem(p->entry, index_into, val_new_i(idx, 0), vlhs);
+			isn_elem(p->entry, index_into, idx, vlhs);
 			break;
 		}
 
