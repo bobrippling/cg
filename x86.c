@@ -257,7 +257,6 @@ static const char *x86_val_str_sized(
 		case NAME:
 			return x86_name_str(&val->u.addr.u.name.loc,
 					buf, sizeof bufs[0], dereference, size, val);
-			break;
 		case ALLOCA:
 		{
 			int off = alloca_offset(octx->alloca2stack, val);
