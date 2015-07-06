@@ -2,9 +2,9 @@
 
 #include "dynmap.h"
 
-#include "blk_reg.h"
+#include "regalloc_blk.h"
+#include "regalloc_isn.h"
 
-#include "isn_reg.h"
 #include "val_struct.h"
 #include "isn_struct.h"
 

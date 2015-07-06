@@ -15,7 +15,7 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
-#include "blk_reg.h"
+#include "regalloc_blk.h"
 #include "block_struct.h"
 #include "function_struct.h"
 #include "variable_struct.h"

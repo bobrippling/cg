@@ -7,7 +7,7 @@
 #include "function_internal.h"
 #include "lbl.h"
 #include "block_internal.h"
-#include "blk_reg.h"
+#include "regalloc_blk.h"
 #include "variable.h"
 #include "variable_struct.h"
 #include "function_struct.h"

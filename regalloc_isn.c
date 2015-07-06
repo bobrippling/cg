@@ -5,7 +5,7 @@
 #include "mem.h"
 #include "dynmap.h"
 
-#include "isn_reg.h"
+#include "regalloc_isn.h"
 
 #include "isn_struct.h"
 #include "isn_internal.h"
