@@ -314,6 +314,7 @@ val *val_new_arg(size_t idx, char *name, unsigned size)
 	v->u.arg.idx = idx;
 	v->u.arg.name = name;
 	v->u.arg.val_size = size;
+	v->live_across_blocks = 1;
 	return v;
 }
 
