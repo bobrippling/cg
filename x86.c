@@ -1162,6 +1162,20 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
 
+static void x86_init_regalloc_context(
+		struct regalloc_context *ctx,
+		function *func)
+{
+	ctx->backend.nregs = countof(regs);
+	ctx->backend.scratch_reg = SCRATCH_REG;
+	ctx->backend.ptrsz = PTR_SZ;
+	ctx->backend.callee_save = callee_saves;
+	ctx->backend.callee_save_cnt = countof(callee_saves);
+	ctx->backend.arg_regs = arg_regs;
+	ctx->backend.arg_regs_cnt = countof(arg_regs);
+	ctx->func = func;
+}
+
 static void x86_out_fn(function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
@@ -1176,15 +1190,8 @@ static void x86_out_fn(function *func)
 
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
-	regalloc.backend.nregs = countof(regs);
-	regalloc.backend.scratch_reg = SCRATCH_REG;
-	regalloc.backend.ptrsz = PTR_SZ;
-	regalloc.backend.callee_save = callee_saves;
-	regalloc.backend.callee_save_cnt = countof(callee_saves);
-	regalloc.backend.arg_regs = arg_regs;
-	regalloc.backend.arg_regs_cnt = countof(arg_regs);
-	regalloc.func = func;
-
+	/* regalloc */
+	x86_init_regalloc_context(&regalloc, func);
 	blk_regalloc(entry, &regalloc);
 
 	/* gather allocas - must be after regalloc */
