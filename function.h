@@ -36,4 +36,7 @@ block *function_block_n(function *, size_t);
 void function_arg_add(function *, unsigned sz, char *name);
 variable *function_arg_find(function *, const char *, size_t *);
 
+struct regalloc_context;
+void func_regalloc(function *f, struct regalloc_context *ctx);
+
 #endif

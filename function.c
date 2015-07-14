@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "mem.h"
 #include "function.h"
@@ -11,6 +12,7 @@
 #include "variable.h"
 #include "variable_struct.h"
 #include "function_struct.h"
+#include "isn_struct.h"
 
 static void function_add_block(function *, block *);
 
@@ -171,4 +173,47 @@ variable *function_arg_find(function *f, const char *name, size_t *const idx)
 	}
 
 	return NULL;
+}
+
+static void assign_arg_reg(
+		val *v, unsigned idx, unsigned size,
+		const struct backend_traits *backend)
+{
+	v->type = ARG;
+
+	v->live_across_blocks = 1;
+
+	v->u.arg.idx = idx;
+	v->u.arg.name = NULL;
+	v->u.arg.val_size = size;
+
+	if(v->u.arg.idx >= backend->arg_regs_cnt){
+		assert(0 && "TODO: arg on stack");
+	}else{
+		v->u.arg.loc.where = NAME_IN_REG;
+		v->u.arg.loc.u.reg = backend->arg_regs[v->u.arg.idx];
+	}
+}
+
+static void assign_argument_registers(
+		function *f,
+		const struct backend_traits *backend)
+{
+	size_t i;
+	for(i = 0; i < f->nargs; i++){
+		assign_arg_reg(
+				&f->args[i].val,
+				i,
+				variable_size(&f->args[i].var, backend->ptrsz),
+				backend);
+	}
+}
+
+void func_regalloc(function *f, struct regalloc_context *ctx)
+{
+	block *const entry = function_entry_block(f, false);
+
+	assign_argument_registers(f, &ctx->backend);
+
+	blk_regalloc(entry, ctx);
 }

@@ -813,6 +813,7 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 {
 	const struct x86_spill_ctx *ctx = vctx;
 	struct lifetime *lt;
+	struct lifetime lt_inf = LIFETIME_INIT_INF;
 
 	(void)isn;
 
@@ -828,7 +829,8 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 		return;
 
 	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
-	assert(lt && "val doesn't have a lifetime");
+	if(!lt)
+		lt = &lt_inf;
 
 	/* don't spill if the value ends on the isn */
 	if(lt->start <= ctx->call_isn_idx
@@ -1192,7 +1194,7 @@ static void x86_out_fn(function *func)
 
 	/* regalloc */
 	x86_init_regalloc_context(&regalloc, func);
-	blk_regalloc(entry, &regalloc);
+	func_regalloc(func, &regalloc);
 
 	/* gather allocas - must be after regalloc */
 	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
