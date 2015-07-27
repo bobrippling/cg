@@ -61,6 +61,9 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		case FROM_ISN:
 			val_locn = &v->u.local.loc;
 			break;
+
+		case BACKEND_TEMP:
+			assert(0 && "shouldn't have temps here");
 	}
 
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);

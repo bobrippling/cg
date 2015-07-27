@@ -43,11 +43,15 @@ enum
 	INT_SIZE = 4
 };
 
+#if 0
 #define OPTS          \
 	X(cprop)            \
 	X(storeprop)        \
 	X(dse)              \
 	X(loadmerge)
+#else
+#define OPTS
+#endif
 
 static const struct
 {
@@ -118,8 +122,10 @@ static void usage(const char *arg0)
 
 	fprintf(stderr, "  -O<optimisation>: enable optimisation\n");
 
+#if 0
 	for(i = 0; i < countof(optimisations); i++)
 		fprintf(stderr, "    %s\n", optimisations[i].spel);
+#endif
 
 	exit(1);
 }
@@ -160,12 +166,16 @@ static void run_opts(function *fn, void *vctx)
 		bool found = false;
 		const char *opt = dynarray_ent(passes, i);
 
+#if 0
 		for(j = 0; j < countof(optimisations); j++){
 			if(!strcmp(optimisations[j].spel, opt)){
 				found = true;
 				break;
 			}
 		}
+#else
+		j = 0;
+#endif
 
 		if(!found){
 			fprintf(stderr, "optimise: unknown option '%s'\n", opt);
@@ -193,9 +203,11 @@ int main(int argc, char *argv[])
 			if(argv[i][2]){
 				dynarray_add(&passes, argv[i] + 2);
 			}else{
+#if 0
 #define X(n) dynarray_add(&passes, #n);
 				OPTS
 #undef X
+#endif
 			}
 
 		}else if(!strcmp(argv[i], "--dump-tokens")){

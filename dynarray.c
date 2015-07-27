@@ -36,3 +36,19 @@ void dynarray_move(dynarray *dest, dynarray *src)
 	src->entries = NULL;
 	dynarray_reset(src);
 }
+
+bool dynarray_refeq(dynarray *a, dynarray *b)
+{
+	size_t i, j;
+
+	if(dynarray_count(a) != dynarray_count(b))
+		return false;
+
+	j = 0;
+	dynarray_iter(a, i){
+		if(dynarray_ent(a, i) != dynarray_ent(b, j))
+			return false;
+	}
+
+	return true;
+}

@@ -10,6 +10,7 @@ typedef struct function function;
 void function_free(function *);
 
 const char *function_name(function *);
+struct type *function_type(function *);
 void function_dump(function *);
 
 void function_finalize(function *);

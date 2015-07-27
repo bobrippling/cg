@@ -24,12 +24,13 @@ struct val
 	union
 	{
 		int i;
-		struct variable *global;
+		struct global *global;
 		struct sym
 		{
-			struct variable *var;
+			struct variable *var; /* maybe NULL */
 			struct name_loc loc;
 		} argument, local;
+		struct name_loc temp_loc;
 	} u;
 
 	void *pass_data;
@@ -42,8 +43,11 @@ struct val
 		LITERAL,  /* i32 5, { i32, [i8 x 2] }* 54 */
 		GLOBAL,   /* $x from global */
 		ARGUMENT, /* $x from arg */
-		FROM_ISN  /* $y = load i32* 1 */
+		FROM_ISN, /* $y = load i32* 1 */
+		BACKEND_TEMP /* mov $3, %eax ; ret */
 	} kind;
 };
+
+typedef struct sym sym;
 
 #endif

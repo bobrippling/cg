@@ -8,6 +8,8 @@
 val *val_retain(val *);
 void val_release(val *);
 
+struct name_loc *val_location(val *);
+
 #if 0
 bool val_op_maybe(enum op, val *, val *, int *res);
 bool val_op_maybe_val(enum op, val *, val *, val **res);

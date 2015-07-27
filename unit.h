@@ -9,7 +9,7 @@ struct dynarray;
 
 typedef struct unit unit;
 
-unit *unit_new(void);
+unit *unit_new(unsigned ptrsz, unsigned ptralign);
 void unit_free(unit *);
 
 void unit_on_functions(unit *, void (function *, void *), void *);

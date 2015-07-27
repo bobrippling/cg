@@ -1,6 +1,8 @@
 #ifndef VAL_H
 #define VAL_H
 
+#include <stdbool.h>
+
 #include "macros.h"
 
 struct type;
@@ -12,9 +14,9 @@ typedef struct val val;
 val *val_new_i(int i, struct type *);
 
 /* refer to a local, arg or global */
-val *val_new_global(struct global *) attr_nonnull;
-val *val_new_argument(struct variable *) attr_nonnull;
-val *val_new_local(struct variable *); /* maybe null */
+val *val_new_global(struct global *) attr_nonnull();
+val *val_new_argument(struct variable *) attr_nonnull();
+val *val_new_local(struct variable *, struct type *) attr_nonnull((2));
 
 unsigned val_size(val *);
 struct type *val_type(val *);
@@ -27,5 +29,7 @@ char *val_str_r(char buf[], val *);
 char *val_str_rn(unsigned bufindex, val *);
 
 unsigned val_hash(val *);
+
+bool val_is_mem(val *);
 
 #endif

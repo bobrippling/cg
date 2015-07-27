@@ -13,6 +13,8 @@
 #include "variable.h"
 #include "isn.h"
 #include "op.h"
+#include "global.h"
+#include "type.h"
 
 #if 0
 static val *val_new(enum val_kind k);
@@ -60,20 +62,27 @@ int val_size(val *v, unsigned ptrsz)
 	}
 	assert(0);
 }
+#endif
 
 bool val_is_mem(val *v)
 {
-	switch(v->type){
-		case INT_PTR: return true;
-		case ALLOCA:  return true;
-		case LBL:     return true;
-		case INT:     return false;
-		case ARG:     return v->u.arg.loc.where == NAME_SPILT;
-		case NAME:    return v->u.addr.u.name.loc.where == NAME_SPILT;
+	struct sym *sym;
+
+	switch(v->kind){
+		case FROM_ISN: sym = &v->u.local; goto loc;
+		case ARGUMENT: sym = &v->u.argument; goto loc;
+loc:
+			return sym->loc.where == NAME_SPILT;
+
+		case GLOBAL:
+			return true;
+
+		case LITERAL:
+		case BACKEND_TEMP:
+			return false;
 	}
 	assert(0);
 }
-#endif
 
 unsigned val_hash(val *v)
 {
@@ -87,7 +96,7 @@ unsigned val_hash(val *v)
 
 		case GLOBAL:
 		{
-			spel = variable_name(v->u.global);
+			spel = global_name(v->u.global);
 			break;
 		}
 
@@ -102,6 +111,9 @@ unsigned val_hash(val *v)
 			spel = variable_name(v->u.local.var);
 			break;
 		}
+
+		case BACKEND_TEMP:
+			break;
 	}
 
 	if(spel)
@@ -110,23 +122,27 @@ unsigned val_hash(val *v)
 	return h;
 }
 
-#if 0
 struct name_loc *val_location(val *v)
 {
+	struct sym *sym;
+
 	switch(v->kind){
-		case NAME:
-			return &v->u.addr.u.name.loc;
-		case ARG:
-			return &v->u.arg.loc;
-		case INT:
-		case INT_PTR:
-		case ALLOCA:
-		case LBL:
+		case FROM_ISN: sym = &v->u.local; goto loc;
+		case ARGUMENT: sym = &v->u.argument; goto loc;
+loc:
+			return &sym->loc;
+
+		case BACKEND_TEMP:
+			return &v->u.temp_loc;
+
+		case GLOBAL:
+		case LITERAL:
 			break;
 	}
 	return NULL;
 }
 
+#if 0
 static bool val_both_ints(val *l, val *r)
 {
 	if(l->kind != INT || r->kind != INT)
@@ -204,13 +220,16 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "%d", v->u.i);
 			break;
 		case GLOBAL:
-			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.global));
+			snprintf(buf, VAL_STR_SZ, "%s", global_name(v->u.global));
 			break;
 		case ARGUMENT:
 			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.argument.var));
 			break;
 		case FROM_ISN:
 			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.local.var));
+			break;
+		case BACKEND_TEMP:
+			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
 	}
 	return buf;
@@ -284,4 +303,35 @@ val *val_new_i(int i, struct type *ty)
 	val *p = val_new(LITERAL, ty);
 	p->u.i = i;
 	return p;
+}
+
+val *val_new_argument(struct variable *var)
+{
+	val *p = val_new(ARGUMENT, variable_type(var));
+	p->u.argument.var = var;
+	return p;
+}
+
+val *val_new_global(struct global *glob)
+{
+	val *p = val_new(GLOBAL, global_type(glob));
+	p->u.global = glob;
+	return p;
+}
+
+val *val_new_local(struct variable *var, struct type *ty)
+{
+	val *p = val_new(FROM_ISN, ty);
+	p->u.local.var = var;
+	return p;
+}
+
+struct type *val_type(val *v)
+{
+	return v->ty;
+}
+
+unsigned val_size(val *v)
+{
+	return type_size(val_type(v));
 }

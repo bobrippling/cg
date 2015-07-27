@@ -150,13 +150,12 @@ found:
 		parse_error(p, "undeclared identifier '%s'", name);
 
 	if(opts & VAL_ALLOCA){
-		v = val_new_local(NULL);
+		v = val_new_local(NULL, ty);
 	}else{
 #if 0
 		var = (variable){ }; /* TODO */
 #endif
-		(void)ty;
-		v = val_new_local(var);
+		v = val_new_local(var, ty);
 	}
 
 	return map_val(p, name, v);
@@ -640,6 +639,10 @@ static void parse_block(parse *p)
 			break;
 		}
 
+		case tok_jmp:
+			parse_jmp(p);
+			break;
+
 		case tok_br:
 			parse_br(p);
 			break;
@@ -709,7 +712,8 @@ unit *parse_code(tokeniser *tok, int *const err)
 	parse state = { 0 };
 
 	state.tok = tok;
-	state.unit = unit_new();
+	/* FIXME: hardcoded pointer info */
+	state.unit = unit_new(8, 8);
 
 	while(!parse_finished(tok)){
 		parse_global(&state);

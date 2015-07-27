@@ -6,19 +6,38 @@
 
 #include "variable_internal.h"
 #include "function_internal.h"
+#include "type_uniq_struct.h"
+#include "global_struct.h"
 
 struct unit
 {
+	struct uniq_type_list types;
+
 	global *globals;
 	size_t nglobals;
 
 	unsigned uniq_counter;
 };
 
-unit *unit_new(void)
+static void uniq_types_init(
+		struct uniq_type_list *us, unsigned ptrsz, unsigned ptralign)
+{
+	us->ptrsz = ptrsz;
+	us->ptralign = ptralign;
+}
+
+unit *unit_new(unsigned ptrsz, unsigned ptralign)
 {
 	unit *u = xcalloc(1, sizeof *u);
+
+	uniq_types_init(&u->types, ptrsz, ptralign);
+
 	return u;
+}
+
+uniq_type_list *unit_uniqtypes(unit *u)
+{
+	return &u->types;
 }
 
 static void unit_function_free(function *f, void *ctx)

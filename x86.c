@@ -19,6 +19,9 @@
 #include "block_struct.h"
 #include "function_struct.h"
 #include "variable_struct.h"
+#include "unit.h"
+#include "val_internal.h" /* val_location() */
+#include "global_struct.h"
 
 struct x86_alloca_ctx
 {
@@ -31,6 +34,7 @@ typedef struct x86_out_ctx
 	dynmap *alloca2stack;
 	block *exitblk;
 	function *func;
+	unit *unit;
 	FILE *fout;
 	long alloca_bottom; /* max of ALLOCA instructions */
 	long spill_alloca_max; /* max of spill space */
@@ -167,25 +171,30 @@ static operand_category val_category(val *v)
 	if(val_is_mem(v))
 		return OPERAND_MEM;
 
-	switch(v->type){
-		case INT:  return OPERAND_INT;
-		case NAME: return OPERAND_REG; /* not mem from val_is_mem() */
-		case ARG:  return OPERAND_REG; /* ditto */
+	switch(v->kind){
+		case LITERAL:
+			return OPERAND_INT;
 
-		case INT_PTR:
-		case ALLOCA:
-		case LBL:
-			assert(0 && "unreachable");
+		case GLOBAL:
+			assert(0);
+
+		case BACKEND_TEMP:
+		case ARGUMENT:
+		case FROM_ISN:
+			/* not mem from val_is_mem() */
+			return OPERAND_REG;
 	}
 	assert(0);
 }
 
+#if 0
 static int alloca_offset(dynmap *alloca2stack, val *val)
 {
 	intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
 	assert(off);
 	return off;
 }
+#endif
 
 static const char *name_in_reg_str(
 		const struct name_loc *loc, /*optional*/int size, val *v)
@@ -201,7 +210,7 @@ static const char *name_in_reg_str(
 	assert(reg < (int)countof(regs));
 
 	if(size < 0)
-		size = val_size(v, PTR_SZ);
+		size = val_size(v);
 
 	switch(size){
 		case 0:
@@ -229,7 +238,7 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
-		enum deref_type dereference_ty, unsigned size,
+		enum deref_type dereference_ty, type *ty,
 		val *val)
 {
 	switch(loc->where){
@@ -239,7 +248,7 @@ static const char *x86_name_str(
 
 			snprintf(buf, bufsz, "%s%%%s%s",
 					deref ? "(" : "",
-					name_in_reg_str(loc, deref ? 0 : size, val),
+					name_in_reg_str(loc, deref ? 0 : type_size(ty), val),
 					deref ? ")" : "");
 			break;
 		}
@@ -257,45 +266,57 @@ static const char *x86_name_str(
 static const char *x86_val_str_sized(
 		val *val, int bufchoice,
 		x86_octx *octx,
-		enum deref_type dereference, int size)
+		enum deref_type dereference)
 {
 	static char bufs[3][256];
 
 	assert(0 <= bufchoice && bufchoice <= 2);
 	char *buf = bufs[bufchoice];
 
-	switch(val->type){
-		case INT:
-			assert_deref(dereference, DEREFERENCE_FALSE);
-			snprintf(buf, sizeof bufs[0], "$%d", val->u.i.i);
-			break;
-		case INT_PTR:
-			assert_deref(dereference, DEREFERENCE_TRUE);
-			snprintf(buf, sizeof bufs[0], "%d", val->u.i.i);
-			break;
-		case NAME:
-			return x86_name_str(&val->u.addr.u.name.loc,
-					buf, sizeof bufs[0], dereference, size, val);
-		case ALLOCA:
+	(void)octx;
+
+	switch(val->kind){
+		struct sym *sym;
+
+		case LITERAL:
 		{
-			int off = alloca_offset(octx->alloca2stack, val);
-			/*assert_deref(dereference, DEREFERENCE_FALSE);*/
-			snprintf(buf, sizeof bufs[0], "%d(%%rbp)", (int)off);
+			bool indir = (dereference == DEREFERENCE_TRUE);
+
+			snprintf(buf, sizeof bufs[0],
+					"%s%d",
+					indir ? "" : "$",
+					val->u.i);
 			break;
 		}
-		case LBL:
+
+		case GLOBAL:
 		{
-			/*assert_deref(dereference, DEREFERENCE_FALSE);*/
-			snprintf(buf, sizeof bufs[0], "%s+%u(%%rip)",
-					val->u.addr.u.lbl.spel,
-					val->u.addr.u.lbl.offset);
+			bool indir = (dereference == DEREFERENCE_TRUE);
+
+			snprintf(buf, sizeof bufs[0],
+					"%s%s(%%rip)",
+					indir ? "" : "$",
+					global_name(val->u.global));
 			break;
 		}
-		case ARG:
-		{
-			return x86_name_str(&val->u.arg.loc,
-					buf, sizeof bufs[0], dereference, size, val);
-		}
+
+		case ARGUMENT: sym = &val->u.argument; goto loc;
+		case FROM_ISN: sym = &val->u.local; goto loc;
+loc:
+			return x86_name_str(
+					&sym->loc,
+					buf, sizeof bufs[0],
+					dereference,
+					variable_type(sym->var),
+					val);
+
+		case BACKEND_TEMP:
+			return x86_name_str(
+					&val->u.temp_loc,
+					buf, sizeof bufs[0],
+					dereference,
+					val->ty,
+					val);
 	}
 
 	return buf;
@@ -306,38 +327,40 @@ static const char *x86_val_str(
 		x86_octx *octx,
 		enum deref_type dereference)
 {
-	return x86_val_str_sized(
-		val, bufchoice,
-		octx,
-		dereference, -1);
+	return x86_val_str_sized(val, bufchoice, octx, dereference);
 }
 
-static void x86_make_eax(val *out, unsigned size)
+static void temporary_init(val *tmp, type *ty)
 {
-	memset(out, 0, sizeof *out);
+	assert(ty);
 
-	out->type = NAME;
-	out->u.addr.u.name.loc.where = NAME_IN_REG;
-	out->u.addr.u.name.loc.u.reg = 0; /* XXX: hard coded eax */
-	out->u.addr.u.name.val_size = size;
+	memset(tmp, 0, sizeof *tmp);
+
+	tmp->kind = BACKEND_TEMP;
+	tmp->ty = ty;
+	tmp->retains = 1;
 }
 
-static unsigned resolve_isn_size(val *a, val *b)
+static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
-	unsigned a_sz = val_size(a, 0);
-	unsigned b_sz = val_size(b, 0);
+	temporary_init(stack_slot, ty);
 
-	if(a_sz == b_sz){
-		return a_sz > 0 ? a_sz : PTR_SZ;
-	}
+	stack_slot->u.temp_loc.where = NAME_SPILT;
+	stack_slot->u.temp_loc.u.off = off;
+}
 
-	if(a_sz != 0){
-		assert(b_sz == 0);
-		return a_sz;
-	}
+attr_nonnull()
+static void make_reg(val *reg, int regidx, type *ty)
+{
+	temporary_init(reg, ty);
 
-	assert(b_sz != 0);
-	return b_sz;
+	reg->u.temp_loc.where = NAME_IN_REG;
+	reg->u.temp_loc.u.reg = regidx;
+}
+
+static void temporary_x86_make_eax(val *out, type *ty)
+{
+	make_reg(out, /* XXX: hard coded eax: */ 0, ty);
 }
 
 static void make_val_temporary_store(
@@ -349,39 +372,33 @@ static void make_val_temporary_store(
 {
 	/* move 'from' into category 'to_cat' (from 'from_cat'),
 	 * saving the new value in *write_to */
-	unsigned size = resolve_isn_size(from, other_val);
 
 	if(from_cat == to_cat){
 		*write_to = *from;
-		goto out;
+		return;
 	}
 
 	assert(to_cat != OPERAND_INT);
 
-	memset(write_to, 0, sizeof *write_to);
-
 	if(to_cat == OPERAND_REG){
 		/* use scratch register */
-		write_to->type = NAME;
+		temporary_init(write_to, from->ty);
 
-		write_to->u.addr.u.name.loc.where = NAME_IN_REG;
-		write_to->u.addr.u.name.loc.u.reg = SCRATCH_REG;
+		write_to->u.local.loc.where = NAME_IN_REG;
+		write_to->u.local.loc.u.reg = SCRATCH_REG;
 
 	}else{
 		assert(to_cat == OPERAND_MEM);
 
-		write_to->type = NAME;
+		temporary_init(write_to, from->ty);
 
-		write_to->u.addr.u.name.loc.where = NAME_SPILT;
-		write_to->u.addr.u.name.loc.u.off = 13; /* TODO */
+		write_to->u.local.loc.where = NAME_SPILT;
+		write_to->u.local.loc.u.off = 133; /* TODO */
 
 		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
 	}
 
-	write_to->u.addr.u.name.val_size = size;
-
-out:
-	write_to->retains = 1;
+	assert(val_size(from) == val_size(other_val));
 }
 
 static bool operand_type_convertible(
@@ -481,8 +498,13 @@ static void emit_isn(
 	const int orig_deref_rhs = deref_rhs;
 	bool is_exactmatch;
 	const struct x86_isn_constraint *operands_target = NULL;
-	val temporary_lhs, *emit_lhs = lhs;
-	val temporary_rhs, *emit_rhs = rhs;
+	val *emit_lhs = lhs;
+	val *emit_rhs = rhs;
+	struct
+	{
+		val val;
+		variable var;
+	} temporary_lhs, temporary_rhs;
 
 	if(lhs_cat == OPERAND_MEM)
 		deref_lhs = 1;
@@ -501,21 +523,21 @@ static void emit_isn(
 		&& lhs_cat != operands_target->l)
 		{
 			ready_input(
-					lhs, &temporary_lhs,
+					lhs, &temporary_lhs.val,
 					lhs_cat, operands_target->l,
 					&deref_lhs, rhs, octx);
 
-			emit_lhs = &temporary_lhs;
+			emit_lhs = &temporary_lhs.val;
 		}
 		if(isn->io_r & OPERAND_INPUT
 		&& rhs_cat != operands_target->r)
 		{
 			ready_input(
-					rhs, &temporary_rhs,
+					rhs, &temporary_rhs.val,
 					rhs_cat, operands_target->r,
 					&deref_rhs, lhs, octx);
 
-			emit_rhs = &temporary_rhs;
+			emit_rhs = &temporary_rhs.val;
 		}
 
 		/* ready the output operands */
@@ -523,23 +545,23 @@ static void emit_isn(
 		&& isn->io_l & OPERAND_OUTPUT)
 		{
 			ready_output(
-					lhs, &temporary_lhs,
+					lhs, &temporary_lhs.val,
 					lhs_cat, operands_target->l,
 					&deref_lhs,
 					rhs);
 
-			emit_lhs = &temporary_lhs;
+			emit_lhs = &temporary_lhs.val;
 		}
 		if(rhs_cat != operands_target->r
 		&& isn->io_r & OPERAND_OUTPUT)
 		{
 			ready_output(
-					rhs, &temporary_rhs,
+					rhs, &temporary_rhs.val,
 					rhs_cat, operands_target->r,
 					&deref_rhs,
 					lhs);
 
-			emit_rhs = &temporary_rhs;
+			emit_rhs = &temporary_rhs.val;
 		}
 	}else{
 		/* satisfied */
@@ -594,11 +616,12 @@ static void mov(val *from, val *to, x86_octx *octx)
 	mov_deref(from, to, octx, 0, 0);
 }
 
+#if 0
 static void emit_elem(isn *i, x86_octx *octx)
 {
 	int add_total;
 
-	switch(i->u.elem.lval->type){
+	switch(i->u.elem.lval->kind){
 		case INT:
 		case NAME:
 		case ARG:
@@ -654,6 +677,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 			add_total,
 			x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
 }
+#endif
 
 static void x86_op(
 		enum op op, val *lhs, val *rhs,
@@ -684,8 +708,8 @@ static void x86_op(
 
 static void x86_ext(val *from, val *to, x86_octx *octx)
 {
-	unsigned sz_from = val_size(from, PTR_SZ);
-	unsigned sz_to = val_size(to, PTR_SZ);
+	unsigned sz_from = val_size(from);
+	unsigned sz_to = val_size(to);
 	char buf[4] = "z";
 
 	assert(sz_to > sz_from);
@@ -706,16 +730,8 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			val to_shrunk;
 
 			to_shrunk = *to;
-			switch(to_shrunk.type){
-				case INT:  to_shrunk.u.i.val_size = 4; break;
-				case NAME: to_shrunk.u.addr.u.name.val_size = 4; break;
-				case ARG:  to_shrunk.u.arg.val_size = 4; break;
-				case INT_PTR:
-				case ALLOCA:
-				case LBL:
-					/* not sized - no-op */
-					break;
-			}
+
+			to_shrunk.ty = type_get_primitive(unit_uniqtypes(octx->unit), i4);
 
 			assert(sz_to == 8);
 			fprintf(octx->fout, "\t# zext:\n");
@@ -773,9 +789,9 @@ static void x86_cmp(
 	emit_isn(&isn_cmp, octx,
 			lhs, 0,
 			rhs, 0,
-			x86_size_suffix(val_size(lhs, PTR_SZ)));
+			x86_size_suffix(val_size(lhs)));
 
-	zero = val_retain(val_new_i(0, val_size(lhs, PTR_SZ)));
+	zero = val_retain(val_new_i(0, lhs->ty));
 
 	mov(zero, res, octx);
 
@@ -796,7 +812,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 	emit_isn(&isn_test, octx,
 			cond, 0,
 			cond, 0,
-			x86_size_suffix(val_size(cond, PTR_SZ)));
+			x86_size_suffix(val_size(cond)));
 
 	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 	x86_jmp(octx, bt);
@@ -817,12 +833,15 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	switch(v->type){
-		case NAME:
-		case ARG:
-			break;
-		default:
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
 			return; /* no need to spill */
+
+		case BACKEND_TEMP:
+		case FROM_ISN:
+		case ARGUMENT:
+			break;
 	}
 
 	if(dynmap_exists(val *, ctx->dontspill, v))
@@ -838,28 +857,6 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 	{
 		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
 	}
-}
-
-static void make_stack_slot(val *stack_slot, unsigned off, unsigned sz)
-{
-	assert(sz);
-
-	stack_slot->type = NAME;
-	stack_slot->retains = 1;
-	stack_slot->u.addr.u.name.val_size = sz;
-	stack_slot->u.addr.u.name.loc.where = NAME_SPILT;
-	stack_slot->u.addr.u.name.loc.u.off = off;
-}
-
-static void make_reg(val *reg, int regidx, unsigned sz)
-{
-	assert(sz);
-
-	reg->type = NAME;
-	reg->retains = 1;
-	reg->u.addr.u.name.val_size = sz;
-	reg->u.addr.u.name.loc.where = NAME_IN_REG;
-	reg->u.addr.u.name.loc.u.reg = regidx;
 }
 
 static dynmap *x86_spillregs(
@@ -898,24 +895,23 @@ static dynmap *x86_spillregs(
 		maybe_spill(&octx->func->args[idx].val, NULL, &spillctx);
 
 	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
-		unsigned sz = val_size(v, PTR_SZ);
 		val stack_slot = { 0 };
 
-		assert(sz);
+		spill_alloca += type_size(v->ty);
 
-		spill_alloca += sz;
-
-		make_stack_slot(&stack_slot, octx->alloca_bottom + spill_alloca, sz);
+		make_stack_slot(&stack_slot, octx->alloca_bottom + spill_alloca, v->ty);
 
 		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
 
 		mov_deref(v, &stack_slot, octx, 0, 1);
 
+		assert(stack_slot.kind == BACKEND_TEMP);
+		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
 		dynmap_set(
 				val *, uintptr_t,
 				spillctx.spill,
 				v,
-				(uintptr_t)stack_slot.u.addr.u.name.loc.u.off);
+				(uintptr_t)stack_slot.u.temp_loc.u.off);
 	}
 
 	if(spill_alloca > octx->spill_alloca_max)
@@ -936,7 +932,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 
 		fprintf(octx->fout, "\t# restore '%s'\n", val_str(v));
 
-		make_stack_slot(&stack_slot, off, val_size(v, PTR_SZ));
+		make_stack_slot(&stack_slot, off, v->ty);
 
 		mov_deref(&stack_slot, v, octx, 1, 0);
 	}
@@ -969,7 +965,7 @@ static void x86_call(
 		if(i < countof(arg_regs)){
 			val reg;
 
-			make_reg(&reg, arg_regs[i], val_size(arg, PTR_SZ));
+			make_reg(&reg, arg_regs[i], arg->ty);
 
 			mov(arg, &reg, octx);
 
@@ -978,17 +974,20 @@ static void x86_call(
 		}
 	}
 
-	if(fn->type == LBL){
-		fprintf(octx->fout, "\tcall %s\n", fn->u.addr.u.lbl.spel);
+	if(fn->kind == GLOBAL){
+		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));
 	}else{
 		/* TODO: isn */
 		fprintf(octx->fout, "\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
 	}
 
 	if(into){
+		type *ty = type_get_primitive(
+				unit_uniqtypes(octx->unit),
+				/* HARDCODED TODO FIXME */ i4);
 		val eax;
 
-		x86_make_eax(&eax, /* HARDCODED TODO FIXME */ 4);
+		temporary_x86_make_eax(&eax, ty);
 
 		mov(&eax, into, octx);
 	}
@@ -1016,7 +1015,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 			{
 				val veax;
 
-				x86_make_eax(&veax, val_size(i->u.ret, PTR_SZ));
+				temporary_x86_make_eax(&veax, i->u.ret->ty);
 
 				mov(i->u.ret, &veax, octx);
 
@@ -1037,7 +1036,8 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 			}
 
 			case ISN_ELEM:
-				emit_elem(i, octx);
+				/*emit_elem(i, octx);*/
+				fprintf(stderr, "ELEM UNSUPPORTED\n");
 				break;
 
 			case ISN_OP:
@@ -1123,7 +1123,9 @@ static void x86_sum_alloca(block *blk, void *vctx)
 		switch(i->type){
 			case ISN_ALLOCA:
 			{
-				ctx->alloca += i->u.alloca.sz;
+				type *sz_ty = type_deref(i->u.alloca.out->ty);
+
+				ctx->alloca += type_size(sz_ty);
 
 				(void)dynmap_set(val *, intptr_t,
 						ctx->alloca2stack,
@@ -1231,7 +1233,7 @@ static void x86_out_var(variable *var)
 
 	printf(".bss\n");
 	printf(".globl %s\n", name);
-	printf("%s: .space %u\n", name, variable_size(var, PTR_SZ));
+	printf("%s: .space %u\n", name, variable_size(var));
 }
 
 void x86_out(global *const glob)

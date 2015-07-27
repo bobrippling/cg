@@ -4,16 +4,11 @@
 #include "function.h"
 #include "variable.h"
 
-typedef struct global
-{
-	int is_fn;
-	union
-	{
-		function *fn;
-		variable *var;
-	} u;
-} global;
+typedef struct global global;
 
 void global_dump(global *);
+
+const char *global_name(global *);
+struct type *global_type(global *);
 
 #endif

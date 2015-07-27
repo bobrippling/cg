@@ -152,6 +152,11 @@ const char *function_name(function *f)
 	return f->name;
 }
 
+struct type *function_type(function *f)
+{
+	return f->fnty;
+}
+
 #if 0
 void function_arg_add(function *f, unsigned sz, char *name)
 {

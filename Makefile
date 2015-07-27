@@ -4,6 +4,7 @@ OBJ = val.o  main.o mem.o dynarray.o op.o \
       function.o variable.o global.o block.o unit.o \
       die.o io.o str.o lbl.o \
       tokenise.o parse.o \
+      type.o \
       x86.o
 
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
