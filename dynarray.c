@@ -37,6 +37,20 @@ void dynarray_move(dynarray *dest, dynarray *src)
 	dynarray_reset(src);
 }
 
+void dynarray_copy(dynarray *dest, dynarray *src)
+{
+	size_t i;
+
+	dynarray_reset(dest);
+
+	memcpy(dest, src, sizeof *dest);
+	dest->entries = xmalloc(dynarray_count(src) * sizeof *dest->entries);
+
+	dynarray_iter(src, i){
+		dynarray_ent(dest, i) = dynarray_ent(src, i);
+	}
+}
+
 bool dynarray_refeq(dynarray *a, dynarray *b)
 {
 	size_t i, j;
@@ -51,4 +65,12 @@ bool dynarray_refeq(dynarray *a, dynarray *b)
 	}
 
 	return true;
+}
+
+void dynarray_foreach(dynarray *d, void fn(void *))
+{
+	size_t i;
+	dynarray_iter(d, i){
+		fn(dynarray_ent(d, i));
+	}
 }
