@@ -263,8 +263,8 @@ prim:
 			char *mul;
 			unsigned nelems;
 
-			eat(p, "array multiplier", tok_ident);
-			mul = token_last_ident(p->tok);
+			eat(p, "array multiplier", tok_bareword);
+			mul = token_last_bareword(p->tok);
 			if(strcmp(mul, "x")){
 				parse_error(p, "'x' expected for array multiplier, got %s", mul);
 			}
