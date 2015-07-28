@@ -274,6 +274,8 @@ prim:
 			nelems = token_last_int(p->tok);
 
 			t = type_get_array(unit_uniqtypes(p->unit), elemty, nelems);
+
+			eat(p, "end array", tok_rsquare);
 			break;
 		}
 
