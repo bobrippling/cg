@@ -982,9 +982,7 @@ static void x86_call(
 	}
 
 	if(into){
-		type *ty = type_get_primitive(
-				unit_uniqtypes(octx->unit),
-				/* HARDCODED TODO FIXME */ i4);
+		type *ty = type_func_call(type_deref(fn->ty), NULL);
 		val eax;
 
 		temporary_x86_make_eax(&eax, ty);
