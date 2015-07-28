@@ -24,8 +24,8 @@ struct tokeniser
 	char *line, *linep;
 	enum token unget;
 
-	int free_lastident;
 	char *lastident;
+	char *lastbareword;
 	long lastint;
 };
 
@@ -59,14 +59,6 @@ tokeniser *token_init(FILE *f, const char *fname)
 	return t;
 }
 
-static void free_lastident(tokeniser *t)
-{
-	if(t->free_lastident){
-		free(t->lastident);
-		t->free_lastident = 0;
-	}
-}
-
 void token_fin(tokeniser *t, int *const err)
 {
 	if(t->f){
@@ -78,7 +70,6 @@ void token_fin(tokeniser *t, int *const err)
 
 	*err = t->ferr;
 
-	free_lastident(t);
 	free(t);
 }
 
@@ -110,6 +101,24 @@ static int consume_word(tokeniser *t, const char *word)
 
 	t->linep += strlen(word);
 	return 1;
+}
+
+static char *tokenise_ident(tokeniser *t)
+{
+	char *end;
+	char *buf;
+	size_t len;
+
+	for(end = t->linep + 1; isident(*end, 1); end++);
+
+	len = end - t->linep + 1;
+	buf = xmalloc(len);
+	memcpy(buf, t->linep, len - 1);
+	buf[len - 1] = '\0';
+
+	t->linep += len - 1;
+
+	return buf;
 }
 
 enum token token_next(tokeniser *t)
@@ -179,26 +188,18 @@ enum token token_next(tokeniser *t)
 			return keywords[i].tok;
 
 	if(*t->linep == '$' && isident(t->linep[1], 0)){
-		char *end;
-		char *buf;
-		size_t len;
+		++t->linep;
 
-		t->linep++; /* skip '$' */
-
-		for(end = t->linep + 1; isident(*end, 1); end++);
-
-		len = end - t->linep + 1;
-		buf = xmalloc(len);
-		memcpy(buf, t->linep, len - 1);
-		buf[len - 1] = '\0';
-
-		free_lastident(t);
-		t->lastident = buf;
-		t->free_lastident = 1;
-
-		t->linep += len - 1;
+		free(t->lastident);
+		t->lastident = tokenise_ident(t);
 
 		return tok_ident;
+	}
+
+	if(isident(*t->linep, 0)){
+		free(t->lastbareword);
+		t->lastbareword = tokenise_ident(t);
+		return tok_bareword;
 	}
 
 	fprintf(stderr, "unknown token '%s'\n", t->linep);
@@ -267,10 +268,25 @@ int token_last_int(tokeniser *t)
 	return t->lastint;
 }
 
+static char *token_last_(char **p)
+{
+	char *ret = *p;
+	*p = NULL;
+
+	if(!ret)
+		ret = xstrdup("?");
+
+	return ret;
+}
+
 char *token_last_ident(tokeniser *t)
 {
-	t->free_lastident = 0;
-	return t->lastident;
+	return token_last_(&t->lastident);
+}
+
+char *token_last_bareword(tokeniser *t)
+{
+	return token_last_(&t->lastbareword);
 }
 
 int token_is_op(enum token t, enum op *const o)

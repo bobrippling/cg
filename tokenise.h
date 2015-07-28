@@ -9,6 +9,7 @@
 #define TOKENS        \
 	OTHER(int)          \
 	OTHER(ident)        \
+	OTHER(bareword)     \
 	OTHER(eof)          \
 	OTHER(unknown)      \
 	PUNCT(lparen, '(')  \
@@ -85,6 +86,7 @@ bool token_accept(tokeniser *, enum token);
 
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
+char *token_last_bareword(tokeniser *);
 
 void token_curline(tokeniser *, char *out, size_t len);
 unsigned token_curlineno(tokeniser *);
