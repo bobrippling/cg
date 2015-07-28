@@ -318,6 +318,8 @@ static val *parse_val(parse *p)
 		char *ident = token_last_ident(p->tok);
 		val *v = uniq_val(p, ident, NULL, 0);
 
+		eat(p, "ident", tok_ident);
+
 		return v;
 	}
 
@@ -390,9 +392,8 @@ static void parse_call(parse *p, char *ident_or_null)
 	dynarray_reset(&args);
 }
 
-static void parse_ident(parse *p)
+static void parse_ident(parse *p, char *spel)
 {
-	char *spel = token_last_ident(p->tok);
 	enum token tok;
 
 	eat(p, "assignment", tok_equal);
@@ -636,7 +637,7 @@ static void parse_block(parse *p)
 					isn_jmp(from, p->entry);
 				}
 			}else{
-				parse_ident(p);
+				parse_ident(p, ident);
 			}
 			break;
 		}
