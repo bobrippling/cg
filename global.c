@@ -4,8 +4,11 @@
 #include "global.h"
 #include "global_struct.h"
 
-void global_dump(global *glob)
+#include "type.h"
+
+void global_dump(struct unit *unit, global *glob)
 {
+	(void)unit;
 	if(glob->is_fn)
 		function_dump(glob->u.fn);
 	else
@@ -19,9 +22,14 @@ const char *global_name(global *g)
 		: variable_name(g->u.var);
 }
 
-struct type *global_type(global *g)
+struct type *global_type_noptr(global *g)
 {
 	return g->is_fn
 		? function_type(g->u.fn)
 		: variable_type(g->u.var);
+}
+
+struct type *global_type_as_ptr(struct uniq_type_list *us, global *g)
+{
+	return type_get_ptr(us, global_type_noptr(g));
 }

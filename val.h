@@ -8,13 +8,14 @@
 struct type;
 struct variable;
 struct global;
+struct uniq_type_list;
 
 typedef struct val val;
 
 val *val_new_i(int i, struct type *);
 
 /* refer to a local, arg or global */
-val *val_new_global(struct global *) attr_nonnull();
+val *val_new_global(struct uniq_type_list *, struct global *) attr_nonnull();
 val *val_new_argument(struct variable *) attr_nonnull();
 val *val_new_local(struct variable *, struct type *) attr_nonnull((2));
 

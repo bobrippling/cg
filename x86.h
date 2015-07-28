@@ -3,6 +3,6 @@
 
 #include "global.h"
 
-void x86_out(global *);
+void x86_out(struct unit *, global *);
 
 #endif

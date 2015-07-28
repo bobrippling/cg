@@ -141,7 +141,7 @@ found:
 	glob = unit_global_find(p->unit, name);
 
 	if(glob){
-		v = val_new_global(glob);
+		v = val_new_global(unit_uniqtypes(p->unit), glob);
 		name = NULL;
 		goto found;
 	}
@@ -350,15 +350,20 @@ static void parse_call(parse *p, char *ident_or_null)
 	val *target;
 	val *into;
 	dynarray args = DYNARRAY_INIT;
-	type *retty;
+	type *retty = NULL;
 
 	assert(ident_or_null && "TODO: void");
 
 	target = parse_val(p);
 
-	if(!(retty = type_func_call(val_type(target), NULL))){
+	type *ptr = type_deref(val_type(target));
+	if(ptr)
+		retty = type_func_call(ptr, NULL);
+
+	if(!retty){
 		retty = default_type(p);
-		sema_error(p, "call requires function operand");
+		sema_error(p, "call requires function (pointer) operand (got %s)",
+				type_to_str(val_type(target)));
 	}
 
 	into = uniq_val(p, ident_or_null, retty, VAL_CREATE);

@@ -9,11 +9,13 @@ struct dynarray;
 
 typedef struct unit unit;
 
+typedef void global_emit_func(unit *, global *);
+
 unit *unit_new(unsigned ptrsz, unsigned ptralign);
 void unit_free(unit *);
 
 void unit_on_functions(unit *, void (function *, void *), void *);
-void unit_on_globals(unit *, void (global *));
+void unit_on_globals(unit *, global_emit_func);
 
 function *unit_function_new(
 		unit *u, const char *lbl,

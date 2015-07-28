@@ -1180,13 +1180,15 @@ static void x86_init_regalloc_context(
 	ctx->func = func;
 }
 
-static void x86_out_fn(function *func)
+static void x86_out_fn(unit *unit, function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
 	struct regalloc_context regalloc;
+
+	out_ctx.unit = unit;
 
 	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
@@ -1236,13 +1238,13 @@ static void x86_out_var(variable *var)
 	printf("%s: .space %u\n", name, variable_size(var));
 }
 
-void x86_out(global *const glob)
+void x86_out(unit *unit, global *glob)
 {
 	if(glob->is_fn){
 		function *fn = glob->u.fn;
 
 		if(function_entry_block(fn, false))
-			x86_out_fn(fn);
+			x86_out_fn(unit, fn);
 
 	}else{
 		x86_out_var(glob->u.var);

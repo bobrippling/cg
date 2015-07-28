@@ -62,12 +62,12 @@ void unit_on_functions(unit *u, void fn(function *, void *), void *ctx)
 			fn(u->globals[i].u.fn, ctx);
 }
 
-void unit_on_globals(unit *u, void fn(global *))
+void unit_on_globals(unit *u, global_emit_func *fn)
 {
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
-		fn(&u->globals[i]);
+		fn(u, &u->globals[i]);
 }
 
 static void unit_add_global(unit *u, void *global, int is_fn)

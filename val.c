@@ -316,9 +316,9 @@ val *val_new_argument(struct variable *var)
 	return p;
 }
 
-val *val_new_global(struct global *glob)
+val *val_new_global(struct uniq_type_list *us, struct global *glob)
 {
-	val *p = val_new(GLOBAL, global_type(glob));
+	val *p = val_new(GLOBAL, global_type_as_ptr(us, glob));
 	p->u.global = glob;
 	return p;
 }

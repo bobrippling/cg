@@ -30,7 +30,7 @@
 static struct
 {
 	const char *name;
-	void (*emit)(global *);
+	global_emit_func *emit;
 } backends[] = {
 	{ "ir", global_dump },
 	{ "x86_64", x86_out },
@@ -130,7 +130,7 @@ static void usage(const char *arg0)
 	exit(1);
 }
 
-static void (*find_machine(const char *machine))(global *)
+static global_emit_func *find_machine(const char *machine)
 {
 	int i;
 
@@ -141,10 +141,10 @@ static void (*find_machine(const char *machine))(global *)
 	return NULL;
 }
 
-static void (*default_backend(void))(global *)
+static global_emit_func *default_backend(void)
 {
 	struct utsname unam;
-	void (*fn)(global *);
+	global_emit_func *fn;
 
 	if(uname(&unam))
 		die("uname:");
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 {
 	dynarray passes = DYNARRAY_INIT;
 	bool dump_tok = false;
-	void (*emit_fn)(global *) = NULL;
+	global_emit_func *emit_fn = NULL;
 	unit *unit = NULL;
 	const char *fname = NULL;
 	int i;
