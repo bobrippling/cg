@@ -356,7 +356,7 @@ static void parse_call(parse *p, char *ident_or_null)
 
 	target = parse_val(p);
 
-	if(!(retty = type_func_call(val_type(target)))){
+	if(!(retty = type_func_call(val_type(target), NULL))){
 		retty = default_type(p);
 		sema_error(p, "call requires function operand");
 	}

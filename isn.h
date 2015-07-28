@@ -10,7 +10,9 @@ void isn_store(block *, struct val *from, struct val *lval);
 
 void isn_alloca(block *, struct val *);
 
+#if 0
 void isn_elem(block *, struct val *lval, struct val *add, struct val *res);
+#endif
 
 void isn_op(block *, enum op op, struct val *lhs, struct val *rhs, struct val *res);
 void isn_cmp(block *, enum op_cmp, struct val *lhs, struct val *rhs, struct val *res);

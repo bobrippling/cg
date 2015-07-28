@@ -8,24 +8,26 @@ typedef struct type type;
 typedef struct uniq_type_list uniq_type_list;
 
 #define TYPE_PRIMITIVES \
-	X(i1, 1, 1)           \
-	X(i2, 2, 2)           \
-	X(i4, 4, 4)           \
-	X(i8, 8, 8)           \
-	X(f4, 4, 4)           \
-	X(f8, 8, 8)           \
-	X(flarge, 16, 16)
+	X(i1, true, 1, 1)           \
+	X(i2, true, 2, 2)           \
+	X(i4, true, 4, 4)           \
+	X(i8, true, 8, 8)           \
+	X(f4, false, 4, 4)           \
+	X(f8, false, 8, 8)           \
+	X(flarge, false, 16, 16)
 
 #define TYPE_PRIMITIVE_LAST flarge
 
 enum type_primitive
 {
-#define X(name, sz, align) name,
+#define X(name, integral, sz, align) name,
 	TYPE_PRIMITIVES
 #undef X
 };
 
 bool type_is_fn(type *);
+bool type_is_primitive(type *, enum type_primitive);
+bool type_is_int(type *);
 
 const char *type_to_str(type *);
 
@@ -40,7 +42,7 @@ type *type_get_struct(uniq_type_list *, dynarray *);
 
 /* --- walkers --- */
 type *type_deref(type *);
-type *type_func_call(type *);
+type *type_func_call(type *, dynarray **);
 
 
 /* --- sizing --- */

@@ -122,6 +122,8 @@ void isn_load(block *blk, val *to, val *lval)
 	val_retain(lval);
 	val_retain(to);
 
+	assert(type_deref(val_type(lval)) == val_type(to));
+
 	if(!blk){
 		val_release(lval);
 		val_release(to);
@@ -130,7 +132,6 @@ void isn_load(block *blk, val *to, val *lval)
 
 	isn = isn_new(ISN_LOAD, blk);
 
-#warning TODO: error checks
 	isn->u.load.lval = lval;
 	isn->u.load.to = to;
 }
@@ -141,6 +142,8 @@ void isn_store(block *blk, val *from, val *lval)
 
 	val_retain(from);
 	val_retain(lval);
+
+	assert(type_deref(val_type(lval)) == val_type(from));
 
 	if(!blk){
 		val_release(from);
@@ -161,6 +164,9 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 	val_retain(lhs);
 	val_retain(rhs);
 	val_retain(res);
+
+	assert(type_size(val_type(lhs)) == type_size(val_type(rhs)));
+	assert(val_type(lhs) == val_type(res) || val_type(rhs) == val_type(res));
 
 	if(!blk){
 		val_release(lhs);
@@ -184,6 +190,9 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 	val_retain(rhs);
 	val_retain(res);
 
+	assert(val_type(lhs) == val_type(rhs));
+	assert(type_is_primitive(val_type(res), i1));
+
 	if(!blk){
 		val_release(lhs);
 		val_release(rhs);
@@ -205,6 +214,9 @@ void isn_zext(block *blk, val *from, val *to)
 	val_retain(from);
 	val_retain(to);
 
+	assert(type_is_int(val_type(from)));
+	assert(type_is_int(val_type(to)));
+
 	if(!blk){
 		val_release(from);
 		val_release(to);
@@ -216,6 +228,7 @@ void isn_zext(block *blk, val *from, val *to)
 	isn->u.ext.to = to;
 }
 
+#if 0
 void isn_elem(block *blk, val *lval, val *add, val *res)
 {
 	isn *isn;
@@ -236,6 +249,7 @@ void isn_elem(block *blk, val *lval, val *add, val *res)
 	isn->u.elem.add = add;
 	isn->u.elem.res = res;
 }
+#endif
 
 void isn_alloca(block *blk, val *v)
 {
@@ -275,12 +289,21 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 {
 	isn *isn;
 	size_t i;
+	type *fn_ret;
+	dynarray *fn_args;
 
 	val_retain(into);
 	val_retain(fn);
 
 	dynarray_iter(args, i){
 		val_retain(dynarray_ent(args, i));
+	}
+
+	fn_ret = type_func_call(val_type(fn), &fn_args);
+	assert(val_type(into) == fn_ret);
+	assert(dynarray_count(args) == dynarray_count(fn_args));
+	dynarray_iter(args, i){
+		assert(dynarray_ent(args, i) == dynarray_ent(fn_args, i));
 	}
 
 	if(!blk){
@@ -304,6 +327,8 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 	isn *isn;
 
 	val_retain(cond);
+
+	assert(type_is_primitive(val_type(cond), i1));
 
 	if(!current){
 		val_release(cond);

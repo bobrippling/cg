@@ -54,6 +54,25 @@ bool type_is_fn(type *t)
 	return t->kind == FUNC;
 }
 
+bool type_is_primitive(type *t, enum type_primitive prim)
+{
+	if(t->kind != PRIMITIVE)
+		return false;
+	return t->u.prim == prim;
+}
+
+bool type_is_int(type *t)
+{
+	if(t->kind != PRIMITIVE)
+		return false;
+	switch(t->u.prim){
+#define X(name, integral, sz, align) case name: return integral;
+		TYPE_PRIMITIVES
+#undef X
+	}
+	assert(0);
+}
+
 static const char *type_primitive_to_str(enum type_primitive p)
 {
 	switch(p){
@@ -73,7 +92,7 @@ static void type_primitive_size_align(
 		enum type_primitive p, unsigned *sz, unsigned *align)
 {
 	switch(p){
-#define X(name, s, a) case name: *sz = s; *align = a; return;
+#define X(name, integral, s, a) case name: *sz = s; *align = a; return;
 		TYPE_PRIMITIVES
 #undef X
 	}
@@ -257,10 +276,14 @@ type *type_deref(type *t)
 	return t->u.ptr.pointee;
 }
 
-type *type_func_call(type *t)
+type *type_func_call(type *t, dynarray **const args)
 {
 	if(t->kind != FUNC)
 		return NULL;
+
+	if(args){
+		*args = &t->u.func.args;
+	}
 
 	return t->u.func.ret;
 }
