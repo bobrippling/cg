@@ -663,12 +663,10 @@ static void parse_function(
 {
 	function *fn = unit_function_new(p->unit, name, ty, toplvl_args);
 
-	if(token_accept(p->tok, tok_semi)){
+	if(!token_accept(p->tok, tok_lbrace)){
 		/* declaration */
 		return;
 	}
-
-	eat(p, "function open brace", tok_lbrace);
 
 	p->func = fn;
 	p->entry = function_entry_block(fn, true);

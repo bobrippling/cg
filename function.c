@@ -140,8 +140,6 @@ void function_dump(function *f)
 		block_dump(f->entry);
 
 		printf("}");
-	}else{
-		printf(";");
 	}
 
 	printf("\n");
