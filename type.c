@@ -8,8 +8,7 @@
 
 #include "type.h"
 #include "type_uniq_struct.h"
-
-#define TYBUF_SZ 256
+#include "strbuf_fixed.h"
 
 struct uptype
 {
@@ -99,72 +98,68 @@ static void type_primitive_size_align(
 	assert(0);
 }
 
-static bool tybuf_add(char tybuf[attr_static TYBUF_SZ], const char *fmt, ...)
+static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 {
-	va_list args;
-	size_t l = strlen(tybuf);
-
-	if(l >= TYBUF_SZ){
-		snprintf(tybuf, TYBUF_SZ, "<ty trunc>");
-		return false;
-	}
-
-	va_start(args, fmt);
-	vsnprintf(tybuf + l, TYBUF_SZ - l, fmt, args);
-	va_end(args);
-
-	return true;
-}
-
-const char *type_to_str(type *t)
-{
-	static char buf[TYBUF_SZ];
-
 	switch(t->kind){
 		case VOID:
-			snprintf(buf, sizeof buf, "void");
-			return buf;
+			return strbuf_fixed_printf(buf, "void");
 
 		case PRIMITIVE:
-			snprintf(buf, sizeof buf, "%s", type_primitive_to_str(t->u.prim));
-			return buf;
+			return strbuf_fixed_printf(buf, "%s", type_primitive_to_str(t->u.prim));
 
 		case PTR:
-		{
-			char *p = (char *)type_to_str(t->u.ptr.pointee);
-			tybuf_add(p, "*");
-			return p;
-		}
+			return type_to_str_r(buf, t->u.ptr.pointee)
+				&& strbuf_fixed_printf(buf, "*");
 
 		case ARRAY:
 		{
-			char *p = (char *)type_to_str(t->u.array.elem);
-			tybuf_add(p, "[%lu]", t->u.array.n);
-			return p;
+			if(!strbuf_fixed_printf(buf, "[")){
+				return false;
+			}
+
+			return type_to_str_r(buf, t->u.array.elem)
+				&& strbuf_fixed_printf(buf, " x %lu]", t->u.array.n);
 		}
 
 		case FUNC:
 		{
 			const char *comma = "";
-			char *p = (char *)type_to_str(t->u.func.ret);
 			size_t i;
 
-			tybuf_add(p, "(");
+			if(!type_to_str_r(buf, t->u.func.ret))
+				return false;
+
+			if(!strbuf_fixed_printf(buf, "("))
+				return false;
 
 			dynarray_iter(&t->u.func.args, i){
-				if(!tybuf_add("%s%s", comma, t->u.array.n))
-					break;
+				type *arg_ty = dynarray_ent(&t->u.func.args, i);
+
+				if(!strbuf_fixed_printf(buf, "%s", comma))
+					return false;
+
+				if(!type_to_str_r(buf, arg_ty))
+					return false;
 
 				comma = ", ";
 			}
 
-			tybuf_add(p, ")");
-
-			return p;
+			return strbuf_fixed_printf(buf, ")");
 		}
 	}
 
 	assert(0);
+}
+
+const char *type_to_str(type *t)
+{
+	static char buf[256];
+	strbuf_fixed strbuf = STRBUF_FIXED_INIT_ARRAY(buf);
+
+	if(!type_to_str_r(&strbuf, t))
+		strcpy(buf, "<type trunc>");
+
+	return strbuf_fixed_detach(&strbuf);
 }
 
 static type *tnew(enum type_kind kind)

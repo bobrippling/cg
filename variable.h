@@ -11,6 +11,4 @@ struct type *variable_type(variable *);
 unsigned variable_size(variable *);
 void variable_size_align(variable *v, unsigned *sz, unsigned *align);
 
-void variable_dump(variable *, const char *post);
-
 #endif

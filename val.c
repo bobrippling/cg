@@ -216,13 +216,13 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "%d", v->u.i);
 			break;
 		case GLOBAL:
-			snprintf(buf, VAL_STR_SZ, "%s", global_name(v->u.global));
+			snprintf(buf, VAL_STR_SZ, "$%s", global_name(v->u.global));
 			break;
 		case ARGUMENT:
-			snprintf(buf, VAL_STR_SZ, "%s", v->u.argument.name);
+			snprintf(buf, VAL_STR_SZ, "$%s", v->u.argument.name);
 			break;
 		case FROM_ISN:
-			snprintf(buf, VAL_STR_SZ, "%s", v->u.local.name);
+			snprintf(buf, VAL_STR_SZ, "$%s", v->u.local.name);
 			break;
 		case BACKEND_TEMP:
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);

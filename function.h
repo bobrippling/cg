@@ -11,7 +11,7 @@ void function_free(function *);
 
 const char *function_name(function *);
 struct type *function_type(function *);
-void function_dump(function *);
+void function_dump_args_and_block(function *);
 
 void function_finalize(function *);
 

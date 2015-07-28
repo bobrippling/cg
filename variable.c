@@ -44,11 +44,3 @@ unsigned variable_size(variable *v)
 	variable_size_align(v, &sz, &align);
 	return sz;
 }
-
-void variable_dump(variable *v, const char *post)
-{
-	printf("%s = %s%s",
-			variable_name(v),
-			type_to_str(v->ty),
-			post);
-}

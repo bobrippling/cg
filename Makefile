@@ -1,5 +1,6 @@
 OBJ = val.o  main.o mem.o dynarray.o op.o \
       dynmap.o \
+      strbuf_fixed.o \
       isn.o regalloc_isn.o regalloc_blk.o \
       function.o variable.o global.o block.o unit.o \
       die.o io.o str.o lbl.o \

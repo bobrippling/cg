@@ -8,11 +8,29 @@
 
 void global_dump(struct unit *unit, global *glob)
 {
+	const char *name;
+	const char *desc;
+	type *ty;
+
 	(void)unit;
-	if(glob->is_fn)
-		function_dump(glob->u.fn);
-	else
-		variable_dump(glob->u.var, ";\n");
+
+	if(glob->is_fn){
+		name = function_name(glob->u.fn);
+		desc = "func";
+		ty = type_func_call(function_type(glob->u.fn), NULL);
+	}else{
+		name = variable_name(glob->u.var);
+		desc = "data";
+		ty = variable_type(glob->u.var);
+	}
+
+	printf("$%s = %s %s", name, desc, type_to_str(ty));
+
+	if(glob->is_fn){
+		function_dump_args_and_block(glob->u.fn);
+	}else{
+		printf("\n");
+	}
 }
 
 const char *global_name(global *g)
