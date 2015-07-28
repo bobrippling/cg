@@ -251,13 +251,17 @@ type *type_get_struct(uniq_type_list *us, dynarray *membs)
 
 type *type_deref(type *t)
 {
-	assert(t->kind == PTR);
+	if(t->kind != PTR)
+		return NULL;
+
 	return t->u.ptr.pointee;
 }
 
 type *type_func_call(type *t)
 {
-	assert(t->kind == FUNC);
+	if(t->kind != FUNC)
+		return NULL;
+
 	return t->u.func.ret;
 }
 
