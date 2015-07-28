@@ -307,7 +307,7 @@ loc:
 					&sym->loc,
 					buf, sizeof bufs[0],
 					dereference,
-					variable_type(sym->var),
+					val->ty,
 					val);
 
 		case BACKEND_TEMP:
