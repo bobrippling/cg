@@ -108,7 +108,8 @@ unsigned val_hash(val *v)
 
 		case FROM_ISN:
 		{
-			spel = variable_name(v->u.local.var);
+			if(v->u.local.var)
+				spel = variable_name(v->u.local.var);
 			break;
 		}
 
@@ -226,7 +227,10 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.argument.var));
 			break;
 		case FROM_ISN:
-			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.local.var));
+			if(v->u.local.var)
+				snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.local.var));
+			else
+				snprintf(buf, VAL_STR_SZ, "<unnamed var>");
 			break;
 		case BACKEND_TEMP:
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
