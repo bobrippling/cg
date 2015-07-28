@@ -37,11 +37,13 @@ static const struct
 #define KW(t) { #t, tok_ ## t },
 #define OTHER(t)
 #define PUNCT(t, s)
+#define PUNCTSTR(t, s)
 #define OP KW
 #define CMP KW
 	TOKENS
 #undef CMP
 #undef OP
+#undef PUNCTSTR
 #undef PUNCT
 #undef OTHER
 #undef KW
@@ -79,11 +81,13 @@ const char *token_to_str(enum token t)
 #define OTHER(x) case tok_ ## x: return #x;
 #define KW(x) case tok_ ## x: return "tok_" #x;
 #define PUNCT(x, p) case tok_ ## x: return #p;
+#define PUNCTSTR(x, p) case tok_ ## x: return p;
 #define OP OTHER
 #define CMP OTHER
 		TOKENS
 #undef OTHER
 #undef KW
+#undef PUNCTSTR
 #undef PUNCT
 #undef OP
 #undef CMP
@@ -158,11 +162,13 @@ enum token token_next(tokeniser *t)
 #define OTHER(x)
 #define KW(x)
 #define PUNCT(t, c) case c: return tok_ ## t;
+#define PUNCTSTR(t, c)
 #define OP(x)
 #define CMP(x)
 		TOKENS
 #undef OTHER
 #undef KW
+#undef PUNCTSTR
 #undef PUNCT
 #undef OP
 #undef CMP
@@ -174,6 +180,24 @@ enum token token_next(tokeniser *t)
 		default:
 			t->linep--;
 	}
+
+#define OTHER(x)
+#define KW(x)
+#define PUNCT(t, c)
+#define PUNCTSTR(tok, s) \
+	if(!strncmp(t->linep, s, strlen(s))){ \
+		t->linep += strlen(s); \
+		return tok_ ## tok; \
+	}
+#define OP(x)
+#define CMP(x)
+	TOKENS
+#undef OTHER
+#undef KW
+#undef PUNCTSTR
+#undef PUNCT
+#undef OP
+#undef CMP
 
 	if('0' <= *t->linep && *t->linep <= '9'){
 		char *end;
@@ -295,11 +319,13 @@ int token_is_op(enum token t, enum op *const o)
 #define KW(t) case tok_ ## t: break;
 #define OTHER KW
 #define PUNCT(t, c) case tok_ ## t: break;
+#define PUNCTSTR(t, c) case tok_ ## t: break;
 #define OP(t) case tok_ ## t: *o = op_ ## t; return 1;
 #define CMP KW
 	TOKENS
 #undef CMP
 #undef OP
+#undef PUNCTSTR
 #undef PUNCT
 #undef OTHER
 #undef KW
@@ -313,11 +339,13 @@ int token_is_cmp(enum token t, enum op_cmp *const o)
 #define KW(t) case tok_ ## t: break;
 #define OTHER KW
 #define PUNCT(t, c) case tok_ ## t: break;
+#define PUNCTSTR(t, c) case tok_ ## t: break;
 #define OP(t) case tok_ ## t: break;
 #define CMP(t) case tok_ ## t: *o = cmp_ ## t; return 1;
 	TOKENS
 #undef CMP
 #undef OP
+#undef PUNCTSTR
 #undef PUNCT
 #undef OTHER
 #undef KW

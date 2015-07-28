@@ -24,6 +24,7 @@
 	PUNCT(colon, ':')   \
 	PUNCT(semi, ';')    \
 	PUNCT(star, '*')    \
+	PUNCTSTR(arrow, "->")\
 	KW(load)            \
 	KW(store)           \
 	KW(alloca)          \
@@ -67,11 +68,13 @@ enum token
 #define KW(t) tok_ ## t,
 #define OTHER KW
 #define PUNCT(t, c) tok_ ## t,
+#define PUNCTSTR(t, s) tok_ ## t,
 #define OP(t) tok_ ## t,
 #define CMP(t) tok_ ## t,
 	TOKENS
 #undef CMP
 #undef OP
+#undef PUNCTSTR
 #undef PUNCT
 #undef OTHER
 #undef KW
