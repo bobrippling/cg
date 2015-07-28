@@ -66,13 +66,13 @@ int val_size(val *v, unsigned ptrsz)
 
 bool val_is_mem(val *v)
 {
-	struct sym *sym;
+	struct name_loc *loc;
 
 	switch(v->kind){
-		case FROM_ISN: sym = &v->u.local; goto loc;
-		case ARGUMENT: sym = &v->u.argument; goto loc;
+		case FROM_ISN: loc = &v->u.local.loc; goto loc;
+		case ARGUMENT: loc = &v->u.argument.loc; goto loc;
 loc:
-			return sym->loc.where == NAME_SPILT;
+			return loc->where == NAME_SPILT;
 
 		case GLOBAL:
 			return true;
@@ -102,16 +102,12 @@ unsigned val_hash(val *v)
 
 		case ARGUMENT:
 		{
-			spel = variable_name(v->u.argument.var);
+			h ^= v->u.argument.idx;
 			break;
 		}
 
 		case FROM_ISN:
-		{
-			if(v->u.local.var)
-				spel = variable_name(v->u.local.var);
 			break;
-		}
 
 		case BACKEND_TEMP:
 			break;
@@ -125,13 +121,12 @@ unsigned val_hash(val *v)
 
 struct name_loc *val_location(val *v)
 {
-	struct sym *sym;
-
 	switch(v->kind){
-		case FROM_ISN: sym = &v->u.local; goto loc;
-		case ARGUMENT: sym = &v->u.argument; goto loc;
-loc:
-			return &sym->loc;
+		case FROM_ISN:
+			return &v->u.local.loc;
+
+		case ARGUMENT:
+			return &v->u.argument.loc;
 
 		case BACKEND_TEMP:
 			return &v->u.temp_loc;
@@ -224,13 +219,10 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "%s", global_name(v->u.global));
 			break;
 		case ARGUMENT:
-			snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.argument.var));
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.argument.name);
 			break;
 		case FROM_ISN:
-			if(v->u.local.var)
-				snprintf(buf, VAL_STR_SZ, "%s", variable_name(v->u.local.var));
-			else
-				snprintf(buf, VAL_STR_SZ, "<unnamed var>");
+			snprintf(buf, VAL_STR_SZ, "%s", v->u.local.name);
 			break;
 		case BACKEND_TEMP:
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
@@ -309,10 +301,11 @@ val *val_new_i(int i, struct type *ty)
 	return p;
 }
 
-val *val_new_argument(struct variable *var)
+val *val_new_argument(char *name, int idx, struct type *ty)
 {
-	val *p = val_new(ARGUMENT, variable_type(var));
-	p->u.argument.var = var;
+	val *p = val_new(ARGUMENT, ty);
+	p->u.argument.idx = idx;
+	p->u.argument.name = name;
 	return p;
 }
 
@@ -323,10 +316,10 @@ val *val_new_global(struct uniq_type_list *us, struct global *glob)
 	return p;
 }
 
-val *val_new_local(struct variable *var, struct type *ty)
+val *val_new_local(char *name, struct type *ty)
 {
 	val *p = val_new(FROM_ISN, ty);
-	p->u.local.var = var;
+	p->u.local.name = name;
 	return p;
 }
 

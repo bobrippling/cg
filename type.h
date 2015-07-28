@@ -43,6 +43,7 @@ type *type_get_struct(uniq_type_list *, dynarray *);
 /* --- walkers --- */
 type *type_deref(type *);
 type *type_func_call(type *, dynarray **);
+dynarray *type_func_args(type *);
 
 
 /* --- sizing --- */

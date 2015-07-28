@@ -288,6 +288,13 @@ type *type_func_call(type *t, dynarray **const args)
 	return t->u.func.ret;
 }
 
+dynarray *type_func_args(type *t)
+{
+	dynarray *args;
+	type_func_call(t, &args);
+	return args;
+}
+
 void type_size_align(type *ty, unsigned *sz, unsigned *align)
 {
 	switch(ty->kind){

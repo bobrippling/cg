@@ -25,11 +25,17 @@ struct val
 	{
 		int i;
 		struct global *global;
-		struct sym
+		struct
 		{
-			struct variable *var; /* maybe NULL */
 			struct name_loc loc;
-		} argument, local;
+			char *name;
+		} local;
+		struct
+		{
+			struct name_loc loc;
+			char *name;
+			unsigned idx;
+		} argument;
 		struct name_loc temp_loc;
 	} u;
 

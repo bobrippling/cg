@@ -34,7 +34,12 @@ block *function_block_n(function *, size_t);
 			blk;                                  \
 			blk = function_block_n(fn, i))
 
-variable *function_arg_find(function *, const char *, size_t *);
+bool function_arg_find(
+		function *f, const char *name,
+		size_t *const idx, struct type **const ty);
+
+struct dynarray *function_arg_names(function *);
+void function_arg_vals(function *, struct dynarray *);
 
 struct regalloc_context;
 void func_regalloc(function *f, struct regalloc_context *ctx);

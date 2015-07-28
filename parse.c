@@ -104,7 +104,7 @@ static val *uniq_val(
 {
 	val *v;
 	global *glob;
-	variable *var;
+	type *arg_ty;
 	size_t arg_idx;
 
 	if(ty){
@@ -127,8 +127,8 @@ found:
 	}
 
 	/* check args */
-	if((var = function_arg_find(p->func, name, &arg_idx))){
-		v = val_new_argument(var);
+	if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
+		v = val_new_argument(name, arg_idx, arg_ty);
 
 		map_val(p, name, v);
 
@@ -149,14 +149,7 @@ found:
 	if((opts & VAL_CREATE) == 0)
 		parse_error(p, "undeclared identifier '%s'", name);
 
-	if(opts & VAL_ALLOCA){
-		v = val_new_local(NULL, ty);
-	}else{
-#if 0
-		var = (variable){ }; /* TODO */
-#endif
-		v = val_new_local(var, ty);
-	}
+	v = val_new_local(name, ty);
 
 	return map_val(p, name, v);
 }
@@ -667,6 +660,7 @@ static void parse_function(
 		dynarray *toplvl_args)
 {
 	function *fn = unit_function_new(p->unit, name, ty, toplvl_args);
+	toplvl_args = NULL; /* consumed */
 
 	if(!token_accept(p->tok, tok_lbrace)){
 		/* declaration */

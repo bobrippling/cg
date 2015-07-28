@@ -27,8 +27,10 @@ function *function_new(
 	fn->fnty = fnty;
 	fn->uniq_counter = uniq_counter;
 
-	dynarray_init(&fn->toplvl_args);
-	dynarray_move(&fn->toplvl_args, toplvl_args);
+	dynarray_init(&fn->arg_names);
+	dynarray_move(&fn->arg_names, toplvl_args);
+
+	dynarray_init(&fn->arg_vals);
 
 	return fn;
 }
@@ -36,6 +38,11 @@ function *function_new(
 void function_free(function *f)
 {
 	function_onblocks(f, block_free);
+
+	dynarray_foreach(&f->arg_names, free);
+	dynarray_reset(&f->arg_names);
+	dynarray_reset(&f->arg_vals);
+
 	free(f->blocks);
 	free(f->name);
 	free(f);
@@ -53,6 +60,17 @@ void function_onblocks(function *f, void cb(block *))
 	size_t i;
 	for(i = 0; i < f->nblocks; i++)
 		cb(f->blocks[i]);
+}
+
+dynarray *function_arg_names(function *f)
+{
+	return &f->arg_names;
+}
+
+void function_arg_vals(function *f, dynarray *d)
+{
+	dynarray_init(d);
+	dynarray_copy(d, &f->arg_vals);
 }
 
 block *function_entry_block(function *f, bool create)
@@ -126,11 +144,20 @@ void function_finalize(function *f)
 
 void function_dump(function *f)
 {
+	const size_t nargs = dynarray_count(&f->arg_names);
+	dynarray *const arg_tys = type_func_args(f->fnty);
 	size_t i;
 
 	printf("%s = %s(", f->name, type_to_str(f->fnty));
-	for(i = 0; i < f->nargs; i++)
-		variable_dump(&f->args[i].var, i == f->nargs - 1 ? "" : ", ");
+
+	dynarray_iter(&f->arg_names, i){
+		variable tmpvar;
+
+		tmpvar.name = dynarray_ent(&f->arg_names, i);
+		tmpvar.ty = dynarray_ent(arg_tys, i);
+
+		variable_dump(&tmpvar, i == nargs - 1 ? "" : ", ");
+	}
 
 	printf(")");
 
@@ -155,33 +182,21 @@ struct type *function_type(function *f)
 	return f->fnty;
 }
 
-#if 0
-void function_arg_add(function *f, unsigned sz, char *name)
-{
-	f->nargs++;
-	f->args = xrealloc(f->args, f->nargs * sizeof *f->args);
-
-	f->args[f->nargs - 1].var.sz = sz;
-	f->args[f->nargs - 1].var.name = name;
-
-	memset(
-			&f->args[f->nargs - 1].val,
-			0,
-			sizeof f->args[f->nargs - 1].val);
-}
-#endif
-
-variable *function_arg_find(function *f, const char *name, size_t *const idx)
+bool function_arg_find(
+		function *f, const char *name,
+		size_t *const idx, type **const ty)
 {
 	size_t i;
-	for(i = 0; i < f->nargs; i++){
-		if(!strcmp(name, f->args[i].var.name)){
+	dynarray_iter(&f->arg_names, i){
+		if(!strcmp(name, dynarray_ent(&f->arg_names, i))){
+			dynarray *const arg_tys = type_func_args(f->fnty);
 			*idx = i;
-			return &f->args[i].var;
+			*ty = dynarray_ent(arg_tys, i);
+			return true;
 		}
 	}
 
-	return NULL;
+	return false;
 }
 
 static void assign_arg_reg(
@@ -209,9 +224,16 @@ static void assign_argument_registers(
 		function *f,
 		const struct backend_traits *backend)
 {
+	dynarray *const arg_tys = type_func_args(f->fnty);
 	size_t i;
-	for(i = 0; i < f->nargs; i++){
-		assign_arg_reg(&f->args[i].val, i, backend);
+	dynarray_iter(&f->arg_names, i){
+		char *name = dynarray_ent(&f->arg_names, i);
+		type *ty = dynarray_ent(arg_tys, i);
+		val *arg_val = val_new_argument(name, i, ty);
+
+		assign_arg_reg(arg_val, i, backend);
+
+		dynarray_add(&f->arg_vals, arg_val);
 	}
 }
 

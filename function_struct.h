@@ -16,16 +16,9 @@ struct function
 	block **blocks;
 	size_t nblocks;
 
-	struct
-	{
-		variable var;
-		val val;
-	} *args;
-	size_t nargs;
-
-	dynarray toplvl_args;
-
 	type *fnty;
+	dynarray arg_names;
+	dynarray arg_vals;
 };
 
 #endif

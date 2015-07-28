@@ -164,8 +164,8 @@ static void mark_arg_vals_as_used(char *in_use, function *func)
 {
 	size_t i;
 
-	for(i = 0; i < func->nargs; i++){
-		val *arg = &func->args[i].val;
+	dynarray_iter(&func->arg_vals, i){
+		val *arg = dynarray_ent(&func->arg_vals, i);
 
 		mark_other_block_val_as_used(arg, NULL, in_use);
 	}

@@ -276,7 +276,7 @@ static const char *x86_val_str_sized(
 	(void)octx;
 
 	switch(val->kind){
-		struct sym *sym;
+		struct name_loc *loc;
 
 		case LITERAL:
 		{
@@ -300,19 +300,12 @@ static const char *x86_val_str_sized(
 			break;
 		}
 
-		case ARGUMENT: sym = &val->u.argument; goto loc;
-		case FROM_ISN: sym = &val->u.local; goto loc;
+		case ARGUMENT: loc = &val->u.argument.loc; goto loc;
+		case FROM_ISN: loc = &val->u.local.loc; goto loc;
+		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
 loc:
 			return x86_name_str(
-					&sym->loc,
-					buf, sizeof bufs[0],
-					dereference,
-					val->ty,
-					val);
-
-		case BACKEND_TEMP:
-			return x86_name_str(
-					&val->u.temp_loc,
+					loc,
 					buf, sizeof bufs[0],
 					dereference,
 					val->ty,
@@ -871,6 +864,7 @@ static dynmap *x86_spillregs(
 	size_t idx;
 	val *v;
 	long spill_alloca = 0;
+	dynarray arg_vals;
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
@@ -891,8 +885,11 @@ static dynmap *x86_spillregs(
 
 	/* can't just spill regs in this block, need to spill 'live' regs,
 	 * e.g.  argument regs */
-	for(idx = 0; idx < octx->func->nargs; idx++)
-		maybe_spill(&octx->func->args[idx].val, NULL, &spillctx);
+	function_arg_vals(octx->func, &arg_vals);
+	dynarray_iter(&arg_vals, idx){
+		maybe_spill(dynarray_ent(&arg_vals, idx), NULL, &spillctx);
+	}
+	dynarray_reset(&arg_vals);
 
 	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
 		val stack_slot = { 0 };
