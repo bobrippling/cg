@@ -181,13 +181,12 @@ type *type_get_primitive(uniq_type_list *us, enum type_primitive prim)
 
 type *type_get_ptr(uniq_type_list *us, type *t)
 {
-	(void)us;
-
 	if(t->up.ptrto)
 		return t->up.ptrto;
 
 	t->up.ptrto = tnew(PTR);
 
+	t->up.ptrto->u.ptr.uniqs = us;
 	t->up.ptrto->u.ptr.pointee = t;
 
 	return t->up.ptrto;
@@ -222,8 +221,6 @@ type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args)
 	size_t i;
 	type *func;
 
-	(void)us;
-
 	dynarray_iter(&ret->up.funcs, i){
 		type *ent = dynarray_ent(&ret->up.funcs, i);
 
@@ -236,6 +233,7 @@ type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args)
 	memset(&func->u.func.args, 0, sizeof func->u.func.args);
 	dynarray_move(&func->u.func.args, args);
 	func->u.func.ret = ret;
+	func->u.func.uniqs = us;
 
 	dynarray_add(&ret->up.funcs, func);
 
