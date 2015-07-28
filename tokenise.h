@@ -33,6 +33,8 @@
 	KW(br)              \
 	KW(jmp)             \
 	KW(call)            \
+	KW(data)            \
+	KW(func)            \
 	KW(i1) KW(i2)       \
 	KW(i4) KW(i8)       \
 	KW(f4) KW(f8)       \

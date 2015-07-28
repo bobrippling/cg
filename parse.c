@@ -694,7 +694,6 @@ static void parse_global(parse *p)
 	type *ty;
 	char *name;
 	dynarray toplvl_args = DYNARRAY_INIT;
-	char *glob_type;
 	enum { VAR, FUNC } expected;
 
 	eat(p, "decl name", tok_ident);
@@ -704,18 +703,17 @@ static void parse_global(parse *p)
 
 	eat(p, "global assign", tok_equal);
 
-	eat(p, "global type", tok_ident);
-	glob_type = token_last_ident(p->tok);
-	if(!strcmp(glob_type, "data")){
-		expected = VAR;
-	}else if(!strcmp(glob_type, "func")){
-		expected = FUNC;
-	}else{
-		parse_error(p, "unknown global type '%s'", glob_type);
-		expected = VAR;
+	switch(token_next(p->tok)){
+		case tok_data:
+			expected = VAR;
+			break;
+		case tok_func:
+			expected = FUNC;
+			break;
+		default:
+			parse_error(p, "expected 'data' or 'func'");
+			expected = VAR;
 	}
-	if(glob_type != name)
-		free(glob_type);
 
 	ty = parse_type_maybe_func(p, &toplvl_args);
 
