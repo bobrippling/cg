@@ -28,6 +28,7 @@ enum type_primitive
 bool type_is_fn(type *);
 bool type_is_primitive(type *, enum type_primitive);
 bool type_is_int(type *);
+bool type_is_void(type *);
 
 const char *type_to_str(type *);
 

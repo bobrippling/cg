@@ -75,7 +75,7 @@ struct isn
 
 		struct
 		{
-			struct val *into, *fn;
+			struct val *into_or_null, *fn;
 			dynarray args;
 		} call;
 

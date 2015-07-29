@@ -301,6 +301,13 @@ val *val_new_i(int i, struct type *ty)
 	return p;
 }
 
+val *val_new_void(struct uniq_type_list *us)
+{
+	val *v = val_new(LITERAL, type_get_void(us));
+	v->u.i = 0;
+	return v;
+}
+
 val *val_new_argument(char *name, int idx, struct type *ty)
 {
 	val *p = val_new(ARGUMENT, ty);

@@ -13,6 +13,7 @@ struct uniq_type_list;
 typedef struct val val;
 
 val *val_new_i(int i, struct type *);
+val *val_new_void(struct uniq_type_list *);
 
 /* refer to a local, arg or global */
 val *val_new_global(struct uniq_type_list *, struct global *) attr_nonnull();

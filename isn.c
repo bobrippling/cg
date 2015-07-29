@@ -74,7 +74,8 @@ static void isn_free_1(isn *isn)
 		{
 			size_t i;
 
-			val_release(isn->u.call.into);
+			if(isn->u.call.into_or_null)
+				val_release(isn->u.call.into_or_null);
 			val_release(isn->u.call.fn);
 
 			dynarray_iter(&isn->u.call.args, i){
@@ -292,7 +293,8 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 	type *fn_ret;
 	dynarray *fn_args;
 
-	val_retain(into);
+	if(into)
+		val_retain(into);
 	val_retain(fn);
 
 	dynarray_iter(args, i){
@@ -301,7 +303,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 
 	fn_ret = type_func_call(type_deref(val_type(fn)), &fn_args);
 
-	assert(val_type(into) == fn_ret);
+	assert(!into || val_type(into) == fn_ret);
 
 	assert(dynarray_count(args) == dynarray_count(fn_args));
 	dynarray_iter(args, i){
@@ -309,7 +311,8 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 	}
 
 	if(!blk){
-		val_release(into);
+		if(into)
+			val_release(into);
 		val_release(fn);
 
 		dynarray_iter(args, i){
@@ -320,7 +323,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 
 	isn = isn_new(ISN_CALL, blk);
 	isn->u.call.fn = fn;
-	isn->u.call.into = into;
+	isn->u.call.into_or_null = into;
 	dynarray_move(&isn->u.call.args, args);
 }
 
@@ -436,7 +439,8 @@ static void isn_on_vals(
 		{
 			size_t i;
 
-			fn(current->u.call.into, current, ctx);
+			if(current->u.call.into_or_null)
+				fn(current->u.call.into_or_null, current, ctx);
 			fn(current->u.call.fn, current, ctx);
 
 			dynarray_iter(&current->u.call.args, i){
@@ -551,8 +555,8 @@ static void isn_dump1(isn *i)
 
 			printf("\t");
 
-			if(i->u.call.into){
-				printf("%s = ", val_str(i->u.call.into));
+			if(i->u.call.into_or_null){
+				printf("%s = ", val_str(i->u.call.into_or_null));
 			}
 
 			printf("call %s(", val_str(i->u.call.fn));

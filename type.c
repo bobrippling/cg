@@ -72,6 +72,11 @@ bool type_is_int(type *t)
 	assert(0);
 }
 
+bool type_is_void(type *t)
+{
+	return t->kind == VOID;
+}
+
 static const char *type_primitive_to_str(enum type_primitive p)
 {
 	switch(p){

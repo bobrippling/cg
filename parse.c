@@ -326,6 +326,9 @@ static val *parse_val(parse *p)
 		ty = default_type(p);
 	}
 
+	if(type_is_void(ty))
+		return val_new_void(unit_uniqtypes(p->unit));
+
 	if(token_accept(p->tok, tok_int)){
 		int i = token_last_int(p->tok);
 
@@ -345,8 +348,6 @@ static void parse_call(parse *p, char *ident_or_null)
 	dynarray args = DYNARRAY_INIT;
 	type *retty = NULL;
 
-	assert(ident_or_null && "TODO: void");
-
 	target = parse_val(p);
 
 	type *ptr = type_deref(val_type(target));
@@ -359,7 +360,13 @@ static void parse_call(parse *p, char *ident_or_null)
 				type_to_str(val_type(target)));
 	}
 
-	into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
+	if(ident_or_null){
+		into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
+		assert(!type_is_void(retty));
+	}else{
+		into = NULL;
+		assert(type_is_void(retty));
+	}
 
 	eat(p, "call paren", tok_lparen);
 

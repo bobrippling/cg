@@ -939,7 +939,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 
 static void x86_call(
 		block *blk, unsigned isn_idx,
-		val *into, val *fn,
+		val *into_or_null, val *fn,
 		dynarray *args,
 		x86_octx *octx)
 {
@@ -947,8 +947,8 @@ static void x86_call(
 	dynmap *spilt;
 	size_t i;
 
-	except[0] = into;
-	except[1] = fn;
+	except[0] = fn;
+	except[1] = into_or_null;
 	except[2] = NULL;
 
 	octx->max_align = 16; /* ensure 16-byte alignment for calls */
@@ -978,13 +978,13 @@ static void x86_call(
 		fprintf(octx->fout, "\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
 	}
 
-	if(into){
+	if(into_or_null){
 		type *ty = type_func_call(type_deref(fn->ty), NULL);
 		val eax;
 
 		temporary_x86_make_eax(&eax, ty);
 
-		mov(&eax, into, octx);
+		mov(&eax, into_or_null, octx);
 	}
 
 	x86_restoreregs(spilt, octx);
@@ -1008,11 +1008,12 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_RET:
 			{
-				val veax;
+				if(!type_is_void(i->u.ret->ty)){
+					val veax;
+					temporary_x86_make_eax(&veax, i->u.ret->ty);
 
-				temporary_x86_make_eax(&veax, i->u.ret->ty);
-
-				mov(i->u.ret, &veax, octx);
+					mov(i->u.ret, &veax, octx);
+				}
 
 				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
 				break;
@@ -1073,7 +1074,11 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_CALL:
 			{
-				x86_call(blk, idx, i->u.call.into, i->u.call.fn, &i->u.call.args, octx);
+				x86_call(blk, idx,
+						i->u.call.into_or_null,
+						i->u.call.fn,
+						&i->u.call.args,
+						octx);
 				break;
 			}
 		}
