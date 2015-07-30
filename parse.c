@@ -512,7 +512,10 @@ static void parse_ident(parse *p, char *spel)
 					sema_error(p, "mismatching types in op");
 				}
 
-				opty = val_type(vlhs);
+				opty = (is_cmp
+						? type_get_primitive(unit_uniqtypes(p->unit), i1)
+						: val_type(vlhs));
+
 				vres = uniq_val(p, spel, opty, VAL_CREATE);
 
 #warning tycheck / pointer-vs-int check
