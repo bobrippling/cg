@@ -291,7 +291,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 	isn *isn;
 	size_t i;
 	type *fn_ret;
-	dynarray *fn_args;
+	dynarray *argtys;
 
 	if(into)
 		val_retain(into);
@@ -301,13 +301,13 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 		val_retain(dynarray_ent(args, i));
 	}
 
-	fn_ret = type_func_call(type_deref(val_type(fn)), &fn_args);
+	fn_ret = type_func_call(type_deref(val_type(fn)), &argtys);
 
 	assert(!into || val_type(into) == fn_ret);
 
-	assert(dynarray_count(args) == dynarray_count(fn_args));
+	assert(dynarray_count(args) == dynarray_count(argtys));
 	dynarray_iter(args, i){
-		assert(dynarray_ent(args, i) == dynarray_ent(fn_args, i));
+		assert(val_type(dynarray_ent(args, i)) == dynarray_ent(argtys, i));
 	}
 
 	if(!blk){
