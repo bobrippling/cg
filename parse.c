@@ -563,8 +563,18 @@ static void parse_ident(parse *p, char *spel)
 
 static void parse_ret(parse *p)
 {
-#warning tycheck
-	isn_ret(p->entry, parse_val(p));
+	type *expected_ty = type_func_call(function_type(p->func), NULL);
+	val *v = parse_val(p);
+
+	if(val_type(v) != expected_ty){
+		char buf[256];
+
+		sema_error(p, "mismatching return type (returning %s to %s)",
+				type_to_str(val_type(v)),
+				type_to_str_r(buf, sizeof buf, expected_ty));
+	}
+
+	isn_ret(p->entry, v);
 }
 
 static void parse_store(parse *p)
