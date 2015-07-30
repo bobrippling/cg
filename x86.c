@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "macros.h"
 #include "die.h"
@@ -327,20 +326,9 @@ static const char *x86_val_str(
 	return x86_val_str_sized(val, bufchoice, octx, dereference);
 }
 
-static void temporary_init(val *tmp, type *ty)
-{
-	assert(ty);
-
-	memset(tmp, 0, sizeof *tmp);
-
-	tmp->kind = BACKEND_TEMP;
-	tmp->ty = ty;
-	tmp->retains = 1;
-}
-
 static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
-	temporary_init(stack_slot, ty);
+	val_temporary_init(stack_slot, ty);
 
 	stack_slot->u.temp_loc.where = NAME_SPILT;
 	stack_slot->u.temp_loc.u.off = off;
@@ -349,7 +337,7 @@ static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
 attr_nonnull()
 static void make_reg(val *reg, int regidx, type *ty)
 {
-	temporary_init(reg, ty);
+	val_temporary_init(reg, ty);
 
 	reg->u.temp_loc.where = NAME_IN_REG;
 	reg->u.temp_loc.u.reg = regidx;
@@ -379,7 +367,7 @@ static void make_val_temporary_store(
 
 	if(to_cat == OPERAND_REG){
 		/* use scratch register */
-		temporary_init(write_to, from->ty);
+		val_temporary_init(write_to, from->ty);
 
 		write_to->u.local.loc.where = NAME_IN_REG;
 		write_to->u.local.loc.u.reg = SCRATCH_REG;
@@ -387,7 +375,7 @@ static void make_val_temporary_store(
 	}else{
 		assert(to_cat == OPERAND_MEM);
 
-		temporary_init(write_to, from->ty);
+		val_temporary_init(write_to, from->ty);
 
 		write_to->u.local.loc.where = NAME_SPILT;
 		write_to->u.local.loc.u.off = 133; /* TODO */

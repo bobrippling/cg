@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 
 #include "mem.h"
@@ -324,6 +325,17 @@ val *val_new_local(char *name, struct type *ty)
 	val *p = val_new(FROM_ISN, ty);
 	p->u.local.name = name;
 	return p;
+}
+
+void val_temporary_init(val *vtmp, type *ty)
+{
+	assert(ty);
+
+	memset(vtmp, 0, sizeof *vtmp);
+
+	vtmp->kind = BACKEND_TEMP;
+	vtmp->ty = ty;
+	vtmp->retains = 1;
 }
 
 struct type *val_type(val *v)

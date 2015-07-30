@@ -26,6 +26,8 @@ val *val_new_argument(
 		struct function *)
 	attr_nonnull();
 
+void val_temporary_init(val *, struct type *);
+
 unsigned val_size(val *);
 struct type *val_type(val *);
 
