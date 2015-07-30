@@ -333,18 +333,6 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 	}
 }
 
-bool type_size_to_primitive(unsigned sz, enum type_primitive *p)
-{
-	switch(sz){
-		case 1: *p = i1; return true;
-		case 2: *p = i2; return true;
-		case 4: *p = i4; return true;
-		case 8: *p = i8; return true;
-	}
-
-	return false;
-}
-
 unsigned type_size(type *t)
 {
 	unsigned sz, align;

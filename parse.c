@@ -461,29 +461,22 @@ static void parse_ident(parse *p, char *spel)
 
 		case tok_zext:
 		{
-			unsigned to;
 			val *from;
 			val *vres;
 			type *ty_to;
-			enum type_primitive prim;
 
-			eat(p, "extend-to", tok_int);
-			to = token_last_int(p->tok);
+			ty_to = parse_type(p);
+
+			if(!type_is_int(ty_to)){
+				sema_error(p, "zext requires integer type");
+				ty_to = type_get_primitive(unit_uniqtypes(p->unit), iMAX);
+			}
 
 			eat(p, "zext", tok_comma);
 
 			from = parse_val(p);
 
-			if(!type_size_to_primitive(to, &prim)){
-				sema_error(p, "zext operand not a valid integer size");
-				prim = i4;
-			}
-
-			ty_to = type_get_primitive(unit_uniqtypes(p->unit), prim);
-
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
-
-#warning tycheck / ensure from is int
 
 			isn_zext(p->entry, from, vres);
 			break;

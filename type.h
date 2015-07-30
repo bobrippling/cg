@@ -16,6 +16,7 @@ typedef struct uniq_type_list uniq_type_list;
 	X(f8, false, 8, 8)           \
 	X(flarge, false, 16, 16)
 
+#define iMAX i8
 #define TYPE_PRIMITIVE_LAST flarge
 
 enum type_primitive
@@ -49,7 +50,6 @@ dynarray *type_func_args(type *);
 
 /* --- sizing --- */
 void type_size_align(type *, unsigned *sz, unsigned *align);
-bool type_size_to_primitive(unsigned, enum type_primitive *);
 unsigned type_size(type *);
 
 #endif
