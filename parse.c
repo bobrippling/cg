@@ -420,6 +420,11 @@ static void parse_call(parse *p, char *ident_or_null)
 	dynarray_reset(&args);
 }
 
+static bool op_types_valid(type *a, type *b)
+{
+	return a == b;
+}
+
 static void parse_ident(parse *p, char *spel)
 {
 	enum token tok;
@@ -533,7 +538,7 @@ static void parse_ident(parse *p, char *spel)
 				val *vres;
 				type *opty;
 
-				if(val_type(vlhs) != val_type(vrhs)){
+				if(!op_types_valid(val_type(vlhs), val_type(vrhs))){
 					sema_error(p, "mismatching types in op");
 				}
 
@@ -542,8 +547,6 @@ static void parse_ident(parse *p, char *spel)
 						: val_type(vlhs));
 
 				vres = uniq_val(p, spel, opty, VAL_CREATE);
-
-#warning tycheck / pointer-vs-int check
 
 				if(is_cmp)
 					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
