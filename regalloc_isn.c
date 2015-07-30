@@ -197,6 +197,7 @@ static void mark_callee_save_as_used(
 
 static void regalloc_greedy(
 		block *blk, function *func, isn *const head,
+		uniq_type_list *uniq_type_list,
 		const struct backend_traits *backend)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
@@ -228,10 +229,18 @@ static void regalloc_greedy(
 	/* any leftovers become elems in the regspill alloca block */
 	if(alloc_ctx.spill_space){
 		struct spill_ctx spill_ctx = { 0 };
+		type *spill_array_ty = type_get_ptr(
+				uniq_type_list,
+				type_get_array(
+					uniq_type_list,
+					type_get_primitive(uniq_type_list, i1),
+					alloc_ctx.spill_space));
+
+		val *spill_array_val = val_new_temporary(spill_array_ty);
+
 		spill_ctx.ptrsz = alloc_ctx.ptrsz;
 
-#warning todo
-		/*isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);*/
+		isn_alloca(blk, spill_array_val);
 
 		for(isn_iter = head; isn_iter; isn_iter = isn_iter->next)
 			isn_on_live_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);
@@ -239,15 +248,19 @@ static void regalloc_greedy(
 }
 
 static void simple_regalloc(
-		block *blk, function *func, const struct backend_traits *backend)
+		block *blk, function *func,
+		uniq_type_list *uniq_type_list,
+		const struct backend_traits *backend)
 {
 	isn *head = block_first_isn(blk);
 
-	regalloc_greedy(blk, func, head, backend);
+	regalloc_greedy(blk, func, head, uniq_type_list, backend);
 }
 
 void isn_regalloc(
-		block *blk, function *func, const struct backend_traits *backend)
+		block *blk, function *func,
+		uniq_type_list *uniq_type_list,
+		const struct backend_traits *backend)
 {
-	simple_regalloc(blk, func, backend);
+	simple_regalloc(blk, func, uniq_type_list, backend);
 }

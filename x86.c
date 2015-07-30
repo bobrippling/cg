@@ -839,9 +839,9 @@ static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+		case BACKEND_TEMP:
 			return; /* no need to spill */
 
-		case BACKEND_TEMP:
 		case FROM_ISN:
 		case ARGUMENT:
 			break;
@@ -1203,7 +1203,8 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 
 static void x86_init_regalloc_context(
 		struct regalloc_context *ctx,
-		function *func)
+		function *func,
+		uniq_type_list *uniq_type_list)
 {
 	ctx->backend.nregs = countof(regs);
 	ctx->backend.scratch_reg = SCRATCH_REG;
@@ -1213,6 +1214,7 @@ static void x86_init_regalloc_context(
 	ctx->backend.arg_regs = arg_regs;
 	ctx->backend.arg_regs_cnt = countof(arg_regs);
 	ctx->func = func;
+	ctx->uniq_type_list = uniq_type_list;
 }
 
 static void x86_out_fn(unit *unit, function *func)
@@ -1232,7 +1234,7 @@ static void x86_out_fn(unit *unit, function *func)
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
 	/* regalloc */
-	x86_init_regalloc_context(&regalloc, func);
+	x86_init_regalloc_context(&regalloc, func, unit_uniqtypes(unit));
 	func_regalloc(func, &regalloc);
 
 	/* gather allocas - must be after regalloc */

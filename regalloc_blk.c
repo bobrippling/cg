@@ -68,7 +68,7 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 {
 	const struct regalloc_context *ctx = vctx;
 
-	isn_regalloc(blk, ctx->func, &ctx->backend);
+	isn_regalloc(blk, ctx->func, ctx->uniq_type_list, &ctx->backend);
 }
 
 void blk_regalloc(block *blk, struct regalloc_context *ctx)

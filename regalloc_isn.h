@@ -6,6 +6,11 @@
 #include "backend_traits.h"
 #include "function.h"
 
-void isn_regalloc(block *blk, function *, const struct backend_traits *);
+struct uniq_type_list;
+
+void isn_regalloc(
+		block *blk, function *,
+		struct uniq_type_list *,
+		const struct backend_traits *);
 
 #endif

@@ -7,6 +7,7 @@
 struct regalloc_context
 {
 	struct backend_traits backend;
+	struct uniq_type_list *uniq_type_list;
 	struct function *func;
 };
 
