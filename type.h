@@ -32,6 +32,7 @@ bool type_is_int(type *);
 bool type_is_void(type *);
 
 const char *type_to_str(type *);
+const char *type_to_str_r(char *buf, size_t buflen, type *t);
 
 /* --- getters --- */
 type *type_get_void(uniq_type_list *);

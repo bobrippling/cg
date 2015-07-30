@@ -103,7 +103,7 @@ static void type_primitive_size_align(
 	assert(0);
 }
 
-static bool type_to_str_r(strbuf_fixed *const buf, type *t)
+static bool type_to_strbuf(strbuf_fixed *const buf, type *t)
 {
 	switch(t->kind){
 		case VOID:
@@ -113,7 +113,7 @@ static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 			return strbuf_fixed_printf(buf, "%s", type_primitive_to_str(t->u.prim));
 
 		case PTR:
-			return type_to_str_r(buf, t->u.ptr.pointee)
+			return type_to_strbuf(buf, t->u.ptr.pointee)
 				&& strbuf_fixed_printf(buf, "*");
 
 		case ARRAY:
@@ -122,7 +122,7 @@ static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 				return false;
 			}
 
-			return type_to_str_r(buf, t->u.array.elem)
+			return type_to_strbuf(buf, t->u.array.elem)
 				&& strbuf_fixed_printf(buf, " x %lu]", t->u.array.n);
 		}
 
@@ -131,7 +131,7 @@ static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 			const char *comma = "";
 			size_t i;
 
-			if(!type_to_str_r(buf, t->u.func.ret))
+			if(!type_to_strbuf(buf, t->u.func.ret))
 				return false;
 
 			if(!strbuf_fixed_printf(buf, "("))
@@ -143,7 +143,7 @@ static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 				if(!strbuf_fixed_printf(buf, "%s", comma))
 					return false;
 
-				if(!type_to_str_r(buf, arg_ty))
+				if(!type_to_strbuf(buf, arg_ty))
 					return false;
 
 				comma = ", ";
@@ -156,15 +156,21 @@ static bool type_to_str_r(strbuf_fixed *const buf, type *t)
 	assert(0);
 }
 
-const char *type_to_str(type *t)
+const char *type_to_str_r(char *buf, size_t buflen, type *t)
 {
-	static char buf[256];
-	strbuf_fixed strbuf = STRBUF_FIXED_INIT_ARRAY(buf);
+	strbuf_fixed strbuf = STRBUF_FIXED_INIT(buf, buflen);
 
-	if(!type_to_str_r(&strbuf, t))
+	if(!type_to_strbuf(&strbuf, t))
 		strcpy(buf, "<type trunc>");
 
 	return strbuf_fixed_detach(&strbuf);
+}
+
+const char *type_to_str(type *t)
+{
+	static char buf[256];
+
+	return type_to_str_r(buf, sizeof buf, t);
 }
 
 static type *tnew(enum type_kind kind)
