@@ -324,6 +324,7 @@ val *val_new_local(char *name, struct type *ty)
 {
 	val *p = val_new(FROM_ISN, ty);
 	p->u.local.name = name;
+	name_loc_init_reg(&p->u.local.loc);
 	return p;
 }
 
@@ -336,6 +337,7 @@ void val_temporary_init(val *vtmp, type *ty)
 	vtmp->kind = BACKEND_TEMP;
 	vtmp->ty = ty;
 	vtmp->retains = 1;
+	name_loc_init_reg(&vtmp->u.temp_loc);
 }
 
 struct type *val_type(val *v)
