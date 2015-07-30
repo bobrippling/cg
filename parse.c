@@ -504,6 +504,10 @@ static void parse_ident(parse *p, char *spel)
 
 			from = parse_val(p);
 
+			if(!type_is_int(val_type(from))){
+				sema_error(p, "zext argument requires integer type");
+			}
+
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
 
 			isn_zext(p->entry, from, vres);
