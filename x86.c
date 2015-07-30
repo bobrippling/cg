@@ -37,7 +37,7 @@ typedef struct x86_out_ctx
 	unit *unit;
 	FILE *fout;
 	long alloca_bottom; /* max of ALLOCA instructions */
-	long spill_alloca_max; /* max of spill space */
+	unsigned long spill_alloca_max; /* max of spill space */
 	unsigned max_align;
 } x86_octx;
 
@@ -47,6 +47,7 @@ struct x86_spill_ctx
 	dynmap *dontspill;
 	dynmap *spill;
 	block *blk;
+	unsigned long spill_alloca;
 	unsigned call_isn_idx;
 };
 
@@ -821,24 +822,10 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 		fprintf(octx->fout, "%s:\n", blk->lbl);
 }
 
-static void maybe_spill(val *v, isn *isn, void *vctx)
+static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 {
-	const struct x86_spill_ctx *ctx = vctx;
-	struct lifetime *lt;
-	struct lifetime lt_inf = LIFETIME_INIT_INF;
-
-	(void)isn;
-
-	switch(v->kind){
-		case LITERAL:
-		case GLOBAL:
-			return; /* no need to spill */
-
-		case BACKEND_TEMP:
-		case FROM_ISN:
-		case ARGUMENT:
-			break;
-	}
+	const struct lifetime lt_inf = LIFETIME_INIT_INF;
+	const struct lifetime *lt;
 
 	if(dynmap_exists(val *, ctx->dontspill, v))
 		return;
@@ -855,18 +842,106 @@ static void maybe_spill(val *v, isn *isn, void *vctx)
 	}
 }
 
+static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
+{
+	const struct x86_spill_ctx *ctx = vctx;
+
+	(void)isn;
+
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
+			return; /* no need to spill */
+
+		case BACKEND_TEMP:
+		case FROM_ISN:
+		case ARGUMENT:
+			break;
+	}
+
+	gather_for_spill(v, ctx);
+}
+
+static void gather_live_vals(block *blk, struct x86_spill_ctx *spillctx)
+{
+	isn *isn;
+	for(isn = block_first_isn(blk); isn; isn = isn->next){
+		if(isn->skip)
+			continue;
+
+		isn_on_live_vals(isn, maybe_gather_for_spill, spillctx);
+	}
+}
+
+static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
+{
+	size_t idx;
+	val *v;
+
+	for(idx = 0; (v = dynmap_key(val *, spillctx->spill, idx)); idx++){
+		val stack_slot = { 0 };
+
+		spillctx->spill_alloca += type_size(v->ty);
+
+		make_stack_slot(
+				&stack_slot,
+				octx->alloca_bottom + spillctx->spill_alloca,
+				v->ty);
+
+		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
+
+		mov_deref(v, &stack_slot, octx, 0, 1);
+
+		assert(stack_slot.kind == BACKEND_TEMP);
+		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
+		dynmap_set(
+				val *, uintptr_t,
+				spillctx->spill,
+				v,
+				(uintptr_t)stack_slot.u.temp_loc.u.off);
+	}
+}
+
+static void find_args_in_isn(val *v, isn *isn, void *vctx)
+{
+	struct x86_spill_ctx *spillctx = vctx;
+
+	(void)isn;
+
+	if(v->kind != ARGUMENT)
+		return;
+
+	gather_for_spill(v, spillctx);
+}
+
+static void find_args_in_block(block *blk, void *vctx)
+{
+	struct x86_spill_ctx *spillctx = vctx;
+
+	isn_on_live_vals(block_first_isn(blk), find_args_in_isn, spillctx);
+}
+
+static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
+{
+	/* can't just spill regs in this block, need to spill 'live' regs,
+	 * e.g.  argument regs
+	 * we only spill arguments that are actually used, for the moment,
+	 * that's any argument used at all, regardless of blocks
+	 */
+	block *blk = function_entry_block(func, false);
+	assert(blk);
+
+	blocks_traverse(blk, find_args_in_block, spillctx);
+}
+
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
 		unsigned call_isn_idx,
 		x86_octx *octx)
 {
-	struct x86_spill_ctx spillctx;
-	isn *isn;
+	struct x86_spill_ctx spillctx = { 0 };
 	val **vi;
-	size_t idx;
-	val *v;
-	long spill_alloca = 0;
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
@@ -878,43 +953,13 @@ static dynmap *x86_spillregs(
 		dynmap_set(val *, void *, spillctx.dontspill, *vi, (void *)NULL);
 	}
 
-	for(isn = block_first_isn(blk); isn; isn = isn->next){
-		if(isn->skip)
-			continue;
+	gather_live_vals(blk, &spillctx);
+	gather_arg_vals(octx->func, &spillctx);
 
-		isn_on_live_vals(isn, maybe_spill, &spillctx);
-	}
+	spill_vals(octx, &spillctx);
 
-	/* can't just spill regs in this block, need to spill 'live' regs,
-	 * e.g.  argument regs */
-	function_arg_vals(octx->func, &arg_vals);
-	dynarray_iter(&arg_vals, idx){
-		maybe_spill(dynarray_ent(&arg_vals, idx), NULL, &spillctx);
-	}
-	dynarray_reset(&arg_vals);
-
-	for(idx = 0; (v = dynmap_key(val *, spillctx.spill, idx)); idx++){
-		val stack_slot = { 0 };
-
-		spill_alloca += type_size(v->ty);
-
-		make_stack_slot(&stack_slot, octx->alloca_bottom + spill_alloca, v->ty);
-
-		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
-
-		mov_deref(v, &stack_slot, octx, 0, 1);
-
-		assert(stack_slot.kind == BACKEND_TEMP);
-		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
-		dynmap_set(
-				val *, uintptr_t,
-				spillctx.spill,
-				v,
-				(uintptr_t)stack_slot.u.temp_loc.u.off);
-	}
-
-	if(spill_alloca > octx->spill_alloca_max)
-		octx->spill_alloca_max = spill_alloca;
+	if(spillctx.spill_alloca > octx->spill_alloca_max)
+		octx->spill_alloca_max = spillctx.spill_alloca;
 
 	dynmap_free(spillctx.dontspill);
 	return spillctx.spill;

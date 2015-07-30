@@ -29,13 +29,6 @@ block *function_block_find(
 
 block *function_block_new(function *f);
 
-block *function_block_n(function *, size_t);
-
-#define function_iter_blocks(fn, blk, i)    \
-	for(i = 0, blk = function_block_n(fn, i); \
-			blk;                                  \
-			blk = function_block_n(fn, i))
-
 bool function_arg_find(
 		function *f, const char *name,
 		size_t *const idx, struct type **const ty);

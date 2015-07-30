@@ -93,11 +93,6 @@ block *function_exit_block(function *f)
 	return f->exit;
 }
 
-block *function_block_n(function *f, size_t n)
-{
-	return n >= f->nblocks ? NULL : f->blocks[n];
-}
-
 block *function_block_new(function *f)
 {
 	block *b = block_new(lbl_new(f->uniq_counter));
