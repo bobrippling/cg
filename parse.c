@@ -702,7 +702,6 @@ static void parse_global(parse *p)
 	type *ty;
 	char *name;
 	dynarray toplvl_args = DYNARRAY_INIT;
-	enum { VAR, FUNC } expected;
 
 	eat(p, "decl name", tok_ident);
 	name = token_last_ident(p->tok);
@@ -711,23 +710,7 @@ static void parse_global(parse *p)
 
 	eat(p, "global assign", tok_equal);
 
-	switch(token_next(p->tok)){
-		case tok_data:
-			expected = VAR;
-			break;
-		case tok_func:
-			expected = FUNC;
-			break;
-		default:
-			parse_error(p, "expected 'data' or 'func'");
-			expected = VAR;
-	}
-
 	ty = parse_type_maybe_func(p, &toplvl_args);
-
-	if(type_is_fn(ty) != (expected == FUNC)){
-		parse_error(p, "mismatch type and global-type-label");
-	}
 
 	if(type_is_fn(ty)){
 		parse_function(p, name, ty, &toplvl_args);
