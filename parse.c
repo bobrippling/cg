@@ -450,6 +450,11 @@ static void parse_ident(parse *p, char *spel)
 			val *vlhs;
 			type *ty = parse_type(p);
 
+			if(type_is_fn(ty)){
+				sema_error(p, "alloca of function type");
+				ty = default_type(p);
+			}
+
 			vlhs = uniq_val(
 					p, spel,
 					type_get_ptr(unit_uniqtypes(p->unit), ty),
