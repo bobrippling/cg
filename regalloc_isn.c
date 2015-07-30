@@ -14,6 +14,8 @@
 #include "lifetime_struct.h"
 #include "function_struct.h"
 
+#define SHOW_REGALLOC 0
+
 struct greedy_ctx
 {
 	block *blk;
@@ -80,11 +82,17 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			/* no reg available */
 			regalloc_spill(v, ctx);
 
+			if(SHOW_REGALLOC)
+				fprintf(stderr, "regalloc(%s) => spill\n", val_str(v));
+
 		}else{
 			ctx->in_use[i] = 1;
 
 			val_locn->where = NAME_IN_REG;
 			val_locn->u.reg = i;
+
+			if(SHOW_REGALLOC)
+				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
 		}
 
 	}
