@@ -59,7 +59,7 @@ void blk_lifecheck(block *blk)
 	/* find out which values live outside their block */
 	dynmap *values_to_block = dynmap_new(val *, NULL, val_hash);
 
-	blocks_iterate(blk, check_val_life_block, values_to_block);
+	blocks_traverse(blk, check_val_life_block, values_to_block);
 
 	dynmap_free(values_to_block);
 }
@@ -73,5 +73,5 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 
 void blk_regalloc(block *blk, struct regalloc_context *ctx)
 {
-	blocks_iterate(blk, blk_regalloc_pass, ctx);
+	blocks_traverse(blk, blk_regalloc_pass, ctx);
 }

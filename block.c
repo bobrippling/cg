@@ -101,7 +101,7 @@ bool *block_flag(block *blk)
 	return &blk->flag_user;
 }
 
-void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
+void blocks_traverse(block *blk, void fn(block *, void *), void *ctx)
 {
 	bool *const flag = &blk->flag_iter;
 
@@ -118,11 +118,11 @@ void blocks_iterate(block *blk, void fn(block *, void *), void *ctx)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			blocks_iterate(blk->u.branch.t, fn, ctx);
-			blocks_iterate(blk->u.branch.f, fn, ctx);
+			blocks_traverse(blk->u.branch.t, fn, ctx);
+			blocks_traverse(blk->u.branch.f, fn, ctx);
 			break;
 		case BLK_JMP:
-			blocks_iterate(blk->u.jmp.target, fn, ctx);
+			blocks_traverse(blk->u.jmp.target, fn, ctx);
 			break;
 	}
 
@@ -137,7 +137,7 @@ static void clear_flag(block *blk, void *ctx)
 
 void blocks_clear_flags(block *blk)
 {
-	blocks_iterate(blk, clear_flag, NULL);
+	blocks_traverse(blk, clear_flag, NULL);
 }
 
 struct lifetime_assign_ctx

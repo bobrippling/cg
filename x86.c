@@ -1201,7 +1201,7 @@ static void x86_out_fn(unit *unit, function *func)
 	func_regalloc(func, &regalloc);
 
 	/* gather allocas - must be after regalloc */
-	blocks_iterate(entry, x86_sum_alloca, &alloca_ctx);
+	blocks_traverse(entry, x86_sum_alloca, &alloca_ctx);
 
 	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;

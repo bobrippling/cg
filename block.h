@@ -17,7 +17,7 @@ int block_tenative(block *);
 bool *block_flag(block *);
 void blocks_clear_flags(block *);
 
-void blocks_iterate(block *, void (block *, void *), void *);
+void blocks_traverse(block *, void (block *, void *), void *);
 struct isn *block_first_isn(block *);
 
 #ifdef DYNMAP_H
