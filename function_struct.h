@@ -18,7 +18,7 @@ struct function
 
 	type *fnty;
 	dynarray arg_names;
-	dynarray arg_vals;
+	dynarray arg_locns;
 };
 
 #endif

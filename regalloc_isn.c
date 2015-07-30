@@ -133,17 +133,25 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 	/* isn may be null from mark_arg_vals_as_used() */
 	(void)isn;
 
+	if(val_is_mem(v))
+		return;
+
 	switch(v->kind){
 		case FROM_ISN:
-			if(v->u.local.loc.where == NAME_SPILT)
-				return;
+			assert(v->u.local.loc.where == NAME_IN_REG);
 			idx = v->u.local.loc.u.reg;
 			break;
 		case ARGUMENT:
-			if(v->u.argument.loc.where == NAME_SPILT)
-				return;
-			idx = v->u.argument.loc.u.reg;
+		{
+			struct name_loc *loc = function_arg_loc(
+						v->u.argument.func,
+						v->u.argument.idx);
+
+			assert(loc->where == NAME_IN_REG);
+
+			idx = loc->u.reg;
 			break;
+		}
 		default:
 			return;
 	}
@@ -164,10 +172,11 @@ static void mark_arg_vals_as_used(char *in_use, function *func)
 {
 	size_t i;
 
-	dynarray_iter(&func->arg_vals, i){
-		val *arg = dynarray_ent(&func->arg_vals, i);
+	dynarray_iter(&func->arg_locns, i){
+		struct name_loc *loc = dynarray_ent(&func->arg_locns, i);
 
-		mark_other_block_val_as_used(arg, NULL, in_use);
+		if(loc->where == NAME_IN_REG)
+			in_use[loc->u.reg] = 1;
 	}
 }
 

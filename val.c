@@ -66,22 +66,17 @@ int val_size(val *v, unsigned ptrsz)
 
 bool val_is_mem(val *v)
 {
-	struct name_loc *loc;
+	struct name_loc *loc = val_location(v);
 
-	switch(v->kind){
-		case FROM_ISN: loc = &v->u.local.loc; goto loc;
-		case ARGUMENT: loc = &v->u.argument.loc; goto loc;
-loc:
-			return loc->where == NAME_SPILT;
-
-		case GLOBAL:
-			return true;
-
-		case LITERAL:
-		case BACKEND_TEMP:
-			return false;
+	if(v->kind == GLOBAL){
+		assert(!loc);
+		return true;
 	}
-	assert(0);
+
+	if(loc)
+		return loc->where == NAME_SPILT;
+
+	return false;
 }
 
 unsigned val_hash(val *v)
@@ -126,7 +121,7 @@ struct name_loc *val_location(val *v)
 			return &v->u.local.loc;
 
 		case ARGUMENT:
-			return &v->u.argument.loc;
+			return function_arg_loc(v->u.argument.func, v->u.argument.idx);
 
 		case BACKEND_TEMP:
 			return &v->u.temp_loc;
@@ -308,11 +303,12 @@ val *val_new_void(struct uniq_type_list *us)
 	return v;
 }
 
-val *val_new_argument(char *name, int idx, struct type *ty)
+val *val_new_argument(char *name, int idx, struct type *ty, struct function *fn)
 {
 	val *p = val_new(ARGUMENT, ty);
 	p->u.argument.idx = idx;
 	p->u.argument.name = name;
+	p->u.argument.func = fn;
 	return p;
 }
 

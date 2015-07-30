@@ -30,7 +30,7 @@ function *function_new(
 	dynarray_init(&fn->arg_names);
 	dynarray_move(&fn->arg_names, toplvl_args);
 
-	dynarray_init(&fn->arg_vals);
+	dynarray_init(&fn->arg_locns);
 
 	return fn;
 }
@@ -41,7 +41,9 @@ void function_free(function *f)
 
 	dynarray_foreach(&f->arg_names, free);
 	dynarray_reset(&f->arg_names);
-	dynarray_reset(&f->arg_vals);
+
+	dynarray_foreach(&f->arg_locns, free);
+	dynarray_reset(&f->arg_locns);
 
 	free(f->blocks);
 	free(f->name);
@@ -67,10 +69,10 @@ dynarray *function_arg_names(function *f)
 	return &f->arg_names;
 }
 
-void function_arg_vals(function *f, dynarray *d)
+struct name_loc *function_arg_loc(function *fn, size_t idx)
 {
-	dynarray_init(d);
-	dynarray_copy(d, &f->arg_vals);
+	assert(idx < dynarray_count(&fn->arg_locns));
+	return dynarray_ent(&fn->arg_locns, idx);
 }
 
 block *function_entry_block(function *f, bool create)
@@ -185,6 +187,11 @@ struct type *function_type(function *f)
 	return f->fnty;
 }
 
+size_t function_arg_count(function *f)
+{
+	return dynarray_count(&f->arg_names);
+}
+
 bool function_arg_find(
 		function *f, const char *name,
 		size_t *const idx, type **const ty)
@@ -202,41 +209,32 @@ bool function_arg_find(
 	return false;
 }
 
-static void assign_arg_reg(
-		val *v, unsigned idx,
+static struct name_loc *locate_arg_reg(
+		size_t idx,
 		const struct backend_traits *backend)
 {
-	v->kind = ARGUMENT;
-
-	v->live_across_blocks = 1;
+	struct name_loc *loc = xmalloc(sizeof *loc);
 
 	if(idx >= backend->arg_regs_cnt){
 		assert(0 && "TODO: arg on stack");
 	}else{
-		v->u.argument.loc.where = NAME_IN_REG;
-		v->u.argument.loc.u.reg = backend->arg_regs[idx];
-
-		fprintf(stderr, "assign arg %s index [%u] reg %d\n",
-				val_str(v),
-				idx,
-				v->u.argument.loc.u.reg);
+		loc->where = NAME_IN_REG;
+		loc->u.reg = backend->arg_regs[idx];
 	}
+
+	return loc;
 }
 
 static void assign_argument_registers(
 		function *f,
 		const struct backend_traits *backend)
 {
-	dynarray *const arg_tys = type_func_args(f->fnty);
 	size_t i;
+
 	dynarray_iter(&f->arg_names, i){
-		char *name = dynarray_ent(&f->arg_names, i);
-		type *ty = dynarray_ent(arg_tys, i);
-		val *arg_val = val_new_argument(name, i, ty);
+		struct name_loc *arg_loc = locate_arg_reg(i, backend);
 
-		assign_arg_reg(arg_val, i, backend);
-
-		dynarray_add(&f->arg_vals, arg_val);
+		dynarray_add(&f->arg_locns, arg_loc);
 	}
 }
 

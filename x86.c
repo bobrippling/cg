@@ -300,7 +300,10 @@ static const char *x86_val_str_sized(
 			break;
 		}
 
-		case ARGUMENT: loc = &val->u.argument.loc; goto loc;
+		case ARGUMENT:
+			loc = function_arg_loc(val->u.argument.func, val->u.argument.idx);
+			goto loc;
+
 		case FROM_ISN: loc = &val->u.local.loc; goto loc;
 		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
 loc:
@@ -864,7 +867,6 @@ static dynmap *x86_spillregs(
 	size_t idx;
 	val *v;
 	long spill_alloca = 0;
-	dynarray arg_vals;
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);

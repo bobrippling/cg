@@ -9,6 +9,7 @@ struct type;
 struct variable;
 struct global;
 struct uniq_type_list;
+struct function;
 
 typedef struct val val;
 
@@ -17,8 +18,13 @@ val *val_new_void(struct uniq_type_list *);
 
 /* refer to a local, arg or global */
 val *val_new_global(struct uniq_type_list *, struct global *) attr_nonnull();
-val *val_new_argument(char * /*consumed*/, int idx, struct type *ty) attr_nonnull();
 val *val_new_local(char * /*consumed*/, struct type *) attr_nonnull((2));
+
+val *val_new_argument(
+		char * /*consumed*/, int idx,
+		struct type *ty,
+		struct function *)
+	attr_nonnull();
 
 unsigned val_size(val *);
 struct type *val_type(val *);

@@ -32,7 +32,8 @@ struct val
 		} local;
 		struct
 		{
-			struct name_loc loc;
+			/* location needs to be asked from the function */
+			struct function *func;
 			char *name;
 			unsigned idx;
 		} argument;
