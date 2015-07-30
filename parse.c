@@ -346,16 +346,20 @@ static void parse_call(parse *p, char *ident_or_null)
 	val *target;
 	val *into;
 	dynarray args = DYNARRAY_INIT;
+	dynarray *argtys;
+	bool tyerror = false;
 	type *retty = NULL;
+	size_t i;
 
 	target = parse_val(p);
 
 	type *ptr = type_deref(val_type(target));
 	if(ptr)
-		retty = type_func_call(ptr, NULL);
+		retty = type_func_call(ptr, &argtys);
 
 	if(!retty){
 		retty = default_type(p);
+		tyerror = true; /* disable argument type checks */
 		sema_error(p, "call requires function (pointer) operand (got %s)",
 				type_to_str(val_type(target)));
 	}
@@ -370,7 +374,7 @@ static void parse_call(parse *p, char *ident_or_null)
 
 	eat(p, "call paren", tok_lparen);
 
-	while(1){
+	for(i = 0; ; i++){
 		val *arg;
 
 		if(dynarray_is_empty(&args)){
@@ -384,10 +388,29 @@ static void parse_call(parse *p, char *ident_or_null)
 
 		dynarray_add(&args, arg);
 
+		if(!tyerror){
+			if(i < dynarray_count(argtys)){
+				type *argty = dynarray_ent(argtys, i);
+
+				if(argty != val_type(arg)){
+					char buf[256];
+
+					sema_error(p, "argument %zu mismatch (%s passed to %s)",
+							i + 1,
+							type_to_str_r(buf, sizeof buf, val_type(arg)),
+							type_to_str(argty));
+				}
+			}else{
+				sema_error(p, "too many arguments to function");
+			}
+		}
+
 		if(token_peek(p->tok) == tok_rparen || parse_finished(p->tok))
 			break;
+	}
 
-#warning tycheck
+	if(i + 1 < dynarray_count(argtys)){
+		sema_error(p, "too few arguments to function");
 	}
 
 	eat(p, "call paren", tok_rparen);
