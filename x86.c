@@ -365,17 +365,16 @@ static void make_val_temporary_store(
 
 	assert(to_cat != OPERAND_INT);
 
+	val_temporary_init(write_to, from->ty);
+
 	if(to_cat == OPERAND_REG){
 		/* use scratch register */
-		val_temporary_init(write_to, from->ty);
 
 		write_to->u.local.loc.where = NAME_IN_REG;
 		write_to->u.local.loc.u.reg = SCRATCH_REG;
 
 	}else{
 		assert(to_cat == OPERAND_MEM);
-
-		val_temporary_init(write_to, from->ty);
 
 		write_to->u.local.loc.where = NAME_SPILT;
 		write_to->u.local.loc.u.off = 133; /* TODO */
