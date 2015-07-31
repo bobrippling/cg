@@ -352,8 +352,7 @@ static void make_val_temporary_store(
 		val *from,
 		val *write_to,
 		operand_category from_cat,
-		operand_category to_cat,
-		val *other_val)
+		operand_category to_cat)
 {
 	/* move 'from' into category 'to_cat' (from 'from_cat'),
 	 * saving the new value in *write_to */
@@ -382,7 +381,7 @@ static void make_val_temporary_store(
 		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
 	}
 
-	assert(val_size(from) == val_size(other_val));
+	assert(val_size(write_to) == val_size(from));
 }
 
 static bool operand_type_convertible(
@@ -438,13 +437,11 @@ static void ready_input(
 		operand_category orig_val_category,
 		operand_category operand_category,
 		int *const deref_val,
-		val *other_val,
 		x86_octx *octx)
 {
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category,
-			other_val);
+			orig_val_category, operand_category);
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
@@ -457,14 +454,12 @@ static void ready_output(
 		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
-		int *const deref_val,
-		val *other_val)
+		int *const deref_val)
 {
 	/* wait to store the value until after the main isn */
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category,
-			other_val);
+			orig_val_category, operand_category);
 
 	/* using a register as a temporary rhs - no dereference */
 	*deref_val = 0;
@@ -509,7 +504,7 @@ static void emit_isn(
 			ready_input(
 					lhs, &temporary_lhs.val,
 					lhs_cat, operands_target->l,
-					&deref_lhs, rhs, octx);
+					&deref_lhs, octx);
 
 			emit_lhs = &temporary_lhs.val;
 		}
@@ -519,7 +514,7 @@ static void emit_isn(
 			ready_input(
 					rhs, &temporary_rhs.val,
 					rhs_cat, operands_target->r,
-					&deref_rhs, lhs, octx);
+					&deref_rhs, octx);
 
 			emit_rhs = &temporary_rhs.val;
 		}
@@ -531,8 +526,7 @@ static void emit_isn(
 			ready_output(
 					lhs, &temporary_lhs.val,
 					lhs_cat, operands_target->l,
-					&deref_lhs,
-					rhs);
+					&deref_lhs);
 
 			emit_lhs = &temporary_lhs.val;
 		}
@@ -542,8 +536,7 @@ static void emit_isn(
 			ready_output(
 					rhs, &temporary_rhs.val,
 					rhs_cat, operands_target->r,
-					&deref_rhs,
-					lhs);
+					&deref_rhs);
 
 			emit_rhs = &temporary_rhs.val;
 		}
