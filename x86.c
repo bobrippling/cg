@@ -89,22 +89,34 @@ typedef enum operand_category
 	OPERAND_INT
 } operand_category;
 
+#define MAX_OPERANDS 3
+#define MAX_ISN_COMBOS 5
+
 struct x86_isn
 {
 	const char *mnemonic;
+
+	unsigned arg_count;
+
 	enum {
 		OPERAND_INPUT = 1 << 0,
 		OPERAND_OUTPUT = 1 << 1
-	} io_l, io_r;
+	} arg_ios[MAX_OPERANDS];
+
 	struct x86_isn_constraint
 	{
-		operand_category l, r;
-	} constraints[5];
+		operand_category category[MAX_OPERANDS];
+	} constraints[MAX_ISN_COMBOS];
 };
 
 static const struct x86_isn isn_mov = {
 	"mov",
-	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT | OPERAND_OUTPUT,
+		0
+	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -116,7 +128,12 @@ static const struct x86_isn isn_mov = {
 
 static const struct x86_isn isn_movzx = {
 	"mov",
-	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT | OPERAND_OUTPUT,
+		0
+	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -125,7 +142,12 @@ static const struct x86_isn isn_movzx = {
 
 static const struct x86_isn isn_add = {
 	"add",
-	OPERAND_INPUT, OPERAND_INPUT | OPERAND_OUTPUT,
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT | OPERAND_OUTPUT,
+		0
+	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -136,7 +158,12 @@ static const struct x86_isn isn_add = {
 
 static const struct x86_isn isn_cmp = {
 	"cmp",
-	OPERAND_INPUT, OPERAND_INPUT,
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT,
+		0
+	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -148,7 +175,12 @@ static const struct x86_isn isn_cmp = {
 
 static const struct x86_isn isn_test = {
 	"test",
-	OPERAND_INPUT, OPERAND_INPUT,
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT,
+		0
+	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
@@ -158,6 +190,11 @@ static const struct x86_isn isn_test = {
 	}
 };
 
+
+typedef struct emit_isn_operand {
+	val *val;
+	bool dereference;
+} emit_isn_operand;
 
 static void mov_deref(
 		val *from, val *to,
@@ -395,18 +432,32 @@ static bool operand_type_convertible(
 
 static const struct x86_isn_constraint *find_isn_bestmatch(
 		const struct x86_isn *isn,
-		const operand_category lhs_cat,
-		const operand_category rhs_cat,
+		const operand_category arg_cats[],
 		bool *const is_exactmatch)
 {
 	const int max = countof(isn->constraints);
 	int i, bestmatch_i = -1;
+	unsigned nargs;
 
-	for(i = 0; i < max && isn->constraints[i].l; i++){
-		bool match_l = (lhs_cat == isn->constraints[i].l);
-		bool match_r = (rhs_cat == isn->constraints[i].r);
+	for(nargs = 0; arg_cats[nargs]; nargs++);
 
-		if(match_l && match_r){
+	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
+		bool matches[MAX_OPERANDS];
+		unsigned nmatches = 0;
+		unsigned conversions_required;
+		unsigned j;
+
+		for(j = 0; j < nargs; j++){
+			if(j == isn->arg_count)
+				break;
+
+			matches[j] = (arg_cats[j] == isn->constraints[i].category[j]);
+
+			if(matches[j])
+				nmatches++;
+		}
+
+		if(nmatches == nargs){
 			*is_exactmatch = true;
 			return &isn->constraints[i];
 		}
@@ -414,12 +465,24 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 		if(bestmatch_i != -1)
 			continue;
 
+		conversions_required = (nargs - nmatches);
+		if(conversions_required > 1){
+			/* don't attempt, for now */
+			continue;
+		}
+
 		/* we can only have the best match if the non-matched operand
 		 * is convertible to the required operand type */
-		if((match_l && operand_type_convertible(rhs_cat, isn->constraints[i].r))
-		|| (match_r && operand_type_convertible(lhs_cat, isn->constraints[i].l)))
-		{
-			bestmatch_i = i;
+		for(j = 0; j < nargs; j++){
+			if(matches[j])
+				continue;
+
+			if(operand_type_convertible(
+						arg_cats[j], isn->constraints[i].category[j]))
+			{
+				bestmatch_i = i;
+				break;
+			}
 		}
 	}
 
@@ -436,7 +499,7 @@ static void ready_input(
 		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
-		int *const deref_val,
+		bool *const deref_val,
 		x86_octx *octx)
 {
 	make_val_temporary_store(
@@ -446,7 +509,7 @@ static void ready_input(
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
 	mov_deref(orig_val, temporary_store, octx, *deref_val, 0);
-	*deref_val = 0;
+	*deref_val = false;
 }
 
 static void ready_output(
@@ -454,7 +517,7 @@ static void ready_output(
 		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
-		int *const deref_val)
+		bool *const deref_val)
 {
 	/* wait to store the value until after the main isn */
 	make_val_temporary_store(
@@ -467,99 +530,106 @@ static void ready_output(
 
 static void emit_isn(
 		const struct x86_isn *isn, x86_octx *octx,
-		val *const lhs, int deref_lhs,
-		val *const rhs, int deref_rhs,
+		emit_isn_operand operands[],
+		unsigned operand_count,
 		const char *isn_suffix)
 {
-	const operand_category lhs_cat = deref_lhs ? OPERAND_MEM : val_category(lhs);
-	const operand_category rhs_cat = deref_rhs ? OPERAND_MEM : val_category(rhs);
-	const int orig_deref_lhs = deref_lhs;
-	const int orig_deref_rhs = deref_rhs;
-	bool is_exactmatch;
-	const struct x86_isn_constraint *operands_target = NULL;
-	val *emit_lhs = lhs;
-	val *emit_rhs = rhs;
-	struct
-	{
+	val *emit_vals[MAX_OPERANDS];
+	bool orig_dereference[MAX_OPERANDS];
+	operand_category op_categories[MAX_OPERANDS] = { 0 };
+	struct {
 		val val;
 		variable var;
-	} temporary_lhs, temporary_rhs;
+	} temporaries[MAX_OPERANDS];
+	bool is_exactmatch;
+	const struct x86_isn_constraint *operands_target = NULL;
+	unsigned j;
 
-	if(lhs_cat == OPERAND_MEM)
-		deref_lhs = 1;
-	if(rhs_cat == OPERAND_MEM)
-		deref_rhs = 1;
+	for(j = 0; j < operand_count; j++){
+		emit_vals[j] = operands[j].val;
+		orig_dereference[j] = operands[j].dereference;
 
-	operands_target = find_isn_bestmatch(isn, lhs_cat, rhs_cat, &is_exactmatch);
+		op_categories[j] = operands[j].dereference
+			? OPERAND_MEM
+			: val_category(operands[j].val);
+
+		if(op_categories[j] == OPERAND_MEM)
+			operands[j].dereference = true;
+	}
+
+	operands_target = find_isn_bestmatch(isn, op_categories, &is_exactmatch);
 
 	assert(operands_target && "couldn't satisfy operands for isn");
 
 	if(!is_exactmatch){
 		/* not satisfied - convert an operand to REG or MEM */
 
-		/* ready the operands if they're inputs */
-		if(isn->io_l & OPERAND_INPUT
-		&& lhs_cat != operands_target->l)
-		{
-			ready_input(
-					lhs, &temporary_lhs.val,
-					lhs_cat, operands_target->l,
-					&deref_lhs, octx);
+		for(j = 0; j < operand_count; j++){
+			/* ready the operands if they're inputs */
+			if(isn->arg_ios[j] & OPERAND_INPUT
+			&& op_categories[j] != operands_target->category[j])
+			{
+				ready_input(
+						operands[j].val, &temporaries[j].val,
+						op_categories[j], operands_target->category[j],
+						&operands[j].dereference, octx);
 
-			emit_lhs = &temporary_lhs.val;
-		}
-		if(isn->io_r & OPERAND_INPUT
-		&& rhs_cat != operands_target->r)
-		{
-			ready_input(
-					rhs, &temporary_rhs.val,
-					rhs_cat, operands_target->r,
-					&deref_rhs, octx);
+				emit_vals[j] = &temporaries[j].val;
+			}
 
-			emit_rhs = &temporary_rhs.val;
-		}
+			/* ready the output operands */
+			if(op_categories[j] != operands_target->category[j]
+			&& isn->arg_ios[j] & OPERAND_OUTPUT)
+			{
+				ready_output(
+						operands[j].val, &temporaries[j].val,
+						op_categories[j], operands_target->category[j],
+						&operands[j].dereference);
 
-		/* ready the output operands */
-		if(lhs_cat != operands_target->l
-		&& isn->io_l & OPERAND_OUTPUT)
-		{
-			ready_output(
-					lhs, &temporary_lhs.val,
-					lhs_cat, operands_target->l,
-					&deref_lhs);
-
-			emit_lhs = &temporary_lhs.val;
-		}
-		if(rhs_cat != operands_target->r
-		&& isn->io_r & OPERAND_OUTPUT)
-		{
-			ready_output(
-					rhs, &temporary_rhs.val,
-					rhs_cat, operands_target->r,
-					&deref_rhs);
-
-			emit_rhs = &temporary_rhs.val;
+				emit_vals[j] = &temporaries[j].val;
+			}
 		}
 	}else{
 		/* satisfied */
 	}
 
-	fprintf(octx->fout, "\t%s%s %s, %s\n",
-			isn->mnemonic, isn_suffix,
-			x86_val_str(emit_lhs, 0, octx, deref_lhs),
-			x86_val_str(emit_rhs, 1, octx, deref_rhs));
+	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, isn_suffix);
+
+	for(j = 0; j < operand_count; j++){
+		const char *val_str = x86_val_str(
+				emit_vals[j], 0, octx, operands[j].dereference);
+
+		fprintf(octx->fout, "%s%s",
+				val_str,
+				j + 1 == operand_count ? "\n" : ", ");
+	}
+
 
 	/* store outputs after the instruction */
-	if(lhs_cat != operands_target->l
-	&& isn->io_l & OPERAND_OUTPUT)
-	{
-		mov_deref(emit_lhs, lhs, octx, 0, orig_deref_lhs);
+	for(j = 0; j < operand_count; j++){
+		if(op_categories[j] != operands_target->category[j]
+		&& isn->arg_ios[j] & OPERAND_OUTPUT)
+		{
+			mov_deref(emit_vals[j], operands[j].val, octx, 0, orig_dereference[j]);
+		}
 	}
-	if(rhs_cat != operands_target->r
-	&& isn->io_r & OPERAND_OUTPUT)
-	{
-		mov_deref(emit_rhs, rhs, octx, 0, orig_deref_rhs);
-	}
+}
+
+static void emit_isn_binary(
+		const struct x86_isn *isn, x86_octx *octx,
+		val *const lhs, int deref_lhs,
+		val *const rhs, int deref_rhs,
+		const char *isn_suffix)
+{
+	emit_isn_operand operands[2];
+
+	operands[0].val = lhs;
+	operands[0].dereference = deref_lhs;
+
+	operands[1].val = rhs;
+	operands[1].dereference = deref_rhs;
+
+	emit_isn(isn, octx, operands, 2, isn_suffix);
 }
 
 static void mov_deref(
@@ -582,7 +652,7 @@ static void mov_deref(
 		}
 	}
 
-	emit_isn(&isn_mov, octx,
+	emit_isn_binary(&isn_mov, octx,
 			from, dl,
 			to, dr,
 			"");
@@ -680,7 +750,7 @@ static void x86_op(
 			assert(0 && "TODO: other ops");
 	}
 
-	emit_isn(&opisn, octx, rhs, 0, res, 0, "");
+	emit_isn_binary(&opisn, octx, rhs, 0, res, 0, "");
 }
 
 static void x86_ext(val *from, val *to, x86_octx *octx)
@@ -728,7 +798,7 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			assert(0 && "bad extension");
 	}
 
-	emit_isn(&isn_movzx, octx,
+	emit_isn_binary(&isn_movzx, octx,
 			from, 0, to, 0, buf);
 }
 
@@ -763,7 +833,7 @@ static void x86_cmp(
 {
 	val *zero;
 
-	emit_isn(&isn_cmp, octx,
+	emit_isn_binary(&isn_cmp, octx,
 			lhs, 0,
 			rhs, 0,
 			x86_size_suffix(val_size(lhs)));
@@ -786,7 +856,7 @@ static void x86_jmp(x86_octx *octx, block *target)
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
-	emit_isn(&isn_test, octx,
+	emit_isn_binary(&isn_test, octx,
 			cond, 0,
 			cond, 0,
 			x86_size_suffix(val_size(cond)));
