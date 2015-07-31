@@ -190,6 +190,19 @@ static const struct x86_isn isn_test = {
 	}
 };
 
+static const struct x86_isn isn_call = {
+	"call",
+	1,
+	{
+		OPERAND_INPUT,
+		0,
+		0
+	},
+	{
+		{ OPERAND_REG },
+		{ OPERAND_MEM },
+	}
+};
 
 typedef struct emit_isn_operand {
 	val *val;
@@ -1071,8 +1084,12 @@ static void x86_call(
 	if(fn->kind == GLOBAL){
 		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));
 	}else{
-		/* TODO: isn */
-		fprintf(octx->fout, "\tcall *%s\n", x86_val_str(fn, 0, octx, 0));
+		emit_isn_operand operand;
+
+		operand.val = fn;
+		operand.dereference = false;
+
+		emit_isn(&isn_call, octx, &operand, 1, " *");
 	}
 
 	if(into_or_null){
