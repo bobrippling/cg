@@ -609,7 +609,10 @@ static void parse_br(parse *p)
 	block *btrue, *bfalse;
 	val *cond = parse_val(p);
 
-#warning tycheck cond must be integral
+	if(!type_is_primitive(val_type(cond), i1)){
+		sema_error(p, "br requires 'i1' condition (got %s)",
+				type_to_str(val_type(cond)));
+	}
 
 	eat(p, "br comma", tok_comma);
 	eat(p, "br true", tok_ident);
