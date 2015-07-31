@@ -25,7 +25,7 @@ trap "rm -f '$tmp'" EXIT
 
 irdiff(){
 	sed '/#/d' "$1"      >$tmp.in
-	"$ir" $opt --emit=ir "$1" >$tmp.out
+	"$ir" $opt --emit=ir "$1" | sed 's/#.*//; /^$/d' >$tmp.out
 
 	diff -u "$tmp.in" "$tmp.out"
 }
