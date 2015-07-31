@@ -1,11 +1,11 @@
 # test-opt=grep_ir y = x
 
-4 main()
+$main = i4()
 {
-	x = load.4 0
-	y = load.4 0
+	$x = load i4* 0
+	$y = load i4* 0
 
-	z = add.4 x, y
+	$z = add $x, $y
 
-	ret.4 z
+	ret $z
 }

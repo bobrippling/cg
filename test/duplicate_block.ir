@@ -1,9 +1,9 @@
 # test=error block 'a' already exists
 
-4 main()
+$main = i4()
 {
 a:
-	ret.4 5
+	ret i4 5
 a:
-	ret.4 3
+	ret i4 3
 }

@@ -1,18 +1,18 @@
 # test=sh $ir --emit=ir $f | awk 'BEGIN{x=0} {if(x){print}} /^[^B]/{x=0} /^B:/{x=1}' | grep 'jmp fin' >/dev/null
 
-4 main()
+$main = i4()
 {
-	x = load.4 0
-	y = load.4 0
+	$x = load i4* 0
+	$y = load i4* 0
 
-	cond = eq.4 x, y
-	br cond, A, B
+	$cond = eq $x, $y
+	br $cond, $A, $B
 
-A:
-	jmp fin
+$A:
+	jmp $fin
 
-B:
+$B:
 
-fin:
-	ret.4 7
+$fin:
+	ret i4 7
 }

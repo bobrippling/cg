@@ -1,9 +1,11 @@
 # test=harness 0
-4 test()
+$test = i4()
 {
-	x = load.4 0
+	$x = load i4* 0
 
-	z = eq.4 x, 3
+	$z = eq $x, i4 3
 
-	ret.4 z
+	$zext = zext i4, $z
+
+	ret $zext
 }

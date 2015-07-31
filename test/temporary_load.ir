@@ -1,19 +1,19 @@
 # test=harness 0
 
-4 glob;
+$glob = i4
 
-4 test()
+$test = i4()
 {
-	a = load.4 glob
-	b = load.4 glob
-	c = load.4 glob
-	d = load.4 glob
-	e = load.4 glob
-	f = load.4 glob
+	$a = load $glob
+	$b = load $glob
+	$c = load $glob
+	$d = load $glob
+	$e = load $glob
+	$f = load $glob
 
-	x = add.4 a, b
-	y = add.4 c, d
-	z = add.4 e, f
+	$x = add $a, $b
+	$y = add $c, $d
+	$z = add $e, $f
 
-	ret.4 z
+	ret $z
 }

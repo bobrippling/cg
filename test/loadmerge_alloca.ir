@@ -1,15 +1,15 @@
-# test=sh test $($ir --emit=ir -O $f | grep -cF load.4) -eq 1
+# test=sh test $($ir --emit=ir -O $f | grep -cF load) -eq 1
 
-4 loadmerge()
+$loadmerge = i4()
 {
-	zone = alloca 8
+	$zone = alloca i4
 
-	a = load.4 zone
-	b = load.4 zone
-	c = load.4 zone
+	$a = load $zone
+	$b = load $zone
+	$c = load $zone
 
-	x = add.4 a, b
-	y = add.4 x, c
+	$x = add $a, $b
+	$y = add $x, $c
 
-	ret.4 y
+	ret $y
 }

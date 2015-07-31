@@ -1,13 +1,13 @@
 # test=harness 3
 
-4 f()
+$f = i4()
 {
-	ret.4 3
+	ret i4 3
 }
 
-4 test()
+$test = i4()
 {
-	x = call.4 f
+	$x = call $f ()
 
-	ret.4 x
+	ret $x
 }

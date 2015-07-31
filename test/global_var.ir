@@ -1,18 +1,18 @@
 # test=harness 3
 
-8 glob;
+$glob = [i4 x 2]
 
-4 test()
+$test = i4()
 {
-	local = load.4 glob
+	$local = load $glob
 
-	glob_off = elem glob, 4
+	$glob_off = elem $glob, 4
 
-	store.4 glob_off, 3
+	store $glob_off, i4 3
 
-	glob_off_read = load.4 glob_off
+	$glob_off_read = load $glob_off
 
-	added = add.4 local, glob_off_read
+	$added = add $local, $glob_off_read
 
-	ret.4 added
+	ret $added
 }

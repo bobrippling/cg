@@ -1,10 +1,10 @@
 # test=harness 1
-4 test()
+$test = i4()
 {
-	jmp l
+	jmp $l
 
-	ret.4 3
+	ret i4 3
 
-l:
-	ret.4 1
+$l:
+	ret i4 1
 }

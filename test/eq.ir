@@ -1,7 +1,7 @@
 # test=irdiff
-4 main()
+$main = i4()
 {
-	tmp_0 = eq.4 1, 2
-	tmp_1 = zext 4, tmp_0
-	ret.4 tmp_1
+	$tmp_0 = eq i4 1, i4 2
+	$tmp_1 = zext i4, $tmp_0
+	ret $tmp_1
 }

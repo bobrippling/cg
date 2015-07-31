@@ -1,9 +1,9 @@
 # test=grep_x86_64 cmpl $5, %ecx
-1 main()
+$main = i1()
 {
-	use = load.4 0
+	$use = load i4* 0
 
-	cond = eq.4 5, 3
+	$cond = eq i4 5, i4 3
 
-	ret.1 cond
+	ret $cond
 }
