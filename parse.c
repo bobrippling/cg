@@ -369,7 +369,7 @@ static void parse_call(parse *p, char *ident_or_null)
 		assert(!type_is_void(retty));
 	}else{
 		into = NULL;
-		assert(type_is_void(retty));
+		/* retty may be non-void - discarded */
 	}
 
 	eat(p, "call paren", tok_lparen);
