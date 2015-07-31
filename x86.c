@@ -470,7 +470,9 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 				nmatches++;
 		}
 
-		if(nmatches == nargs){
+		conversions_required = (nargs - nmatches);
+
+		if(conversions_required == 0){
 			*is_exactmatch = true;
 			return &isn->constraints[i];
 		}
@@ -478,7 +480,6 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 		if(bestmatch_i != -1)
 			continue;
 
-		conversions_required = (nargs - nmatches);
 		if(conversions_required > 1){
 			/* don't attempt, for now */
 			continue;
