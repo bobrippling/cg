@@ -1,0 +1,13 @@
+# test=grep_x86_64 mov glob(%rip), %ecx & mov %ecx, -4(%rbp)
+
+$glob = i4
+
+$main = i4()
+{
+$abc:
+	$x = load $glob
+
+$loop:
+	$e = eq $x, i4 5
+	jmp $abc
+}

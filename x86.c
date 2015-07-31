@@ -546,6 +546,7 @@ static void emit_isn(
 		variable var;
 	} temporaries[MAX_OPERANDS];
 	bool is_exactmatch;
+	bool handling_global = false;
 	const struct x86_isn_constraint *operands_target = NULL;
 	unsigned j;
 
@@ -600,10 +601,28 @@ static void emit_isn(
 	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, isn_suffix);
 
 	for(j = 0; j < operand_count; j++){
-		const char *val_str = x86_val_str(
+		if(operands[j].val->kind == GLOBAL){
+			handling_global = true;
+			break;
+		}
+	}
+
+	for(j = 0; j < operand_count; j++){
+		type *operand_ty;
+		const char *val_str;
+
+		operand_ty = val_type(emit_vals[j]);
+
+		if(handling_global){
+			type *next = type_deref(operand_ty);
+			if(next)
+				operand_ty = next;
+		}
+
+		val_str = x86_val_str(
 				emit_vals[j], 0,
 				octx,
-				val_type(operands[j].val),
+				operand_ty,
 				operands[j].dereference);
 
 		fprintf(octx->fout, "%s%s",
