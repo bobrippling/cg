@@ -586,7 +586,13 @@ static void parse_store(parse *p)
 	eat(p, "store comma", tok_comma);
 	rval = parse_val(p);
 
-#warning tycheck
+	if(type_deref(val_type(lval)) != val_type(rval)){
+		char buf[256];
+
+		sema_error(p, "store type mismatch (storing %s to %s)",
+				type_to_str(val_type(rval)),
+				type_to_str_r(buf, sizeof buf, val_type(lval)));
+	}
 
 	isn_store(p->entry, rval, lval);
 }
