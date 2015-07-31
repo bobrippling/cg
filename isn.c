@@ -544,7 +544,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_JMP:
 		{
-			printf("\tjmp %s\n", i->u.jmp.target->lbl);
+			printf("\tjmp $%s\n", i->u.jmp.target->lbl);
 			break;
 		}
 
@@ -575,7 +575,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_BR:
 		{
-			printf("\tbr %s, %s, %s\n",
+			printf("\tbr %s, $%s, $%s\n",
 					val_str(i->u.branch.cond),
 					i->u.branch.t->lbl,
 					i->u.branch.f->lbl);
