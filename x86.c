@@ -212,7 +212,7 @@ typedef struct emit_isn_operand {
 static void mov_deref(
 		val *from, val *to,
 		x86_octx *,
-		int dl, int dr);
+		bool dl, bool dr);
 
 
 
@@ -522,7 +522,7 @@ static void ready_input(
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
-	mov_deref(orig_val, temporary_store, octx, *deref_val, 0);
+	mov_deref(orig_val, temporary_store, octx, *deref_val, false);
 	*deref_val = false;
 }
 
@@ -624,15 +624,18 @@ static void emit_isn(
 		if(op_categories[j] != operands_target->category[j]
 		&& isn->arg_ios[j] & OPERAND_OUTPUT)
 		{
-			mov_deref(emit_vals[j], operands[j].val, octx, 0, orig_dereference[j]);
+			mov_deref(
+					emit_vals[j], operands[j].val,
+					octx,
+					false, orig_dereference[j]);
 		}
 	}
 }
 
 static void emit_isn_binary(
 		const struct x86_isn *isn, x86_octx *octx,
-		val *const lhs, int deref_lhs,
-		val *const rhs, int deref_rhs,
+		val *const lhs, bool deref_lhs,
+		val *const rhs, bool deref_rhs,
 		const char *isn_suffix)
 {
 	emit_isn_operand operands[2];
@@ -649,7 +652,7 @@ static void emit_isn_binary(
 static void mov_deref(
 		val *from, val *to,
 		x86_octx *octx,
-		int dl, int dr)
+		bool dl, bool dr)
 {
 	if(!dl && !dr){
 		struct name_loc *loc_from, *loc_to;
@@ -674,7 +677,7 @@ static void mov_deref(
 
 static void mov(val *from, val *to, x86_octx *octx)
 {
-	mov_deref(from, to, octx, 0, 0);
+	mov_deref(from, to, octx, false, false);
 }
 
 #if 0
@@ -764,7 +767,7 @@ static void x86_op(
 			assert(0 && "TODO: other ops");
 	}
 
-	emit_isn_binary(&opisn, octx, rhs, 0, res, 0, "");
+	emit_isn_binary(&opisn, octx, rhs, false, res, false, "");
 }
 
 static void x86_ext(val *from, val *to, x86_octx *octx)
@@ -813,7 +816,7 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 	}
 
 	emit_isn_binary(&isn_movzx, octx,
-			from, 0, to, 0, buf);
+			from, false, to, false, buf);
 }
 
 static const char *x86_cmp_str(enum op_cmp cmp)
@@ -848,8 +851,8 @@ static void x86_cmp(
 	val *zero;
 
 	emit_isn_binary(&isn_cmp, octx,
-			lhs, 0,
-			rhs, 0,
+			lhs, false,
+			rhs, false,
 			x86_size_suffix(val_size(lhs)));
 
 	zero = val_retain(val_new_i(0, lhs->ty));
@@ -871,8 +874,8 @@ static void x86_jmp(x86_octx *octx, block *target)
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
 	emit_isn_binary(&isn_test, octx,
-			cond, 0,
-			cond, 0,
+			cond, false,
+			cond, false,
 			x86_size_suffix(val_size(cond)));
 
 	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
@@ -954,7 +957,7 @@ static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
 
 		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
 
-		mov_deref(v, &stack_slot, octx, 0, 1);
+		mov_deref(v, &stack_slot, octx, false, true);
 
 		assert(stack_slot.kind == BACKEND_TEMP);
 		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
@@ -1042,7 +1045,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 
 		make_stack_slot(&stack_slot, off, v->ty);
 
-		mov_deref(&stack_slot, v, octx, 1, 0);
+		mov_deref(&stack_slot, v, octx, true, false);
 	}
 
 	dynmap_free(regs);
@@ -1136,13 +1139,13 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_STORE:
 			{
-				mov_deref(i->u.store.from, i->u.store.lval, octx, 0, 1);
+				mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				mov_deref(i->u.load.lval, i->u.load.to, octx, 1, 0);
+				mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
 				break;
 			}
 
