@@ -246,8 +246,7 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 }
 #endif
 
-static const char *name_in_reg_str(
-		const struct name_loc *loc, /*optional*/int size, val *v)
+static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 {
 	int sz_idx;
 	int reg = loc->u.reg;
@@ -259,15 +258,7 @@ static const char *name_in_reg_str(
 
 	assert(reg < (int)countof(regs));
 
-	if(size < 0)
-		size = val_size(v);
-
 	switch(size){
-		case 0:
-			/* FIXME: word size */
-			sz_idx = 3;
-			break;
-
 		case 1: sz_idx = 0; break;
 		case 2: sz_idx = 1; break;
 		case 4: sz_idx = 2; break;
@@ -288,17 +279,24 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
-		enum deref_type dereference_ty, type *ty,
-		val *val)
+		enum deref_type dereference_ty,
+		type *ty)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
 		{
 			const bool deref = (dereference_ty == DEREFERENCE_TRUE);
+			int val_sz;
+
+			if(deref){
+				val_sz = PTR_SZ;
+			}else{
+				val_sz = type_size(ty);
+			}
 
 			snprintf(buf, bufsz, "%s%%%s%s",
 					deref ? "(" : "",
-					name_in_reg_str(loc, deref ? 0 : type_size(ty), val),
+					name_in_reg_str(loc, val_sz),
 					deref ? ")" : "");
 			break;
 		}
@@ -316,6 +314,7 @@ static const char *x86_name_str(
 static const char *x86_val_str(
 		val *val, int bufchoice,
 		x86_octx *octx,
+		type *operand_output_ty,
 		enum deref_type dereference)
 {
 	static char bufs[3][256];
@@ -361,8 +360,7 @@ loc:
 					loc,
 					buf, sizeof bufs[0],
 					dereference,
-					val->ty,
-					val);
+					operand_output_ty);
 	}
 
 	return buf;
@@ -603,7 +601,10 @@ static void emit_isn(
 
 	for(j = 0; j < operand_count; j++){
 		const char *val_str = x86_val_str(
-				emit_vals[j], 0, octx, operands[j].dereference);
+				emit_vals[j], 0,
+				octx,
+				val_type(operands[j].val),
+				operands[j].dereference);
 
 		fprintf(octx->fout, "%s%s",
 				val_str,
@@ -853,7 +854,7 @@ static void x86_cmp(
 
 	fprintf(octx->fout, "\tset%s %s\n",
 			x86_cmp_str(cmp),
-			x86_val_str(res, 0, octx, 0));
+			x86_val_str(res, 0, octx, val_type(res), DEREFERENCE_FALSE));
 
 	val_release(zero);
 }
