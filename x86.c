@@ -313,7 +313,7 @@ static const char *x86_name_str(
 	return buf;
 }
 
-static const char *x86_val_str_sized(
+static const char *x86_val_str(
 		val *val, int bufchoice,
 		x86_octx *octx,
 		enum deref_type dereference)
@@ -366,14 +366,6 @@ loc:
 	}
 
 	return buf;
-}
-
-static const char *x86_val_str(
-		val *val, int bufchoice,
-		x86_octx *octx,
-		enum deref_type dereference)
-{
-	return x86_val_str_sized(val, bufchoice, octx, dereference);
 }
 
 static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
