@@ -80,13 +80,9 @@ bool type_is_void(type *t)
 static const char *type_primitive_to_str(enum type_primitive p)
 {
 	switch(p){
-		case i1: return "i1";
-		case i2: return "i2";
-		case i4: return "i4";
-		case i8: return "i8";
-		case f4: return "f4";
-		case f8: return "f8";
-		case flarge: return "flarge";
+#define X(name, integral, s, a) case name: return #name;
+		TYPE_PRIMITIVES
+#undef X
 	}
 
 	return NULL;
