@@ -554,7 +554,8 @@ static void parse_ident(parse *p, char *spel)
 					isn_op(p->entry, op, vlhs, vrhs, vres);
 
 			}else{
-				parse_error(p, "expected load, alloca, elem or operator");
+				parse_error(p, "expected load, alloca, elem or operator (got %s)",
+						token_to_str(tok));
 			}
 			break;
 		}
