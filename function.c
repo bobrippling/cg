@@ -141,20 +141,25 @@ void function_finalize(function *f)
 
 void function_dump_args_and_block(function *f)
 {
-	const size_t nargs = dynarray_count(&f->arg_names);
 	dynarray *const arg_tys = type_func_args(f->fnty);
+	const size_t nargs = dynarray_count(arg_tys);
 	size_t i;
 
 	printf("(");
 
-	dynarray_iter(&f->arg_names, i){
+	dynarray_iter(arg_tys, i){
 		variable tmpvar;
 
-		tmpvar.name = dynarray_ent(&f->arg_names, i);
 		tmpvar.ty = dynarray_ent(arg_tys, i);
 
-		printf("%s $%s%s",
+		if(dynarray_is_empty(&f->arg_names))
+			tmpvar.name = "";
+		else
+			tmpvar.name = dynarray_ent(&f->arg_names, i);
+
+		printf("%s%s%s%s",
 				type_to_str(tmpvar.ty),
+				*tmpvar.name ? " $" : "",
 				tmpvar.name,
 				i == nargs - 1 ? "" : ", ");
 	}

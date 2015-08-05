@@ -178,19 +178,32 @@ static void parse_type_list(
 		enum token lasttok)
 {
 	if(token_peek(p->tok) != lasttok){
+		bool have_idents = false;
+
 		for(;;){
 			type *memb = parse_type(p);
 
-			dynarray_add(types, memb);
-
 			if(toplvl_args){
-				char *ident;
+				if(dynarray_is_empty(types)){
+					/* first time, decide whether to have arg names */
+					if(token_peek(p->tok) == tok_ident){
+						have_idents = true;
+					}else{
+						have_idents = false;
+					}
+				}
 
-				eat(p, "argument name", tok_ident);
+				if(have_idents){
+					char *ident;
 
-				ident = token_last_ident(p->tok);
-				dynarray_add(toplvl_args, ident);
+					eat(p, "argument name", tok_ident);
+
+					ident = token_last_ident(p->tok);
+					dynarray_add(toplvl_args, ident);
+				}
 			}
+
+			dynarray_add(types, memb);
 
 			if(token_accept(p->tok, tok_comma))
 				continue;
