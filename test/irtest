@@ -45,9 +45,13 @@ case "$type" in
 		;;
 	grep_*)
 		backend=$(echo "$type" | sed 's;grep_;;')
-		regex="$rest"
 
-		"$ir" $opt "--emit=$backend" "$f" | grep "$regex" >/dev/null
+		while read regex
+		do
+			"$ir" $opt "--emit=$backend" "$f" | grep "$regex" >/dev/null
+		done <<-!
+		$(echo "$rest" | tr '&' '\n')
+		!
 		;;
 	harness)
 		"$ir" $opt "$f" > harness/src.s
