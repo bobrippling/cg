@@ -204,6 +204,20 @@ static const struct x86_isn isn_call = {
 	}
 };
 
+static const struct x86_isn isn_set = {
+	"set",
+	1,
+	{
+		OPERAND_OUTPUT,
+		0,
+		0
+	},
+	{
+		{ OPERAND_REG },
+		{ OPERAND_MEM }, /* 1-byte */
+	}
+};
+
 typedef struct emit_isn_operand {
 	val *val;
 	bool dereference;
@@ -861,6 +875,7 @@ static void x86_cmp(
 		x86_octx *octx)
 {
 	val *zero;
+	emit_isn_operand set_operand;
 
 	emit_isn_binary(&isn_cmp, octx,
 			lhs, false,
@@ -871,9 +886,10 @@ static void x86_cmp(
 
 	mov(zero, res, octx);
 
-	fprintf(octx->fout, "\tset%s %s\n",
-			x86_cmp_str(cmp),
-			x86_val_str(res, 0, octx, val_type(res), DEREFERENCE_FALSE));
+	set_operand.val = res;
+	set_operand.dereference = false;
+
+	emit_isn(&isn_set, octx, &set_operand, 1, x86_cmp_str(cmp));
 
 	val_release(zero);
 }
