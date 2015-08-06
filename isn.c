@@ -41,7 +41,7 @@ static void isn_free_1(isn *isn)
 			break;
 		case ISN_ELEM:
 			val_release(isn->u.elem.lval);
-			val_release(isn->u.elem.add);
+			val_release(isn->u.elem.index);
 			val_release(isn->u.elem.res);
 			break;
 		case ISN_OP:
@@ -229,28 +229,26 @@ void isn_zext(block *blk, val *from, val *to)
 	isn->u.ext.to = to;
 }
 
-#if 0
-void isn_elem(block *blk, val *lval, val *add, val *res)
+void isn_elem(block *blk, val *lval, val *index, val *res)
 {
 	isn *isn;
 
 	val_retain(lval);
-	val_retain(add);
+	val_retain(index);
 	val_retain(res);
 
 	if(!blk){
 		val_release(lval);
-		val_release(add);
+		val_release(index);
 		val_release(res);
 		return;
 	}
 
 	isn = isn_new(ISN_ELEM, blk);
 	isn->u.elem.lval = lval;
-	isn->u.elem.add = add;
+	isn->u.elem.index = index;
 	isn->u.elem.res = res;
 }
-#endif
 
 void isn_alloca(block *blk, val *v)
 {
@@ -399,7 +397,7 @@ static void isn_on_vals(
 		case ISN_ELEM:
 			fn(current->u.elem.res, current, ctx);
 			fn(current->u.elem.lval, current, ctx);
-			fn(current->u.elem.add, current, ctx);
+			fn(current->u.elem.index, current, ctx);
 			break;
 
 		case ISN_OP:
@@ -495,7 +493,7 @@ static void isn_dump1(isn *i)
 			printf("\t%s = elem %s, %s\n",
 					val_str_rn(0, i->u.elem.res),
 					val_str_rn(1, i->u.elem.lval),
-					val_str_rn(2, i->u.elem.add));
+					val_str_rn(2, i->u.elem.index));
 			break;
 		}
 

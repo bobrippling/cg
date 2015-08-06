@@ -49,7 +49,7 @@ struct isn
 
 		struct
 		{
-			struct val *lval, *add, *res;
+			struct val *lval, *index, *res;
 		} elem;
 
 		struct

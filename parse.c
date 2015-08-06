@@ -488,24 +488,27 @@ static void parse_ident(parse *p, char *spel)
 
 		case tok_elem:
 		{
-#if 0
 			val *vlhs;
-			char *ident = spel ? xstrdup(spel) : NULL;
-			val *index_into = parse_val(p);
+			val *index_into;
 			val *idx;
+			type *elem_ty;
+
+			index_into = parse_val(p);
 
 			eat(p, "elem", tok_comma);
 
 			idx = parse_val(p);
 
-			vlhs = val_new_local(ident);
+			elem_ty = val_type(index_into);
 
-			map_val(p, spel, vlhs);
+			if(!type_deref(elem_ty)){
+				sema_error(p, "elem requires pointer type");
+				elem_ty = type_get_ptr(unit_uniqtypes(p->unit), elem_ty);
+			}
+
+			vlhs = uniq_val(p, spel, elem_ty, VAL_CREATE);
 
 			isn_elem(p->entry, index_into, idx, vlhs);
-			break;
-#endif
-			assert(0 && "TODO: elem");
 			break;
 		}
 
