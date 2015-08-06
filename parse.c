@@ -494,7 +494,8 @@ static void parse_ident(parse *p, char *spel)
 			val *vlhs;
 			val *index_into;
 			val *idx;
-			type *elem_ty;
+			type *array_ty, *element_ty, *resolved_ty;
+			struct uniq_type_list *uniqtypes = unit_uniqtypes(p->unit);
 
 			index_into = parse_val(p);
 
@@ -502,14 +503,30 @@ static void parse_ident(parse *p, char *spel)
 
 			idx = parse_val(p);
 
-			elem_ty = val_type(index_into);
+			/* given a pointer to an array type,
+			 * return a pointer to element `idx' */
 
-			if(!type_deref(elem_ty)){
+			array_ty = type_deref(val_type(index_into));
+
+			if(!array_ty){
 				sema_error(p, "elem requires pointer type");
-				elem_ty = type_get_ptr(unit_uniqtypes(p->unit), elem_ty);
+
+				array_ty = type_get_array(
+						uniqtypes,
+						type_get_primitive(uniqtypes, i4),
+						1);
 			}
 
-			vlhs = uniq_val(p, spel, elem_ty, VAL_CREATE);
+			element_ty = type_array_element(array_ty);
+
+			if(!element_ty){
+				sema_error(p, "elem requires (pointer to) array type");
+				element_ty = type_get_primitive(uniqtypes, i4);
+			}
+
+			resolved_ty = type_get_ptr(uniqtypes, element_ty);
+
+			vlhs = uniq_val(p, spel, resolved_ty, VAL_CREATE);
 
 			isn_elem(p->entry, index_into, idx, vlhs);
 			break;

@@ -761,12 +761,12 @@ static void mov(val *from, val *to, x86_octx *octx)
 	mov_deref(from, to, octx, false, false);
 }
 
-static bool elem_get_offset(val *maybe_int, type *ptr_ty, long *const offset)
+static bool elem_get_offset(val *maybe_int, type *elem_ty, long *const offset)
 {
 	if(maybe_int->kind != LITERAL)
 		return false;
 
-	*offset = maybe_int->u.i * type_size(type_deref(ptr_ty));
+	*offset = maybe_int->u.i * type_size(type_deref(elem_ty));
 
 	return true;
 }
@@ -794,7 +794,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 loc:
 		{
 			long offset;
-			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.lval), &offset))
+			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset))
 				break;
 
 			switch(loc->where){
@@ -824,17 +824,11 @@ loc:
 
 		case GLOBAL:
 		{
-			const char *pointer_str;
 			const char *result_str;
 			long offset;
 
-			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.lval), &offset))
+			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset))
 				break;
-
-			pointer_str = x86_val_str(
-					i->u.elem.lval, 0, octx,
-					val_type(i->u.elem.lval),
-					DEREFERENCE_FALSE);
 
 			result_str = x86_val_str(
 					i->u.elem.res, 1, octx,
@@ -842,7 +836,7 @@ loc:
 					DEREFERENCE_FALSE);
 
 			fprintf(octx->fout, "\tlea %s+%ld(%%rip), %s\n",
-					pointer_str,
+					global_name(i->u.elem.lval->u.global),
 					offset,
 					result_str);
 			return;

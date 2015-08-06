@@ -297,6 +297,14 @@ dynarray *type_func_args(type *t)
 	return args;
 }
 
+type *type_array_element(type *t)
+{
+	if(t->kind != ARRAY)
+		return NULL;
+
+	return t->u.array.elem;
+}
+
 void type_size_align(type *ty, unsigned *sz, unsigned *align)
 {
 	switch(ty->kind){

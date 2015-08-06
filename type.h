@@ -47,7 +47,7 @@ type *type_get_struct(uniq_type_list *, dynarray *);
 type *type_deref(type *);
 type *type_func_call(type *, dynarray **);
 dynarray *type_func_args(type *);
-
+type *type_array_element(type *);
 
 /* --- sizing --- */
 void type_size_align(type *, unsigned *sz, unsigned *align);
