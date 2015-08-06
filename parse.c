@@ -38,14 +38,18 @@ attr_printf(2, 0)
 static void error_v(parse *p, const char *fmt, va_list l)
 {
 	char buf[32];
+	size_t off;
 
 	fprintf(stderr, "%s:%u: ", token_curfile(p->tok), token_curlineno(p->tok));
 
 	vfprintf(stderr, fmt, l);
 	fputc('\n', stderr);
 
-	token_curline(p->tok, buf, sizeof buf);
+	token_curline(p->tok, buf, sizeof buf, &off);
 	fprintf(stderr, "at: '%s'\n", buf);
+	fprintf(stderr, "     ");
+
+	fprintf(stderr, "%*c^\n", (int)off, ' ');
 
 	p->err = 1;
 }

@@ -21,7 +21,7 @@ struct tokeniser
 	unsigned lno;
 
 	const char *fname;
-	char *line, *linep;
+	char *line, *linep, *last_tok_start;
 	enum token unget;
 
 	char *lastident;
@@ -129,6 +129,8 @@ enum token token_next(tokeniser *t)
 {
 	size_t i;
 
+	t->last_tok_start = NULL;
+
 	if(t->unget != TOKEN_PEEK_EMPTY){
 		enum token unget = t->unget;
 		t->unget = TOKEN_PEEK_EMPTY;
@@ -157,6 +159,8 @@ enum token token_next(tokeniser *t)
 		t->lno++;
 		t->linep = skipspace(t->linep);
 	}
+
+	t->last_tok_start = t->linep;
 
 	switch(*t->linep++){
 #define OTHER(x)
@@ -248,11 +252,13 @@ bool token_accept(tokeniser *t, enum token tk)
 	return false;
 }
 
-void token_curline(tokeniser *t, char *out, size_t len)
+void token_curline(tokeniser *t, char *out, size_t len, size_t *const poff)
 {
 	const char *src = t->line;
 	const char *i, *anchor = NULL;
 	size_t off;
+
+	*poff = 0;
 
 	if(!src){
 		snprintf(out, len, "[eof]");
@@ -275,6 +281,9 @@ void token_curline(tokeniser *t, char *out, size_t len)
 	for(; len > 1 && *src && *src != '\n'; src++, out++, len--)
 		*out = *src;
 	*out = '\0';
+
+	if(t->last_tok_start)
+		*poff = (t->last_tok_start - t->line) - (src - t->line);
 }
 
 unsigned token_curlineno(tokeniser *t)

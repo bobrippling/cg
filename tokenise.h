@@ -91,7 +91,7 @@ int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
 char *token_last_bareword(tokeniser *);
 
-void token_curline(tokeniser *, char *out, size_t len);
+void token_curline(tokeniser *, char *out, size_t len, size_t *const off);
 unsigned token_curlineno(tokeniser *);
 const char *token_curfile(tokeniser *);
 
