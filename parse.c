@@ -383,7 +383,10 @@ static void parse_call(parse *p, char *ident_or_null)
 
 	if(ident_or_null){
 		into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
-		assert(!type_is_void(retty));
+		if(type_is_void(retty)){
+			sema_error(p, "using void result of call");
+			retty = type_get_primitive(unit_uniqtypes(p->unit), i4);
+		}
 	}else{
 		into = NULL;
 		/* retty may be non-void - discarded */
