@@ -90,7 +90,7 @@ typedef enum operand_category
 } operand_category;
 
 #define MAX_OPERANDS 3
-#define MAX_ISN_COMBOS 5
+#define MAX_ISN_COMBOS 6
 
 struct x86_isn
 {
@@ -122,7 +122,8 @@ static const struct x86_isn isn_mov = {
 		{ OPERAND_REG, OPERAND_MEM },
 		{ OPERAND_MEM, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_INT },
-		{ OPERAND_INT, OPERAND_REG }
+		{ OPERAND_INT, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM }
 	}
 };
 
