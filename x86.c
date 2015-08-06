@@ -706,68 +706,97 @@ static void mov(val *from, val *to, x86_octx *octx)
 	mov_deref(from, to, octx, false, false);
 }
 
-#if 0
+static bool elem_get_offset(val *maybe_int, type *ptr_ty, long *const offset)
+{
+	if(maybe_int->kind != LITERAL)
+		return false;
+
+	*offset = maybe_int->u.i * type_size(type_deref(ptr_ty));
+
+	return true;
+}
+
 static void emit_elem(isn *i, x86_octx *octx)
 {
-	int add_total;
+	val *const lval = i->u.elem.lval;
 
-	switch(i->u.elem.lval->kind){
-		case INT:
-		case NAME:
-		case ARG:
-			assert(0 && "element of INT/NAME");
+	switch(lval->kind){
+			struct name_loc *loc;
 
-		case INT_PTR:
+		case LITERAL:
+			break;
+
+		case ARGUMENT:
+			loc = function_arg_loc(lval->u.argument.func, lval->u.argument.idx);
+			goto loc;
+		case FROM_ISN:
+			loc = &lval->u.local.loc;
+			goto loc;
+		case BACKEND_TEMP:
+			loc = &lval->u.temp_loc;
+			goto loc;
+
+loc:
 		{
-			val *intptr = i->u.elem.lval;
+			long offset;
+			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.lval), &offset))
+				break;
 
-			if(!val_op_maybe(op_add, i->u.elem.add, intptr, &add_total)){
-				assert(0 && "couldn't add operands");
+			switch(loc->where){
+				case NAME_IN_REG:
+				{
+					const char *pointer_str = x86_val_str(
+							i->u.elem.lval, 0, octx,
+							val_type(i->u.elem.lval),
+							DEREFERENCE_FALSE);
+
+					const char *result_str = x86_val_str(
+							i->u.elem.res, 1, octx,
+							val_type(i->u.elem.res),
+							DEREFERENCE_FALSE);
+
+					fprintf(octx->fout, "\tlea %ld(%s), %s\n",
+							offset,
+							pointer_str,
+							result_str);
+					return;
+				}
+
+				case NAME_SPILT:
+					break;
 			}
-			break;
 		}
 
-		case ALLOCA:
+		case GLOBAL:
 		{
-			int err;
-			assert(i->u.elem.add->type == INT);
+			const char *pointer_str;
+			const char *result_str;
+			long offset;
 
-			add_total = op_exe(op_add,
-					alloca_offset(octx->alloca2stack, i->u.elem.lval),
-					i->u.elem.add->u.i.i, &err);
+			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.lval), &offset))
+				break;
 
-			assert(!err);
-			break;
-		}
+			pointer_str = x86_val_str(
+					i->u.elem.lval, 0, octx,
+					val_type(i->u.elem.lval),
+					DEREFERENCE_FALSE);
 
-		case LBL:
-		{
-			int err;
-			assert(i->u.elem.add->type == INT);
+			result_str = x86_val_str(
+					i->u.elem.res, 1, octx,
+					val_type(i->u.elem.res),
+					DEREFERENCE_FALSE);
 
-			add_total = op_exe(
-					op_add,
-					i->u.elem.lval->u.addr.u.lbl.offset,
-					i->u.elem.add->u.i.i,
-					&err);
-
-			assert(!err);
-
-			fprintf(octx->fout, "\tlea %s+%u(%%rip), %s\n",
-					i->u.elem.lval->u.addr.u.lbl.spel,
-					add_total,
-					x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
-
+			fprintf(octx->fout, "\tlea %s+%ld(%%rip), %s\n",
+					pointer_str,
+					offset,
+					result_str);
 			return;
 		}
-
 	}
 
-	fprintf(octx->fout, "\tlea %d(%%rbp), %s\n",
-			add_total,
-			x86_val_str_sized(i->u.elem.res, 0, octx, 0, /*ptrsize*/0));
+	/* worst case - emit an add */
+	fprintf(octx->fout, "\tTODO: worst case lea\n");
 }
-#endif
 
 static void x86_op(
 		enum op op, val *lhs, val *rhs,
@@ -1178,8 +1207,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 			}
 
 			case ISN_ELEM:
-				/*emit_elem(i, octx);*/
-				fprintf(stderr, "ELEM UNSUPPORTED\n");
+				emit_elem(i, octx);
 				break;
 
 			case ISN_OP:
