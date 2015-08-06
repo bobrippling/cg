@@ -291,6 +291,44 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 	assert(got == expected && "wrong deref");
 }
 
+static char x86_pointed_suffix(type *t)
+{
+	type *elem = type_deref(t);
+
+	assert(elem);
+
+	switch(type_size(elem)){
+		case 4: return 'l';
+		case 8: return 'q';
+	}
+	assert(0 && "32-bit or 64-bit");
+}
+
+static bool x86_can_infer_size(val *val)
+{
+	struct name_loc *loc = NULL;
+
+	switch(val->kind){
+		case LITERAL: return false;
+		case GLOBAL: return false;
+
+		case ARGUMENT:
+			loc = function_arg_loc(val->u.argument.func, val->u.argument.idx);
+			break;
+
+		case FROM_ISN:
+			loc = &val->u.local.loc;
+			break;
+
+		case BACKEND_TEMP:
+			loc = &val->u.temp_loc;
+			break;
+	}
+
+	assert(loc);
+	return loc->where == NAME_IN_REG;
+}
+
 static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
@@ -681,6 +719,8 @@ static void mov_deref(
 		x86_octx *octx,
 		bool dl, bool dr)
 {
+	char suffix_buf[2] = { 0 };
+
 	if(!dl && !dr){
 		struct name_loc *loc_from, *loc_to;
 
@@ -696,10 +736,24 @@ static void mov_deref(
 		}
 	}
 
+	if((dl || !x86_can_infer_size(from))
+	&& (dr || !x86_can_infer_size(to)))
+	{
+		val *chosen_val;
+
+		assert(!dl || !dr);
+		if(dl)
+			chosen_val = from;
+		else
+			chosen_val = to;
+
+		suffix_buf[0] = x86_pointed_suffix(val_type(chosen_val));
+	}
+
 	emit_isn_binary(&isn_mov, octx,
 			from, dl,
 			to, dr,
-			"");
+			suffix_buf);
 }
 
 static void mov(val *from, val *to, x86_octx *octx)
