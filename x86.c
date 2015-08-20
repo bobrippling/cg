@@ -127,6 +127,19 @@ static const struct x86_isn isn_mov = {
 	}
 };
 
+static const struct x86_isn isn_lea = {
+	"lea",
+	2,
+	{
+		OPERAND_INPUT,
+		OPERAND_OUTPUT,
+		0
+	},
+	{
+		{ OPERAND_MEM, OPERAND_REG },
+	}
+};
+
 static const struct x86_isn isn_movzx = {
 	"mov",
 	2,
@@ -719,6 +732,7 @@ static void mov_deref(
 		x86_octx *octx,
 		bool deref_from, bool deref_to)
 {
+	const struct x86_isn *chosen_isn = &isn_mov;
 	char suffix_buf[2] = { 0 };
 
 	if(!deref_from && !deref_to){
@@ -750,7 +764,15 @@ static void mov_deref(
 		suffix_buf[0] = x86_pointed_suffix(val_type(chosen_val));
 	}
 
-	emit_isn_binary(&isn_mov, octx,
+	/* if we're mov:ing from a non-lvalue (i.e. global array)
+	 * we actually want its address*/
+	if(!deref_from && from->kind == GLOBAL){
+		assert(type_array_element(type_deref(from->ty)));
+
+		chosen_isn = &isn_lea;
+	}
+
+	emit_isn_binary(chosen_isn, octx,
 			from, deref_from,
 			to, deref_to,
 			suffix_buf);
