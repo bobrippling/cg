@@ -12,6 +12,8 @@ void isn_alloca(block *, struct val *);
 
 void isn_elem(block *, struct val *lval, struct val *index, struct val *res);
 
+void isn_copy(block *, struct val *lval, struct val *rval);
+
 void isn_op(block *, enum op op, struct val *lhs, struct val *rhs, struct val *res);
 void isn_cmp(block *, enum op_cmp, struct val *lhs, struct val *rhs, struct val *res);
 

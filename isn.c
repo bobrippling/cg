@@ -250,6 +250,24 @@ void isn_elem(block *blk, val *lval, val *index, val *res)
 	isn->u.elem.res = res;
 }
 
+void isn_copy(block *blk, val *lval, val *rval)
+{
+	isn *isn;
+
+	val_retain(lval);
+	val_retain(rval);
+
+	if(!blk){
+		val_release(lval);
+		val_release(rval);
+		return;
+	}
+
+	isn = isn_new(ISN_COPY, blk);
+	isn->u.copy.from = rval;
+	isn->u.copy.to = lval;
+}
+
 void isn_alloca(block *blk, val *v)
 {
 	isn *isn;

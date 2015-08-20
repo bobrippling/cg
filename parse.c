@@ -593,6 +593,15 @@ static void parse_ident(parse *p, char *spel)
 				else
 					isn_op(p->entry, op, vlhs, vrhs, vres);
 
+			}else if(tok == tok_ident){
+				char *from = token_last_ident(p->tok);
+				val *lhs, *rhs;
+
+				rhs = uniq_val(p, from, NULL, 0);
+				lhs = uniq_val(p, spel, val_type(rhs), VAL_CREATE);
+
+				isn_copy(p->entry, lhs, rhs);
+
 			}else{
 				parse_error(p, "expected load, alloca, elem or operator (got %s)",
 						token_to_str(tok));
