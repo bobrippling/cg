@@ -227,7 +227,7 @@ typedef struct emit_isn_operand {
 static void mov_deref(
 		val *from, val *to,
 		x86_octx *,
-		bool dl, bool dr);
+		bool deref_from, bool deref_to);
 
 
 
@@ -717,11 +717,11 @@ static void emit_isn_binary(
 static void mov_deref(
 		val *from, val *to,
 		x86_octx *octx,
-		bool dl, bool dr)
+		bool deref_from, bool deref_to)
 {
 	char suffix_buf[2] = { 0 };
 
-	if(!dl && !dr){
+	if(!deref_from && !deref_to){
 		struct name_loc *loc_from, *loc_to;
 
 		loc_from = val_location(from);
@@ -736,13 +736,13 @@ static void mov_deref(
 		}
 	}
 
-	if((dl || !x86_can_infer_size(from))
-	&& (dr || !x86_can_infer_size(to)))
+	if((deref_from || !x86_can_infer_size(from))
+	&& (deref_to || !x86_can_infer_size(to)))
 	{
 		val *chosen_val;
 
-		assert(!dl || !dr);
-		if(dl)
+		assert(!deref_from || !deref_to);
+		if(deref_from)
 			chosen_val = from;
 		else
 			chosen_val = to;
@@ -751,8 +751,8 @@ static void mov_deref(
 	}
 
 	emit_isn_binary(&isn_mov, octx,
-			from, dl,
-			to, dr,
+			from, deref_from,
+			to, deref_to,
 			suffix_buf);
 }
 
