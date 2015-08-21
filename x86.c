@@ -291,7 +291,7 @@ static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 		case 2: sz_idx = 1; break;
 		case 4: sz_idx = 2; break;
 		case 8: sz_idx = 3; break;
-		default: assert(0);
+		default: assert(0 && "reg size too large");
 	}
 
 	return regs[reg][sz_idx];
