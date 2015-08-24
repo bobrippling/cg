@@ -215,7 +215,7 @@ enum token token_next(tokeniser *t)
 		if(consume_word(t, keywords[i].kw))
 			return keywords[i].tok;
 
-	if(*t->linep == '$' && isident(t->linep[1], 0)){
+	if(*t->linep == '$' && isident(t->linep[1], 1)){
 		++t->linep;
 
 		free(t->lastident);
