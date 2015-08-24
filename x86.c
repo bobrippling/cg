@@ -245,6 +245,7 @@ static void mov_deref(
 		bool deref_from, bool deref_to);
 
 
+static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx);
 
 static operand_category val_category(val *v)
 {
@@ -884,7 +885,8 @@ loc:
 	}
 
 	/* worst case - emit an add */
-	fprintf(octx->fout, "\tTODO: worst case lea\n");
+	fprintf(octx->fout, "\t; worst case lea\n");
+	emit_ptradd(lval, i->u.elem.index, i->u.elem.res, octx);
 }
 
 static void x86_op(
@@ -963,10 +965,9 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			from, false, to, false, buf);
 }
 
-static void emit_ptradd(isn *i, x86_octx *octx)
+static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 {
-	const unsigned ptrsz = type_size(val_type(i->u.ptradd.lhs));
-	val *rhs = i->u.ptradd.rhs;
+	const unsigned ptrsz = type_size(val_type(lhs));
 	type *rhs_ty = val_type(rhs);
 	val ext_rhs;
 
@@ -984,9 +985,7 @@ static void emit_ptradd(isn *i, x86_octx *octx)
 		rhs = &ext_rhs;
 	}
 
-	x86_op(op_add,
-			i->u.ptradd.lhs, rhs,
-			i->u.ptradd.out, octx);
+	x86_op(op_add, lhs, rhs, out, octx);
 }
 
 static const char *x86_cmp_str(enum op_cmp cmp)
@@ -1326,7 +1325,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 				break;
 
 			case ISN_PTRADD:
-				emit_ptradd(i, octx);
+				emit_ptradd(i->u.ptradd.lhs, i->u.ptradd.rhs, i->u.ptradd.out, octx);
 				break;
 
 			case ISN_OP:
