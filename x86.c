@@ -859,6 +859,7 @@ loc:
 				case NAME_SPILT:
 					break;
 			}
+			break;
 		}
 
 		case GLOBAL:
