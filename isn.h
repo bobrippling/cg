@@ -11,6 +11,7 @@ void isn_store(block *, struct val *from, struct val *lval);
 void isn_alloca(block *, struct val *);
 
 void isn_elem(block *, struct val *lval, struct val *index, struct val *res);
+void isn_ptradd(block *, struct val *lhs, struct val *rhs, struct val *out);
 
 void isn_copy(block *, struct val *lval, struct val *rval);
 

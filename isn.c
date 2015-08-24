@@ -44,6 +44,11 @@ static void isn_free_1(isn *isn)
 			val_release(isn->u.elem.index);
 			val_release(isn->u.elem.res);
 			break;
+		case ISN_PTRADD:
+			val_release(isn->u.ptradd.lhs);
+			val_release(isn->u.ptradd.rhs);
+			val_release(isn->u.ptradd.out);
+			break;
 		case ISN_OP:
 			val_release(isn->u.op.lhs);
 			val_release(isn->u.op.rhs);
@@ -104,6 +109,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_LOAD:   return "load";
 		case ISN_ALLOCA: return "alloca";
 		case ISN_ELEM:   return "elem";
+		case ISN_PTRADD: return "ptradd";
 		case ISN_OP:     return "op";
 		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
@@ -248,6 +254,27 @@ void isn_elem(block *blk, val *lval, val *index, val *res)
 	isn->u.elem.lval = lval;
 	isn->u.elem.index = index;
 	isn->u.elem.res = res;
+}
+
+void isn_ptradd(block *blk, val *lhs, val *rhs, val *out)
+{
+	isn *isn;
+
+	val_retain(lhs);
+	val_retain(rhs);
+	val_retain(out);
+
+	if(!blk){
+		val_release(lhs);
+		val_release(rhs);
+		val_release(out);
+		return;
+	}
+
+	isn = isn_new(ISN_PTRADD, blk);
+	isn->u.ptradd.lhs = lhs;
+	isn->u.ptradd.rhs = rhs;
+	isn->u.ptradd.out = out;
 }
 
 void isn_copy(block *blk, val *lval, val *rval)
@@ -418,6 +445,12 @@ static void isn_on_vals(
 			fn(current->u.elem.index, current, ctx);
 			break;
 
+		case ISN_PTRADD:
+			fn(current->u.ptradd.lhs, current, ctx);
+			fn(current->u.ptradd.rhs, current, ctx);
+			fn(current->u.ptradd.out, current, ctx);
+			break;
+
 		case ISN_OP:
 			fn(current->u.op.res, current, ctx);
 			fn(current->u.op.lhs, current, ctx);
@@ -512,6 +545,15 @@ static void isn_dump1(isn *i)
 					val_str_rn(0, i->u.elem.res),
 					val_str_rn(1, i->u.elem.lval),
 					val_str_rn(2, i->u.elem.index));
+			break;
+		}
+
+		case ISN_PTRADD:
+		{
+			printf("\t%s = ptradd %s, %s\n",
+					val_str_rn(0, i->u.ptradd.out),
+					val_str_rn(1, i->u.ptradd.lhs),
+					val_str_rn(2, i->u.ptradd.rhs));
 			break;
 		}
 

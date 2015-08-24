@@ -29,6 +29,7 @@
 	KW(store)           \
 	KW(alloca)          \
 	KW(elem)            \
+	KW(ptradd)          \
 	KW(ret)             \
 	KW(zext)            \
 	KW(br)              \

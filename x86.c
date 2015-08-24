@@ -61,6 +61,7 @@ static const char *const regs[][4] = {
 
 #define SCRATCH_REG 2 /* ecx */
 #define PTR_SZ 8
+#define PTR_TY i8
 
 static const int callee_saves[] = {
 	1 /* ebx */
@@ -961,6 +962,32 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			from, false, to, false, buf);
 }
 
+static void emit_ptradd(isn *i, x86_octx *octx)
+{
+	const unsigned ptrsz = type_size(val_type(i->u.ptradd.lhs));
+	val *rhs = i->u.ptradd.rhs;
+	type *rhs_ty = val_type(rhs);
+	val ext_rhs;
+
+	if(type_size(rhs_ty) != ptrsz){
+		assert(type_size(rhs_ty) < ptrsz);
+
+		ext_rhs = *rhs;
+
+		ext_rhs.ty = type_get_primitive(
+				unit_uniqtypes(octx->unit),
+				PTR_TY);
+
+		x86_ext(rhs, &ext_rhs, octx);
+
+		rhs = &ext_rhs;
+	}
+
+	x86_op(op_add,
+			i->u.ptradd.lhs, rhs,
+			i->u.ptradd.out, octx);
+}
+
 static const char *x86_cmp_str(enum op_cmp cmp)
 {
 	switch(cmp){
@@ -1295,6 +1322,10 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_ELEM:
 				emit_elem(i, octx);
+				break;
+
+			case ISN_PTRADD:
+				emit_ptradd(i, octx);
 				break;
 
 			case ISN_OP:

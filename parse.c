@@ -532,6 +532,29 @@ static void parse_ident(parse *p, char *spel)
 			break;
 		}
 
+		case tok_ptradd:
+		{
+			val *vlhs, *vrhs, *vout;
+
+			vlhs = parse_val(p);
+
+			eat(p, "ptradd-comma", tok_comma);
+
+			vrhs = parse_val(p);
+
+			if(!type_deref(val_type(vlhs))){
+				sema_error(p, "ptradd requires pointer type (lhs)");
+			}
+			if(!type_is_int(val_type(vrhs))){
+				sema_error(p, "ptradd requires integer type (rhs)");
+			}
+
+			vout = uniq_val(p, spel, val_type(vlhs), VAL_CREATE);
+
+			isn_ptradd(p->entry, vlhs, vrhs, vout);
+			break;
+		}
+
 		case tok_zext:
 		{
 			val *from;
