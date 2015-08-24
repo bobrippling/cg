@@ -100,7 +100,8 @@ struct x86_isn
 
 	enum {
 		OPERAND_INPUT = 1 << 0,
-		OPERAND_OUTPUT = 1 << 1
+		OPERAND_OUTPUT = 1 << 1,
+		OPERAND_LEA = 1 << 2
 	} arg_ios[MAX_OPERANDS];
 
 	struct x86_isn_constraint
@@ -131,7 +132,7 @@ static const struct x86_isn isn_lea = {
 	"lea",
 	2,
 	{
-		OPERAND_INPUT,
+		OPERAND_INPUT | OPERAND_LEA,
 		OPERAND_OUTPUT,
 		0
 	},
@@ -612,7 +613,7 @@ static void emit_isn(
 		variable var;
 	} temporaries[MAX_OPERANDS];
 	bool is_exactmatch;
-	bool handling_global = false;
+	bool dereference_because_global = false;
 	const struct x86_isn_constraint *operands_target = NULL;
 	unsigned j;
 
@@ -667,8 +668,10 @@ static void emit_isn(
 	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, isn_suffix);
 
 	for(j = 0; j < operand_count; j++){
-		if(operands[j].val->kind == GLOBAL){
-			handling_global = true;
+		if(!(isn->arg_ios[j] & OPERAND_LEA)
+		&& operands[j].val->kind == GLOBAL)
+		{
+			dereference_because_global = true;
 			break;
 		}
 	}
@@ -679,10 +682,23 @@ static void emit_isn(
 
 		operand_ty = val_type(emit_vals[j]);
 
-		if(handling_global){
+		if(dereference_because_global
+		&& emit_vals[j]->kind != GLOBAL)
+		{
 			type *next = type_deref(operand_ty);
-			if(next)
+
+			if(next){
+				/* e.g.
+				 * mov global, %eax
+				 *             ^~~~
+				 * mov %eax, -4(%rbp)
+				 *     ^~~~  ^-------
+				 *
+				 * ^~~~: register type downgraded
+				 * ^---: memory operand (i4) not downgraded, as lvalue. fine to ignore
+				 */
 				operand_ty = next;
+			}
 		}
 
 		val_str = x86_val_str(
