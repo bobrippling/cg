@@ -8,6 +8,8 @@ struct uniq_type_list
 	type *primitives[TYPE_PRIMITIVE_LAST];
 	type *tvoid;
 
+	dynarray structs;
+
 	unsigned ptrsz, ptralign;
 };
 

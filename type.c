@@ -40,11 +40,15 @@ struct type
 			dynarray args;
 			struct uniq_type_list *uniqs;
 		} func;
+		struct
+		{
+			dynarray membs;
+		} struct_;
 	} u;
 
 	enum type_kind
 	{
-		PRIMITIVE, PTR, ARRAY, FUNC, VOID
+		PRIMITIVE, PTR, ARRAY, STRUCT, FUNC, VOID
 	} kind;
 };
 
@@ -120,6 +124,29 @@ static bool type_to_strbuf(strbuf_fixed *const buf, type *t)
 
 			return type_to_strbuf(buf, t->u.array.elem)
 				&& strbuf_fixed_printf(buf, " x %lu]", t->u.array.n);
+		}
+
+		case STRUCT:
+		{
+			size_t i;
+			const char *comma = "";
+
+			if(!strbuf_fixed_printf(buf, "{"))
+				return false;
+
+			dynarray_iter(&t->u.struct_.membs, i){
+				type *ent = dynarray_ent(&t->u.struct_.membs, i);
+
+				if(!strbuf_fixed_printf(buf, "%s", comma))
+					return false;
+
+				if(!type_to_strbuf(buf, ent))
+					return false;
+
+				comma = ", ";
+			}
+
+			return strbuf_fixed_printf(buf, "}");
 		}
 
 		case FUNC:
@@ -263,10 +290,24 @@ type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args)
 
 type *type_get_struct(uniq_type_list *us, dynarray *membs)
 {
-	/* TODO */
-	(void)us;
-	(void)membs;
-	return NULL;
+	type *new;
+	size_t i;
+
+	dynarray_iter(&us->structs, i){
+		type *ent = dynarray_ent(&us->structs, i);
+
+		if(dynarray_refeq(&ent->u.struct_.membs, membs)){
+			return ent;
+		}
+	}
+
+	new = tnew(STRUCT);
+	dynarray_init(&new->u.struct_.membs);
+	dynarray_move(&new->u.struct_.membs, membs);
+
+	dynarray_add(&us->structs, new);
+
+	return new;
 }
 
 
@@ -325,6 +366,26 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 
 			*sz = ty->u.array.n * elemsz;
 			*align = elemalign;
+			break;
+		}
+
+		case STRUCT:
+		{
+			size_t i;
+
+			*sz = 0;
+			*align = 1;
+
+			dynarray_iter(&ty->u.struct_.membs, i){
+				unsigned elemsz, elemalign;
+				type *ent = dynarray_ent(&ty->u.struct_.membs, i);
+
+				type_size_align(ent, &elemsz, &elemalign);
+
+				*sz += elemsz;
+				if(elemalign > *align)
+					*align = elemalign;
+			}
 			break;
 		}
 
