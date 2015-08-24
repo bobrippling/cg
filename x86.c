@@ -876,7 +876,7 @@ loc:
 					DEREFERENCE_FALSE);
 
 			fprintf(octx->fout, "\tlea %s+%ld(%%rip), %s\n",
-					global_name(i->u.elem.lval->u.global),
+					global_name(lval->u.global),
 					offset,
 					result_str);
 			return;
