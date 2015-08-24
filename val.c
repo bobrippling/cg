@@ -80,6 +80,15 @@ bool val_is_mem(val *v)
 	return false;
 }
 
+bool val_is_int(val *v, size_t *const out)
+{
+	if(v->kind != LITERAL)
+		return false;
+
+	*out = v->u.i;
+	return true;
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;

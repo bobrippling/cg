@@ -519,8 +519,15 @@ static void parse_ident(parse *p, char *spel)
 
 			element_ty = type_array_element(array_ty);
 
+			if(!element_ty && type_is_struct(array_ty)){
+				size_t i;
+				if(val_is_int(idx, &i)){
+					element_ty = type_struct_element(array_ty, i);
+				}
+			}
+
 			if(!element_ty){
-				sema_error(p, "elem requires (pointer to) array type");
+				sema_error(p, "elem requires (pointer to) array/struct type");
 				element_ty = type_get_primitive(uniqtypes, i4);
 			}
 

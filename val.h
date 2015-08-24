@@ -42,5 +42,6 @@ char *val_str_rn(unsigned bufindex, val *);
 unsigned val_hash(val *);
 
 bool val_is_mem(val *);
+bool val_is_int(val *, size_t *);
 
 #endif

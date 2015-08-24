@@ -57,6 +57,11 @@ bool type_is_fn(type *t)
 	return t->kind == FUNC;
 }
 
+bool type_is_struct(type *t)
+{
+	return t->kind == STRUCT;
+}
+
 bool type_is_primitive(type *t, enum type_primitive prim)
 {
 	if(t->kind != PRIMITIVE)
@@ -344,6 +349,21 @@ type *type_array_element(type *t)
 		return NULL;
 
 	return t->u.array.elem;
+}
+
+type *type_struct_element(type *t, size_t i)
+{
+	size_t n;
+
+	if(t->kind != STRUCT)
+		return NULL;
+
+	n = dynarray_count(&t->u.struct_.membs);
+
+	if(i >= n)
+		return NULL;
+
+	return dynarray_ent(&t->u.struct_.membs, i);
 }
 
 void type_size_align(type *ty, unsigned *sz, unsigned *align)

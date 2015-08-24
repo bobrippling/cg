@@ -30,6 +30,7 @@ bool type_is_fn(type *);
 bool type_is_primitive(type *, enum type_primitive);
 bool type_is_int(type *);
 bool type_is_void(type *);
+bool type_is_struct(type *);
 
 const char *type_to_str(type *);
 const char *type_to_str_r(char *buf, size_t buflen, type *t);
@@ -48,6 +49,7 @@ type *type_deref(type *);
 type *type_func_call(type *, dynarray **);
 dynarray *type_func_args(type *);
 type *type_array_element(type *);
+type *type_struct_element(type *, size_t);
 
 /* --- sizing --- */
 void type_size_align(type *, unsigned *sz, unsigned *align);
