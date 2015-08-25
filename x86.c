@@ -782,10 +782,10 @@ static void mov_deref(
 		suffix_buf[0] = x86_pointed_suffix(val_type(chosen_val));
 	}
 
-	/* if we're mov:ing from a non-lvalue (i.e. global array)
+	/* if we're mov:ing from a non-lvalue (i.e. array)
 	 * we actually want its address*/
-	if(!deref_from && from->kind == GLOBAL){
-		assert(type_array_element(type_deref(from->ty)));
+	if(!deref_from && type_array_element(type_deref(from->ty))){
+		assert(from->kind == GLOBAL || from->kind == FROM_ISN);
 
 		chosen_isn = &isn_lea;
 	}
