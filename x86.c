@@ -98,6 +98,7 @@ struct x86_isn
 	const char *mnemonic;
 
 	unsigned arg_count;
+	bool may_suffix;
 
 	enum {
 		OPERAND_INPUT = 1 << 0,
@@ -114,6 +115,7 @@ struct x86_isn
 static const struct x86_isn isn_mov = {
 	"mov",
 	2,
+	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
@@ -132,6 +134,7 @@ static const struct x86_isn isn_mov = {
 static const struct x86_isn isn_lea = {
 	"lea",
 	2,
+	false,
 	{
 		OPERAND_INPUT | OPERAND_LEA,
 		OPERAND_OUTPUT,
@@ -145,6 +148,7 @@ static const struct x86_isn isn_lea = {
 static const struct x86_isn isn_movzx = {
 	"mov",
 	2,
+	false,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
@@ -159,6 +163,7 @@ static const struct x86_isn isn_movzx = {
 static const struct x86_isn isn_add = {
 	"add",
 	2,
+	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
@@ -175,6 +180,7 @@ static const struct x86_isn isn_add = {
 static const struct x86_isn isn_cmp = {
 	"cmp",
 	2,
+	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT,
@@ -192,6 +198,7 @@ static const struct x86_isn isn_cmp = {
 static const struct x86_isn isn_test = {
 	"test",
 	2,
+	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT,
@@ -209,6 +216,7 @@ static const struct x86_isn isn_test = {
 static const struct x86_isn isn_call = {
 	"call",
 	1,
+	false,
 	{
 		OPERAND_INPUT,
 		0,
@@ -223,6 +231,7 @@ static const struct x86_isn isn_call = {
 static const struct x86_isn isn_set = {
 	"set",
 	1,
+	false,
 	{
 		OPERAND_OUTPUT,
 		0,
@@ -307,15 +316,17 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 	assert(got == expected && "wrong deref");
 }
 
-static char x86_pointed_suffix(type *t)
+static const char *x86_pointed_suffix(type *t)
 {
 	type *elem = type_deref(t);
 
 	assert(elem);
 
 	switch(type_size(elem)){
-		case 4: return 'l';
-		case 8: return 'q';
+		case 1: return "b";
+		case 2: return "w";
+		case 4: return "l";
+		case 8: return "q";
 	}
 	assert(0 && "32-bit or 64-bit");
 }
@@ -601,6 +612,33 @@ static void ready_output(
 	*deref_val = 0;
 }
 
+static const char *maybe_generate_isn_suffix(
+		const size_t operand_count, val *emit_vals[],
+		emit_isn_operand operands[])
+{
+	size_t i;
+
+	/* can we infer the isn size from an operand? */
+	for(i = 0; i < operand_count; i++){
+		if(operands[i].dereference || !x86_can_infer_size(emit_vals[i]))
+				continue;
+
+		/* size can be inferred */
+		return NULL;
+	}
+
+	/* figure out the size from one of the operands */
+	for(i = 0; i < operand_count; i++){
+		if(operands[i].dereference)
+			continue;
+
+		if(x86_can_infer_size(emit_vals[i]))
+			return x86_pointed_suffix(val_type(emit_vals[i]));
+	}
+
+	return NULL;
+}
+
 static void emit_isn(
 		const struct x86_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
@@ -666,6 +704,11 @@ static void emit_isn(
 	}else{
 		/* satisfied */
 	}
+
+	if(!isn_suffix && isn->may_suffix)
+		isn_suffix = maybe_generate_isn_suffix(operand_count, emit_vals, operands);
+	if(!isn_suffix)
+		isn_suffix = "";
 
 	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, isn_suffix);
 
@@ -751,7 +794,6 @@ static void mov_deref(
 		bool deref_from, bool deref_to)
 {
 	const struct x86_isn *chosen_isn = &isn_mov;
-	char suffix_buf[2] = { 0 };
 
 	if(!deref_from && !deref_to){
 		struct name_loc *loc_from, *loc_to;
@@ -768,20 +810,6 @@ static void mov_deref(
 		}
 	}
 
-	if((deref_from || !x86_can_infer_size(from))
-	&& (deref_to || !x86_can_infer_size(to)))
-	{
-		val *chosen_val;
-
-		assert(!deref_from || !deref_to);
-		if(deref_from)
-			chosen_val = from;
-		else
-			chosen_val = to;
-
-		suffix_buf[0] = x86_pointed_suffix(val_type(chosen_val));
-	}
-
 	/* if we're mov:ing from a non-lvalue (i.e. array)
 	 * we actually want its address*/
 	if(!deref_from && type_array_element(type_deref(from->ty))){
@@ -793,7 +821,7 @@ static void mov_deref(
 	emit_isn_binary(chosen_isn, octx,
 			from, deref_from,
 			to, deref_to,
-			suffix_buf);
+			NULL);
 }
 
 static void mov(val *from, val *to, x86_octx *octx)
