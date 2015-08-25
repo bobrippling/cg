@@ -999,7 +999,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	type *rhs_ty = val_type(rhs);
 	val ext_rhs;
 
-	if(type_size(rhs_ty) != ptrsz){
+	if(rhs->kind != LITERAL && type_size(rhs_ty) != ptrsz){
 		assert(type_size(rhs_ty) < ptrsz);
 
 		ext_rhs = *rhs;
