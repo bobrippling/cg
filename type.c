@@ -318,6 +318,9 @@ type *type_get_struct(uniq_type_list *us, dynarray *membs)
 
 type *type_deref(type *t)
 {
+	if(!t)
+		return NULL;
+
 	if(t->kind != PTR)
 		return NULL;
 
@@ -326,6 +329,9 @@ type *type_deref(type *t)
 
 type *type_func_call(type *t, dynarray **const args)
 {
+	if(!t)
+		return NULL;
+
 	if(t->kind != FUNC)
 		return NULL;
 
@@ -339,12 +345,18 @@ type *type_func_call(type *t, dynarray **const args)
 dynarray *type_func_args(type *t)
 {
 	dynarray *args;
+	if(!t)
+		return NULL;
+
 	type_func_call(t, &args);
 	return args;
 }
 
 type *type_array_element(type *t)
 {
+	if(!t)
+		return NULL;
+
 	if(t->kind != ARRAY)
 		return NULL;
 
@@ -354,6 +366,9 @@ type *type_array_element(type *t)
 type *type_struct_element(type *t, size_t i)
 {
 	size_t n;
+
+	if(!t)
+		return NULL;
 
 	if(t->kind != STRUCT)
 		return NULL;
