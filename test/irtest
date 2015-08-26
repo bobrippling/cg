@@ -74,16 +74,22 @@ case "$type" in
 		!
 		;;
 	error)
-		errmsg="$rest"
 		if "$ir" $opt --emit=ir "$f" >/dev/null 2>"$tmp"
 		then
 			echo "expected '$f' to raise an error" >&2
 			exit 1
-		elif !  grep -F "$errmsg" "$tmp" >/dev/null
-		then
-			echo "expected '$f' to raise '$errmsg'" >&2
-			exit 1
 		fi
+
+		while read expected_err
+		do
+			if ! grep -F "$expected_err" "$tmp" >/dev/null
+			then
+				echo "expected '$f' to raise '$expected_err'" >&2
+				exit 1
+			fi
+		done <<-!
+		$(grep '# *check:' "$f" | sed 's/# *check: *//')
+		!
 		;;
 	*)
 		echo "$0: unknown test type '$type'" >&2

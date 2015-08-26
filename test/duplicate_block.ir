@@ -1,4 +1,4 @@
-# test=error block 'a' already exists
+# test=error
 
 $main = i4()
 {
@@ -7,3 +7,4 @@ a:
 a:
 	ret i4 3
 }
+# check: block 'a' already exists
