@@ -435,14 +435,13 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 
 		case FUNC:
 		{
-			*sz = ty->u.func.uniqs->ptrsz;
-			*align = ty->u.func.uniqs->ptralign;
+			assert(0 && "size of func");
 			break;
 		}
 
 		case VOID:
 		{
-			*sz = *align = 1;
+			assert(0 && "size of void");
 			break;
 		}
 	}

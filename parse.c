@@ -187,6 +187,11 @@ static void parse_type_list(
 		for(;;){
 			type *memb = parse_type(p);
 
+			if(type_is_fn(memb)){
+				sema_error(p, "function in aggregate");
+				memb = default_type(p);
+			}
+
 			if(toplvl_args){
 				if(dynarray_is_empty(types)){
 					/* first time, decide whether to have arg names */
@@ -219,7 +224,7 @@ static void parse_type_list(
 }
 
 
-static type *parse_type_maybe_func(parse *p, dynarray *toplvl_args)
+static type *parse_type_maybe_func_nochk(parse *p, dynarray *toplvl_args)
 {
 	/*
 	 * void
@@ -310,6 +315,23 @@ prim:
 		}
 
 		break;
+	}
+
+	return t;
+}
+
+static type *parse_type_maybe_func(parse *p, dynarray *toplvl_args)
+{
+	type *t = parse_type_maybe_func_nochk(p, toplvl_args);
+
+	if(type_is_fn(type_array_element(t))){
+		sema_error(p, "array of functions");
+		return default_type(p);
+	}
+
+	if(type_array_element(type_func_call(t, NULL))){
+		sema_error(p, "function returning array");
+		return default_type(p);
 	}
 
 	return t;

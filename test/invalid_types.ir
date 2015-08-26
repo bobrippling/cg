@@ -1,0 +1,8 @@
+# test=error
+$x = [i4() x 0]
+$y = [i4 x 0]()
+$z = {i4()}
+
+# check: array of functions
+# check: function returning array
+# check: function in aggregate
