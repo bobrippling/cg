@@ -27,13 +27,19 @@ LDFLAGS = -g
 all: tags ir
 
 ir: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@echo link $@
+	@${CC} -o $@ ${OBJ} ${LDFLAGS}
+
+%.o: %.c
+	@echo compile $<
+	@${CC} -c -o $@ $< ${CFLAGS}
 
 check: ir
 	make -Ctest
 
 tags: ${SRC}
-	ctags ${SRC} ${HEADERS}
+	@echo ctags
+	@ctags ${SRC} ${HEADERS}
 
 clean:
 	make -C test clean
@@ -43,7 +49,8 @@ Makefile.dep: ${SRC} ${HEADERS}
 	${CC} -MM ${SRC} > $@
 
 .%.d: %.c
-	${CC} -MM ${CFLAGS} $< > $@
+	@echo depend $<
+	@${CC} -MM ${CFLAGS} $< > $@
 
 -include ${OBJ:%.o=.%.d}
 -include Makefile.cfg
