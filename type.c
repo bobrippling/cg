@@ -54,16 +54,19 @@ struct type
 
 bool type_is_fn(type *t)
 {
-	return t->kind == FUNC;
+	return t && t->kind == FUNC;
 }
 
 bool type_is_struct(type *t)
 {
-	return t->kind == STRUCT;
+	return t && t->kind == STRUCT;
 }
 
 bool type_is_primitive(type *t, enum type_primitive prim)
 {
+	if(!t)
+		return false;
+
 	if(t->kind != PRIMITIVE)
 		return false;
 	return t->u.prim == prim;
@@ -71,6 +74,9 @@ bool type_is_primitive(type *t, enum type_primitive prim)
 
 bool type_is_int(type *t)
 {
+	if(!t)
+		return false;
+
 	if(t->kind != PRIMITIVE)
 		return false;
 	switch(t->u.prim){
@@ -83,6 +89,9 @@ bool type_is_int(type *t)
 
 bool type_is_void(type *t)
 {
+	if(!t)
+		return false;
+
 	return t->kind == VOID;
 }
 
