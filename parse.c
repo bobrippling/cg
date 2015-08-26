@@ -486,6 +486,10 @@ static void parse_ident(parse *p, char *spel)
 				sema_error(p, "load operand not a pointer type");
 				deref_ty = default_type(p);
 			}
+			if(type_array_element(deref_ty)){
+				sema_error(p, "load operand is (pointer-to) array type");
+				deref_ty = default_type(p);
+			}
 
 			lhs = uniq_val(p, spel, deref_ty, VAL_CREATE);
 			isn_load(p->entry, lhs, rhs);
