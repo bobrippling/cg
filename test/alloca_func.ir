@@ -1,0 +1,9 @@
+# test=error
+
+$main = i4(){
+	$z = alloca i4()
+
+	ret i4 0
+}
+
+# check: alloca of function type
