@@ -813,11 +813,9 @@ static void mov_deref(
 		}
 	}
 
-	/* if we're mov:ing from a non-lvalue (i.e. array)
+	/* if we're mov:ing from a non-lvalue (i.e. array, struct [alloca])
 	 * we actually want its address*/
-	if(!deref_from && type_array_element(type_deref(from->ty))){
-		assert(from->kind == GLOBAL || from->kind == FROM_ISN);
-
+	if(!deref_from && from->kind == ALLOCA){
 		chosen_isn = &isn_lea;
 	}
 
