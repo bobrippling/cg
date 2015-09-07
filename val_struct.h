@@ -48,10 +48,10 @@ struct val
 
 	enum val_kind
 	{
-		LITERAL,  /* i32 5, { i32, [i8 x 2] }* 54 */
+		LITERAL,  /* i4 5, { i4, [i1 x 2] }* 54 */
 		GLOBAL,   /* $x from global */
 		ARGUMENT, /* $x from arg */
-		FROM_ISN, /* $y = load i32* 1 */
+		FROM_ISN, /* $y = load i4* 1 */
 		BACKEND_TEMP /* mov $3, %eax ; ret */
 	} kind;
 };
