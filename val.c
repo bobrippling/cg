@@ -218,7 +218,10 @@ char *val_str_r(char buf[32], val *v)
 {
 	switch(v->kind){
 		case LITERAL:
-			snprintf(buf, VAL_STR_SZ, "%s %d", type_to_str(v->ty), v->u.i);
+			if(type_is_void(v->ty))
+				snprintf(buf, VAL_STR_SZ, "void");
+			else
+				snprintf(buf, VAL_STR_SZ, "%s %d", type_to_str(v->ty), v->u.i);
 			break;
 		case GLOBAL:
 			snprintf(buf, VAL_STR_SZ, "$%s", global_name(v->u.global));
