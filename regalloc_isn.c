@@ -11,6 +11,7 @@
 #include "isn_internal.h"
 #include "isn.h"
 #include "val_struct.h"
+#include "val_internal.h"
 #include "lifetime_struct.h"
 #include "function_struct.h"
 
@@ -60,6 +61,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			/* done elsewhere */
 			return;
 
+		case ALLOCA:
+			val_locn = &v->u.alloca.loc;
+			break;
+
 		case FROM_ISN:
 			val_locn = &v->u.local.loc;
 			break;
@@ -73,6 +78,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	if(lt->start == ctx->isn_num && val_locn->u.reg == -1){
 		if(isn->type == ISN_ALLOCA){
+			assert(v->kind == ALLOCA);
+
 			regalloc_spill(v, ctx);
 
 			if(SHOW_REGALLOC){
@@ -123,13 +130,22 @@ static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
 {
 	struct spill_ctx *ctx = vctx;
 	unsigned size;
+	struct name_loc *loc;
 
 	(void)isn;
 
-	if(v->kind != FROM_ISN
-	|| v->u.local.loc.where != NAME_IN_REG
-	|| v->u.local.loc.u.reg != -1)
-	{
+	switch(v->kind){
+		case FROM_ISN:
+		case ALLOCA:
+			break;
+		default:
+			return;
+	}
+
+	loc = val_location(v);
+
+	if(loc->where != NAME_IN_REG || loc->u.reg != -1){
+		/* allocated already - either spilt or has a reg */
 		return;
 	}
 

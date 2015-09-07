@@ -153,7 +153,7 @@ found:
 	if((opts & VAL_CREATE) == 0)
 		parse_error(p, "undeclared identifier '%s'", name);
 
-	v = val_new_local(name, ty);
+	v = val_new_local(name, ty, opts & VAL_ALLOCA);
 
 	return map_val(p, name, v);
 }

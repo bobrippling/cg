@@ -111,6 +111,9 @@ unsigned val_hash(val *v)
 			break;
 		}
 
+		case ALLOCA:
+			break;
+
 		case FROM_ISN:
 			break;
 
@@ -127,6 +130,8 @@ unsigned val_hash(val *v)
 struct name_loc *val_location(val *v)
 {
 	switch(v->kind){
+		case ALLOCA:
+			return &v->u.alloca.loc;
 		case FROM_ISN:
 			return &v->u.local.loc;
 
@@ -232,6 +237,9 @@ char *val_str_r(char buf[32], val *v)
 		case FROM_ISN:
 			snprintf(buf, VAL_STR_SZ, "$%s", v->u.local.name);
 			break;
+		case ALLOCA:
+			snprintf(buf, VAL_STR_SZ, "$%s", v->u.alloca.name);
+			break;
 		case BACKEND_TEMP:
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
@@ -335,9 +343,9 @@ val *val_new_global(struct uniq_type_list *us, struct global *glob)
 	return p;
 }
 
-val *val_new_local(char *name, struct type *ty)
+val *val_new_local(char *name, struct type *ty, bool alloca)
 {
-	val *p = val_new(FROM_ISN, ty);
+	val *p = val_new(alloca ? ALLOCA : FROM_ISN, ty);
 	p->u.local.name = name;
 	name_loc_init_reg(&p->u.local.loc);
 	return p;

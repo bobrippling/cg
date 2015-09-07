@@ -30,7 +30,7 @@ struct val
 		{
 			struct name_loc loc;
 			char *name;
-		} local;
+		} local, alloca;
 		struct
 		{
 			/* location needs to be asked from the function */
@@ -52,6 +52,7 @@ struct val
 		GLOBAL,   /* $x from global */
 		ARGUMENT, /* $x from arg */
 		FROM_ISN, /* $y = load i4* 1 */
+		ALLOCA,   /* $z = alloca i4 */
 		BACKEND_TEMP /* mov $3, %eax ; ret */
 	} kind;
 };

@@ -266,6 +266,7 @@ static operand_category val_category(val *v)
 			return OPERAND_INT;
 
 		case GLOBAL:
+		case ALLOCA:
 			assert(0);
 
 		case BACKEND_TEMP:
@@ -336,6 +337,7 @@ static bool x86_can_infer_size(val *val)
 	struct name_loc *loc = NULL;
 
 	switch(val->kind){
+		case ALLOCA: return false;
 		case LITERAL: return false;
 		case GLOBAL: return false;
 
@@ -433,6 +435,7 @@ static const char *x86_val_str(
 			loc = function_arg_loc(val->u.argument.func, val->u.argument.idx);
 			goto loc;
 
+		case ALLOCA: loc = &val->u.alloca.loc; goto loc;
 		case FROM_ISN: loc = &val->u.local.loc; goto loc;
 		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
 loc:
@@ -852,6 +855,9 @@ static void emit_elem(isn *i, x86_octx *octx)
 		case ARGUMENT:
 			loc = function_arg_loc(lval->u.argument.func, lval->u.argument.idx);
 			goto loc;
+		case ALLOCA:
+			loc = &lval->u.alloca.loc;
+			goto loc;
 		case FROM_ISN:
 			loc = &lval->u.local.loc;
 			goto loc;
@@ -1118,6 +1124,7 @@ static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
 		case LITERAL:
 		case GLOBAL:
 		case BACKEND_TEMP:
+		case ALLOCA:
 			return; /* no need to spill */
 
 		case FROM_ISN:

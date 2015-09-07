@@ -653,6 +653,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 		case GLOBAL:
 		case BACKEND_TEMP:
 			return;
+		case ALLOCA:
 		case ARGUMENT:
 		case FROM_ISN:
 			break;
