@@ -260,6 +260,7 @@ static val *val_new(enum val_kind k, struct type *ty)
 
 val *val_retain(val *v)
 {
+	/* valid for v->retains to be 0 */
 	v->retains++;
 	return v;
 }
@@ -271,6 +272,8 @@ static void val_free(val *v)
 
 void val_release(val *v)
 {
+	assert(v->retains > 0 && "unretained val");
+
 	v->retains--;
 
 	if(v->retains == 0)
