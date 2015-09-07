@@ -62,8 +62,17 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			return;
 
 		case ALLOCA:
-			val_locn = &v->u.alloca.loc;
-			break;
+			if(isn->type == ISN_ALLOCA){
+				regalloc_spill(v, ctx);
+
+				if(SHOW_REGALLOC){
+					fprintf(stderr, "regalloc(%s) => spill [because of alloca]\n",
+							val_str(v));
+				}
+			}else{
+				/* use of alloca in non-alloca isn, leave it for now */
+			}
+			return;
 
 		case FROM_ISN:
 			val_locn = &v->u.local.loc;
@@ -77,38 +86,27 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	assert(lt);
 
 	if(lt->start == ctx->isn_num && val_locn->u.reg == -1){
-		if(isn->type == ISN_ALLOCA){
-			assert(v->kind == ALLOCA);
+		int i;
 
+		for(i = 0; i < ctx->nregs; i++)
+			if(!ctx->in_use[i])
+				break;
+
+		if(i == ctx->nregs){
+			/* no reg available */
 			regalloc_spill(v, ctx);
 
-			if(SHOW_REGALLOC){
-				fprintf(stderr, "regalloc(%s) => spill [because of alloca]\n",
-						val_str(v));
-			}
+			if(SHOW_REGALLOC)
+				fprintf(stderr, "regalloc(%s) => spill\n", val_str(v));
+
 		}else{
-			int i;
+			ctx->in_use[i] = 1;
 
-			for(i = 0; i < ctx->nregs; i++)
-				if(!ctx->in_use[i])
-					break;
+			val_locn->where = NAME_IN_REG;
+			val_locn->u.reg = i;
 
-			if(i == ctx->nregs){
-				/* no reg available */
-				regalloc_spill(v, ctx);
-
-				if(SHOW_REGALLOC)
-					fprintf(stderr, "regalloc(%s) => spill\n", val_str(v));
-
-			}else{
-				ctx->in_use[i] = 1;
-
-				val_locn->where = NAME_IN_REG;
-				val_locn->u.reg = i;
-
-				if(SHOW_REGALLOC)
-					fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
-			}
+			if(SHOW_REGALLOC)
+				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
 		}
 	}
 
