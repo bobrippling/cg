@@ -1,4 +1,4 @@
-# test=grep_x86_64 mov glob(%rip), %ecx & mov %ecx, -4(%rbp)
+# test=grep_x86_64 mov glob(%rip), %ecx & mov %ecx, -4(%rbp) & mov gp(%rip), %rax
 
 $glob = i4
 
@@ -10,4 +10,12 @@ $abc:
 $loop:
 	$e = eq $x, i4 5
 	jmp $abc
+}
+
+$gp = i4*
+
+$f = void ()
+{
+	$1 = load $gp
+	ret void
 }
