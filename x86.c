@@ -22,6 +22,8 @@
 #include "val_internal.h" /* val_location() */
 #include "global_struct.h"
 
+#define OPERAND_SHOW_TYPE 0
+
 struct x86_alloca_ctx
 {
 	dynmap *alloca2stack;
@@ -732,6 +734,9 @@ static void emit_isn(
 				octx,
 				operand_ty,
 				operands[j].dereference);
+
+		if(OPERAND_SHOW_TYPE)
+			fprintf(octx->fout, "{%s}", type_to_str(emit_vals[j]->ty));
 
 		fprintf(octx->fout, "%s%s",
 				val_str,
