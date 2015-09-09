@@ -13,7 +13,7 @@ struct unit
 {
 	struct uniq_type_list types;
 
-	global *globals;
+	global **globals;
 	size_t nglobals;
 
 	unsigned uniq_counter;
@@ -48,7 +48,12 @@ static void unit_function_free(function *f, void *ctx)
 
 void unit_free(unit *unit)
 {
+	size_t i;
+
 	unit_on_functions(unit, unit_function_free, NULL);
+
+	for(i = 0; i < unit->nglobals; i++)
+		free(unit->globals[i]);
 
 	free(unit);
 }
@@ -58,8 +63,8 @@ void unit_on_functions(unit *u, void fn(function *, void *), void *ctx)
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
-		if(u->globals[i].is_fn)
-			fn(u->globals[i].u.fn, ctx);
+		if(u->globals[i]->is_fn)
+			fn(u->globals[i]->u.fn, ctx);
 }
 
 void unit_on_globals(unit *u, global_emit_func *fn)
@@ -67,7 +72,7 @@ void unit_on_globals(unit *u, global_emit_func *fn)
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
-		fn(u, &u->globals[i]);
+		fn(u, u->globals[i]);
 }
 
 static void unit_add_global(unit *u, void *global, int is_fn)
@@ -75,11 +80,13 @@ static void unit_add_global(unit *u, void *global, int is_fn)
 	u->nglobals++;
 	u->globals = xrealloc(u->globals, u->nglobals * sizeof *u->globals);
 
-	u->globals[u->nglobals - 1].is_fn = is_fn;
+	u->globals[u->nglobals - 1] = xmalloc(sizeof *u->globals[u->nglobals]);
+
+	u->globals[u->nglobals - 1]->is_fn = is_fn;
 	if(is_fn)
-		u->globals[u->nglobals - 1].u.fn = global;
+		u->globals[u->nglobals - 1]->u.fn = global;
 	else
-		u->globals[u->nglobals - 1].u.var = global;
+		u->globals[u->nglobals - 1]->u.var = global;
 }
 
 function *unit_function_new(
@@ -108,13 +115,13 @@ global *unit_global_find(unit *u, const char *spel)
 
 	for(i = 0; i < u->nglobals; i++){
 		const char *sp;
-		if(u->globals[i].is_fn)
-			sp = function_name(u->globals[i].u.fn);
+		if(u->globals[i]->is_fn)
+			sp = function_name(u->globals[i]->u.fn);
 		else
-			sp = variable_name(u->globals[i].u.var);
+			sp = variable_name(u->globals[i]->u.var);
 
 		if(!strcmp(sp, spel))
-			return &u->globals[i];
+			return u->globals[i];
 	}
 
 	return NULL;
