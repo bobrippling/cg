@@ -477,6 +477,8 @@ static void make_val_temporary_store(
 		operand_category from_cat,
 		operand_category to_cat)
 {
+	type *temporary_ty;
+
 	/* move 'from' into category 'to_cat' (from 'from_cat'),
 	 * saving the new value in *write_to */
 
@@ -487,7 +489,12 @@ static void make_val_temporary_store(
 
 	assert(to_cat != OPERAND_INT);
 
-	val_temporary_init(write_to, from->ty);
+	temporary_ty = from->ty;
+	/* this is safe - we never lea a global who needs a temporary store */
+	if(from->kind == GLOBAL)
+		temporary_ty = type_deref(temporary_ty);
+
+	val_temporary_init(write_to, temporary_ty);
 
 	if(to_cat == OPERAND_REG){
 		/* use scratch register */
@@ -504,7 +511,7 @@ static void make_val_temporary_store(
 		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
 	}
 
-	assert(val_size(write_to) == val_size(from));
+	assert(val_size(write_to) == type_size(temporary_ty));
 }
 
 static bool operand_type_convertible(
