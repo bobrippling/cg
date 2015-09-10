@@ -3,6 +3,7 @@
 
 #include "mem.h"
 #include "unit.h"
+#include "unit_internal.h"
 
 #include "variable_internal.h"
 #include "function_internal.h"
@@ -16,6 +17,8 @@ struct unit
 	global **globals;
 	size_t nglobals;
 
+	const char *lbl_private_prefix;
+
 	unsigned uniq_counter;
 };
 
@@ -26,10 +29,11 @@ static void uniq_types_init(
 	us->ptralign = ptralign;
 }
 
-unit *unit_new(unsigned ptrsz, unsigned ptralign)
+unit *unit_new(unsigned ptrsz, unsigned ptralign, const char *lbl_priv_prefix)
 {
 	unit *u = xcalloc(1, sizeof *u);
 
+	u->lbl_private_prefix = lbl_priv_prefix;
 	uniq_types_init(&u->types, ptrsz, ptralign);
 
 	return u;
@@ -38,6 +42,11 @@ unit *unit_new(unsigned ptrsz, unsigned ptralign)
 uniq_type_list *unit_uniqtypes(unit *u)
 {
 	return &u->types;
+}
+
+const char *unit_lbl_private_prefix(unit *u)
+{
+	return u->lbl_private_prefix;
 }
 
 static void unit_function_free(function *f, void *ctx)

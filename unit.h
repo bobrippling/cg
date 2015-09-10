@@ -11,7 +11,7 @@ typedef struct unit unit;
 
 typedef void global_emit_func(unit *, global *);
 
-unit *unit_new(unsigned ptrsz, unsigned ptralign);
+unit *unit_new(unsigned ptrsz, unsigned ptralign, const char *lbl_priv_prefix);
 void unit_free(unit *);
 
 void unit_on_functions(unit *, void (function *, void *), void *);

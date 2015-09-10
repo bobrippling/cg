@@ -882,8 +882,8 @@ unit *parse_code(tokeniser *tok, int *const err)
 	parse state = { 0 };
 
 	state.tok = tok;
-	/* FIXME: hardcoded pointer info */
-	state.unit = unit_new(8, 8);
+	/* FIXME: hardcoded pointer and asm info */
+	state.unit = unit_new(8, 8, "L");
 
 	while(!parse_finished(tok)){
 		parse_global(&state);

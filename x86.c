@@ -19,6 +19,7 @@
 #include "function_struct.h"
 #include "variable_struct.h"
 #include "unit.h"
+#include "unit_internal.h"
 #include "val_internal.h" /* val_location() */
 #include "global_struct.h"
 
@@ -1044,7 +1045,9 @@ static void x86_cmp(
 
 static void x86_jmp(x86_octx *octx, block *target)
 {
-	fprintf(octx->fout, "\tjmp %s\n", target->lbl);
+	fprintf(octx->fout, "\tjmp %s%s\n",
+			unit_lbl_private_prefix(octx->unit),
+			target->lbl);
 }
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
@@ -1054,15 +1057,21 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 			cond, false,
 			NULL);
 
-	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
+	fprintf(octx->fout, "\tjz %s%s\n",
+			unit_lbl_private_prefix(octx->unit),
+			bf->lbl);
+
 	x86_jmp(octx, bt);
 }
 
 static void x86_block_enter(x86_octx *octx, block *blk)
 {
-	(void)octx;
-	if(blk->lbl)
-		fprintf(octx->fout, "%s:\n", blk->lbl);
+	if(!blk->lbl)
+		return;
+
+	fprintf(octx->fout, "%s%s:\n",
+			unit_lbl_private_prefix(octx->unit),
+			blk->lbl);
 }
 
 static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
@@ -1310,7 +1319,9 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 					mov(i->u.ret, &veax, octx);
 				}
 
-				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
+				fprintf(octx->fout, "\tjmp %s%s\n",
+						unit_lbl_private_prefix(octx->unit),
+						octx->exitblk->lbl);
 				break;
 			}
 
