@@ -312,6 +312,30 @@ static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 	return regs[reg][sz_idx];
 }
 
+static const char *x86_cmp_str(enum op_cmp cmp)
+{
+	switch(cmp){
+		case cmp_eq: return "e";
+		case cmp_ne: return "ne";
+		case cmp_gt: return "gt";
+		case cmp_ge: return "ge";
+		case cmp_lt: return "lt";
+		case cmp_le: return "le";
+	}
+	assert(0);
+}
+
+static const char *x86_size_suffix(unsigned sz)
+{
+	switch(sz){
+		case 1: return "b";
+		case 2: return "w";
+		case 4: return "l";
+		case 8: return "q";
+	}
+	assert(0);
+}
+
 static void assert_deref(enum deref_type got, enum deref_type expected)
 {
 	if(got == DEREFERENCE_ANY)
@@ -1001,30 +1025,6 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	}
 
 	x86_op(op_add, lhs, rhs, out, octx);
-}
-
-static const char *x86_cmp_str(enum op_cmp cmp)
-{
-	switch(cmp){
-		case cmp_eq: return "e";
-		case cmp_ne: return "ne";
-		case cmp_gt: return "gt";
-		case cmp_ge: return "ge";
-		case cmp_lt: return "lt";
-		case cmp_le: return "le";
-	}
-	assert(0);
-}
-
-static const char *x86_size_suffix(unsigned sz)
-{
-	switch(sz){
-		case 1: return "b";
-		case 2: return "w";
-		case 4: return "l";
-		case 8: return "q";
-	}
-	assert(0);
 }
 
 static void x86_cmp(
