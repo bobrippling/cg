@@ -858,8 +858,13 @@ static void parse_global(parse *p)
 
 	eat(p, "decl name", tok_ident);
 	name = token_last_ident(p->tok);
-	if(!name)
+	if(!name || unit_global_find(p->unit, name)){
+		if(name){
+			/* found it */
+			sema_error(p, "global '%s' already defined", name);
+		}
 		name = xstrdup("_error");
+	}
 
 	eat(p, "global assign", tok_equal);
 
