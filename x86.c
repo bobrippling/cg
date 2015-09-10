@@ -349,13 +349,7 @@ static const char *x86_pointed_suffix(type *t)
 
 	assert(elem);
 
-	switch(type_size(elem)){
-		case 1: return "b";
-		case 2: return "w";
-		case 4: return "l";
-		case 8: return "q";
-	}
-	assert(0 && "32-bit or 64-bit");
+	return x86_size_suffix(type_size(elem));
 }
 
 static bool x86_can_infer_size(val *val)
