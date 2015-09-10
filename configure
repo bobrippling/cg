@@ -42,7 +42,7 @@ done
 
 if [ $found -eq 0 ]
 then
-	echo "couldn't find unused temporary file in $TMPDIR"
+	echo "couldn't find unused temporary file in $TMPDIR" >&2
 	exit 1
 fi
 
