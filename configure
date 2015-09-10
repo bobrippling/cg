@@ -10,10 +10,20 @@ try_cflag(){
 	then
 		echo yes
 		echo "CFLAGS_CONFIGURE += $flag" >> Makefile.cfg
+		return 0
 	else
 		echo no
+		return 1
 	fi
 }
+
+if [ $# -ne 0 ]
+then
+	echo "Usage: $0" >&2
+	echo "Pass CC, CFLAGS and LDFLAGS via the environment" >&2
+	echo "e.g. CFLAGS=-O3 ./configure" >&2
+	exit 1
+fi
 
 if [ -z "$TMPDIR" ]
 then
@@ -36,8 +46,16 @@ ctmp="$irtmpdir/1.c"
 echo > Makefile.cfg
 
 echo "CC = $CC" >> Makefile.cfg
+echo "CFLAGS_CONFIGURE = $CFLAGS" >> Makefile.cfg
+echo "LDFLAGS_CONFIGURE = $LDFLAGS" >> Makefile.cfg
+
+try_cflag -std=c89 || try_cflag -ansi
+try_cflag -Wall
+try_cflag -Wextra
+try_cflag -Wmissing-prototypes
+try_cflag -Wmissing-declarations
 
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-missing-braces
-try_cflag -Wmissing-prototypes
-try_cflag -Wmissing-declarations
+
+try_cflag -g
