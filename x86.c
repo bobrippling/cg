@@ -1032,7 +1032,7 @@ static void x86_cmp(
 	emit_isn_binary(&isn_cmp, octx,
 			lhs, false,
 			rhs, false,
-			x86_size_suffix(val_size(lhs)));
+			NULL);
 
 	zero = val_retain(val_new_i(0, lhs->ty));
 
@@ -1056,7 +1056,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 	emit_isn_binary(&isn_test, octx,
 			cond, false,
 			cond, false,
-			x86_size_suffix(val_size(cond)));
+			NULL);
 
 	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 	x86_jmp(octx, bt);
