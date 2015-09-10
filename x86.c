@@ -343,13 +343,9 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 	assert(got == expected && "wrong deref");
 }
 
-static const char *x86_pointed_suffix(type *t)
+static const char *x86_type_suffix(type *t)
 {
-	type *elem = type_deref(t);
-
-	assert(elem);
-
-	return x86_size_suffix(type_size(elem));
+	return x86_size_suffix(type_size(t));
 }
 
 static bool x86_can_infer_size(val *val)
@@ -662,10 +658,10 @@ static const char *maybe_generate_isn_suffix(
 		if(operands[i].dereference)
 			continue;
 
-		if(x86_can_infer_size(emit_vals[i]))
-			return x86_pointed_suffix(val_type(emit_vals[i]));
+		return x86_type_suffix(val_type(emit_vals[i]));
 	}
 
+	assert(0 && "couldn't infer suffix for instruction");
 	return NULL;
 }
 
