@@ -53,14 +53,13 @@ void dynarray_copy(dynarray *dest, dynarray *src)
 
 bool dynarray_refeq(dynarray *a, dynarray *b)
 {
-	size_t i, j;
+	size_t i;
 
 	if(dynarray_count(a) != dynarray_count(b))
 		return false;
 
-	j = 0;
 	dynarray_iter(a, i){
-		if(dynarray_ent(a, i) != dynarray_ent(b, j))
+		if(dynarray_ent(a, i) != dynarray_ent(b, i))
 			return false;
 	}
 
