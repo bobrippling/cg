@@ -7,8 +7,9 @@ harness.o: gen.s
 	${CC} -c -o $@ $<
 
 gen.s: src.s harness.s
-	cat harness.s > $@
-	sed -E '/space/!s;([^$$L_0-9])([0-9]+)(,|$$);\1_\2(%rip)\3;' < src.s >> $@
+	cat harness.s > $@.tmp
+	cat src.s >> $@.tmp
+	mv $@.tmp $@
 
 clean:
 	rm -f src.s gen.s harness.o harness
