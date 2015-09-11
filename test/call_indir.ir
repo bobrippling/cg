@@ -1,0 +1,18 @@
+# test=harness 4
+
+$delegate = i4(i4()* $f)
+{
+	$x = call $f()
+	ret $x
+}
+
+$ret4 = i4()
+{
+	ret i4 4
+}
+
+$test = i4()
+{
+	$x = call $delegate($ret4)
+	ret $x
+}

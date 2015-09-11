@@ -789,6 +789,17 @@ static void emit_isn_binary(
 	emit_isn(isn, octx, operands, 2, isn_suffix);
 }
 
+static bool must_lea_val(val *v)
+{
+	if(v->kind == ALLOCA)
+		return true;
+
+	if(v->kind == GLOBAL && type_is_fn(type_deref(val_type(v))))
+		return true;
+
+	return false;
+}
+
 static void mov_deref(
 		val *from, val *to,
 		x86_octx *octx,
@@ -813,7 +824,7 @@ static void mov_deref(
 
 	/* if we're mov:ing from a non-lvalue (i.e. array, struct [alloca])
 	 * we actually want its address*/
-	if(!deref_from && from->kind == ALLOCA){
+	if(!deref_from && must_lea_val(from)){
 		chosen_isn = &isn_lea;
 	}
 
