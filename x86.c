@@ -823,10 +823,12 @@ static void emit_isn_binary(
 
 static bool must_lea_val(val *v)
 {
+	/* this assumes we haven't been told to dereference */
+
 	if(v->kind == ALLOCA)
 		return true;
 
-	if(v->kind == GLOBAL && type_is_fn(type_deref(val_type(v))))
+	if(v->kind == GLOBAL)
 		return true;
 
 	return false;
