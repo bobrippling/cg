@@ -543,13 +543,11 @@ static bool operand_type_convertible(
 static const struct x86_isn_constraint *find_isn_bestmatch(
 		const struct x86_isn *isn,
 		const operand_category arg_cats[],
+		const size_t nargs,
 		bool *const is_exactmatch)
 {
 	const int max = countof(isn->constraints);
 	int i, bestmatch_i = -1;
-	unsigned nargs;
-
-	for(nargs = 0; arg_cats[nargs]; nargs++);
 
 	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
 		bool matches[MAX_OPERANDS];
@@ -698,7 +696,8 @@ static void emit_isn(
 			operands[j].dereference = true;
 	}
 
-	operands_target = find_isn_bestmatch(isn, op_categories, &is_exactmatch);
+	operands_target = find_isn_bestmatch(
+			isn, op_categories, operand_count, &is_exactmatch);
 
 	assert(operands_target && "couldn't satisfy operands for isn");
 
