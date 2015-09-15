@@ -2,8 +2,9 @@
 $main = i2()
 {
 	$x = load i2* 5
-	$a = alloca [i4 x 2]
-	store $a, $x
-	$y = load $a
+	$a = alloca [i2 x 2]
+	$p = elem $a, i4 0
+	store $p, $x
+	$y = load $p
 	ret $y
 }
