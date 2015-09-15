@@ -683,6 +683,9 @@ static void emit_isn(
 	const struct x86_isn_constraint *operands_target = NULL;
 	unsigned j;
 
+	assert(operand_count == isn->arg_count);
+	assert(operand_count <= MAX_OPERANDS);
+
 	for(j = 0; j < operand_count; j++){
 		emit_vals[j] = operands[j].val;
 		orig_dereference[j] = operands[j].dereference;
