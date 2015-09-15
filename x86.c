@@ -664,7 +664,7 @@ static const char *maybe_generate_isn_suffix(
 	return NULL;
 }
 
-static void emit_isn(
+static bool emit_isn_try(
 		const struct x86_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
 		unsigned operand_count,
@@ -699,7 +699,8 @@ static void emit_isn(
 	operands_target = find_isn_bestmatch(
 			isn, op_categories, operand_count, &is_exactmatch);
 
-	assert(operands_target && "couldn't satisfy operands for isn");
+	if(!operands_target)
+		return false;
 
 	if(!is_exactmatch){
 		/* not satisfied - convert an operand to REG or MEM */
@@ -772,6 +773,19 @@ static void emit_isn(
 					false, orig_dereference[j]);
 		}
 	}
+
+	return true;
+}
+
+static void emit_isn(
+		const struct x86_isn *isn, x86_octx *octx,
+		emit_isn_operand operands[],
+		unsigned operand_count,
+		const char *isn_suffix)
+{
+	bool did = emit_isn_try(isn, octx, operands, operand_count, isn_suffix);
+
+	assert(did && "couldn't satisfy operands for isn");
 }
 
 static void emit_isn_binary(
