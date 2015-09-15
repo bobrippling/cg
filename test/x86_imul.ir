@@ -1,0 +1,5 @@
+# test=grep_x86_64 imul $5, %esi, %eax
+$f = i4(i4 $a, i4 $b){
+	$x = mul i4 5, $b
+	ret $x
+}

@@ -180,6 +180,22 @@ static const struct x86_isn isn_add = {
 	}
 };
 
+static const struct x86_isn isn_imul = {
+	"imul",
+	3,
+	true,
+	{
+		OPERAND_INPUT,
+		OPERAND_INPUT,
+		OPERAND_OUTPUT
+	},
+	{
+		/* imul{bwl} imm[16|32], r/m[16|32], reg[16|32] */
+		{ OPERAND_INT, OPERAND_REG, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM, OPERAND_REG }
+	}
+};
+
 static const struct x86_isn isn_cmp = {
 	"cmp",
 	2,
@@ -952,8 +968,27 @@ static void x86_op(
 {
 	struct x86_isn opisn;
 
-	/* no instruction selection / register merging. just this for now */
-	mov(lhs, res, octx);
+	if(op == op_mul){
+		/* use the three-operand mode */
+		emit_isn_operand operands[3] = { 0 };
+
+		operands[0].val = lhs;
+		operands[1].val = rhs;
+		operands[2].val = res;
+
+		if(emit_isn_try(&isn_imul, octx, operands, 3, NULL)){
+			return;
+		}
+
+		/* try swapping lhs and rhs */
+		operands[0].val = rhs;
+		operands[1].val = lhs;
+		if(emit_isn_try(&isn_imul, octx, operands, 3, NULL)){
+			return;
+		}
+
+		/* else fall back to 2-operand mode */
+	}
 
 	opisn = isn_add;
 
@@ -969,6 +1004,9 @@ static void x86_op(
 		default:
 			assert(0 && "TODO: other ops");
 	}
+
+	/* no instruction selection / register merging. just this for now */
+	mov(lhs, res, octx);
 
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, "");
 }
