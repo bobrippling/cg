@@ -1065,21 +1065,39 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 {
 	const unsigned ptrsz = type_size(val_type(lhs));
+	const unsigned step = type_size(type_deref(val_type(lhs)));
 	type *rhs_ty = val_type(rhs);
+	type *intptr_ty = type_get_primitive(
+			unit_uniqtypes(octx->unit),
+			PTR_TY);
+
 	val ext_rhs;
 
-	if(rhs->kind != LITERAL && type_size(rhs_ty) != ptrsz){
+	if(type_size(rhs_ty) != ptrsz){
 		assert(type_size(rhs_ty) < ptrsz);
 
 		ext_rhs = *rhs;
+		ext_rhs.ty = intptr_ty;
 
-		ext_rhs.ty = type_get_primitive(
-				unit_uniqtypes(octx->unit),
-				PTR_TY);
-
-		x86_ext(rhs, &ext_rhs, octx);
+		if(rhs->kind != LITERAL){
+			x86_ext(rhs, &ext_rhs, octx);
+		}
 
 		rhs = &ext_rhs;
+	}
+
+	if(step != 1){
+		val multiplier;
+
+		assert(step > 0);
+
+		val_temporary_init(&multiplier, intptr_ty);
+		multiplier.kind = LITERAL;
+		multiplier.u.i = step;
+
+		x86_op(op_mul, &multiplier, rhs, out, octx);
+
+		rhs = out;
 	}
 
 	x86_op(op_add, lhs, rhs, out, octx);
