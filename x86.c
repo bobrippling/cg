@@ -504,6 +504,15 @@ static void temporary_x86_make_eax(val *out, type *ty)
 	make_reg(out, /* XXX: hard coded eax: */ 0, ty);
 }
 
+static void make_val_temporary_reg(val *valp, type *ty)
+{
+	val_temporary_init(valp, ty);
+
+	/* use scratch register */
+	valp->u.local.loc.where = NAME_IN_REG;
+	valp->u.local.loc.u.reg = SCRATCH_REG;
+}
+
 static void make_val_temporary_store(
 		val *from,
 		val *write_to,
@@ -1072,6 +1081,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 			PTR_TY);
 
 	val ext_rhs;
+	val reg;
 
 	if(type_size(rhs_ty) != ptrsz){
 		assert(type_size(rhs_ty) < ptrsz);
@@ -1095,9 +1105,10 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 		multiplier.kind = LITERAL;
 		multiplier.u.i = step;
 
-		x86_op(op_mul, &multiplier, rhs, out, octx);
+		make_val_temporary_reg(&reg, intptr_ty);
+		x86_op(op_mul, &multiplier, rhs, &reg, octx);
 
-		rhs = out;
+		rhs = &reg;
 	}
 
 	x86_op(op_add, lhs, rhs, out, octx);
