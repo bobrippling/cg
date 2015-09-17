@@ -1390,6 +1390,10 @@ static void x86_call(
 	x86_restoreregs(spilt, octx);
 }
 
+static void x86_ptr2int(val *from, val *to, x86_octx *octx)
+{
+}
+
 static void x86_out_block1(x86_octx *octx, block *blk)
 {
 	isn *head = block_first_isn(blk);
@@ -1453,6 +1457,11 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 
 			case ISN_EXT:
 				x86_ext(i->u.ext.from, i->u.ext.to, octx);
+				break;
+
+			case ISN_INT2PTR:
+			case ISN_PTR2INT:
+				x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
 				break;
 
 			case ISN_COPY:

@@ -19,6 +19,8 @@ struct isn
 		ISN_PTRADD,
 		ISN_COPY,
 		ISN_EXT,
+		ISN_PTR2INT,
+		ISN_INT2PTR,
 		ISN_BR,
 		ISN_JMP,
 		ISN_RET,
@@ -66,7 +68,7 @@ struct isn
 		struct
 		{
 			struct val *from, *to;
-		} copy, ext;
+		} copy, ext, ptr2int;
 
 		struct
 		{

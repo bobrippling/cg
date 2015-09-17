@@ -67,6 +67,11 @@ static void isn_free_1(isn *isn)
 			val_release(isn->u.ext.from);
 			val_release(isn->u.ext.to);
 			break;
+		case ISN_PTR2INT:
+		case ISN_INT2PTR:
+			val_release(isn->u.ptr2int.from);
+			val_release(isn->u.ptr2int.to);
+			break;
 		case ISN_RET:
 			val_release(isn->u.ret);
 			break;
@@ -118,6 +123,8 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_BR:     return "br";
 		case ISN_JMP:    return "jmp";
 		case ISN_CALL:   return "call";
+		case ISN_PTR2INT:return "ptr2int";
+		case ISN_INT2PTR:return "int2ptr";
 	}
 	return NULL;
 }
@@ -233,6 +240,43 @@ void isn_zext(block *blk, val *from, val *to)
 	isn = isn_new(ISN_EXT, blk);
 	isn->u.ext.from = from;
 	isn->u.ext.to = to;
+}
+
+static void isn_i2p_p2i(
+		block *blk,
+		struct val *from, struct val *to,
+		enum isn_type kind)
+{
+	isn *isn;
+
+	val_retain(from);
+	val_retain(to);
+
+	if(!blk){
+		val_release(from);
+		val_release(to);
+		return;
+	}
+
+	isn = isn_new(kind, blk);
+	isn->u.ptr2int.from = from;
+	isn->u.ptr2int.to = to;
+}
+
+void isn_ptr2int(block *blk, struct val *from, struct val *to)
+{
+	assert(type_deref(val_type(from)));
+	assert(type_is_int(val_type(to)));
+
+	isn_i2p_p2i(blk, from, to, ISN_PTR2INT);
+}
+
+void isn_int2ptr(block *blk, struct val *from, struct val *to)
+{
+	assert(type_is_int(val_type(from)));
+	assert(type_deref(val_type(to)));
+
+	isn_i2p_p2i(blk, from, to, ISN_INT2PTR);
 }
 
 void isn_elem(block *blk, val *lval, val *index, val *res)
@@ -473,6 +517,12 @@ static void isn_on_vals(
 			fn(current->u.ext.from, current, ctx);
 			break;
 
+		case ISN_PTR2INT:
+		case ISN_INT2PTR:
+			fn(current->u.ptr2int.to, current, ctx);
+			fn(current->u.ptr2int.from, current, ctx);
+			break;
+
 		case ISN_RET:
 			fn(current->u.ret, current, ctx);
 			break;
@@ -591,6 +641,17 @@ static void isn_dump1(isn *i)
 					val_str_rn(0, i->u.copy.to),
 					type_to_str(val_type(i->u.copy.to)),
 					val_str_rn(1, i->u.copy.from));
+			break;
+		}
+
+		case ISN_INT2PTR:
+		case ISN_PTR2INT:
+		{
+			printf("\t%s = %s %s, %s\n",
+					val_str_rn(0, i->u.ptr2int.to),
+					isn_type_to_str(i->type),
+					type_to_str(val_type(i->u.ptr2int.to)),
+					val_str_rn(1, i->u.ptr2int.from));
 			break;
 		}
 

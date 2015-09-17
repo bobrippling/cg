@@ -664,6 +664,31 @@ static void parse_ident(parse *p, char *spel)
 			}
 			break;
 		}
+
+		case tok_ptr2int:
+		case tok_int2ptr:
+		{
+			type *to = parse_type(p);
+			val *input;
+			val *vres;
+
+			if(tok == tok_ptr2int ? type_is_int(to) : !!type_deref(to)){
+				/* fine */
+			}else{
+				sema_error(p, "%s type expected for %s",
+						tok == tok_ptr2int ? "pointer" : "integer",
+						token_to_str(tok));
+			}
+
+			eat(p, "comma", tok_comma);
+
+			input = parse_val(p);
+
+			vres = uniq_val(p, spel, to, VAL_CREATE);
+
+			(tok == tok_ptr2int ? isn_ptr2int : isn_int2ptr)(p->entry, input, vres);
+			break;
+		}
 	}
 }
 

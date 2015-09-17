@@ -30,6 +30,8 @@
 	KW(alloca)          \
 	KW(elem)            \
 	KW(ptradd)          \
+	KW(ptr2int)         \
+	KW(int2ptr)         \
 	KW(ret)             \
 	KW(zext)            \
 	KW(br)              \
