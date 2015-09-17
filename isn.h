@@ -18,7 +18,7 @@ void isn_copy(block *, struct val *lval, struct val *rval);
 void isn_op(block *, enum op op, struct val *lhs, struct val *rhs, struct val *res);
 void isn_cmp(block *, enum op_cmp, struct val *lhs, struct val *rhs, struct val *res);
 
-void isn_zext(block *, struct val *, struct val *);
+void isn_zext(block *, struct val *from, struct val *to);
 
 void isn_br(block *, struct val *cond, block *btrue, block *bfalse);
 void isn_jmp(block *, block *);
