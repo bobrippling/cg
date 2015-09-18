@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <assert.h>
 #include <stdint.h>
 
@@ -351,6 +352,19 @@ static const char *x86_size_suffix(unsigned sz)
 		case 8: return "q";
 	}
 	assert(0);
+}
+
+static void comment(x86_octx *octx, const char *fmt, ...)
+{
+	va_list l;
+
+	fprintf(octx->fout, "\t# ");
+
+	va_start(l, fmt);
+	vfprintf(octx->fout, fmt, l);
+	va_end(l);
+
+	fprintf(octx->fout, "\n");
 }
 
 static void assert_deref(enum deref_type got, enum deref_type expected)
@@ -1050,7 +1064,7 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			to_shrunk.ty = type_get_primitive(unit_uniqtypes(octx->unit), i4);
 
 			assert(sz_to == 8);
-			fprintf(octx->fout, "\t# zext:\n");
+			comment(octx, "zext:");
 			mov(from, &to_shrunk, octx); /* movl a, b */
 			return;
 		}
@@ -1237,7 +1251,7 @@ static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
 				octx->alloca_bottom + spillctx->spill_alloca,
 				v->ty);
 
-		fprintf(octx->fout, "\t# spill '%s'\n", val_str(v));
+		comment(octx, "spill '%s'", val_str(v));
 
 		mov_deref(v, &stack_slot, octx, false, true);
 
@@ -1323,7 +1337,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 		unsigned off = dynmap_value(uintptr_t, regs, idx);
 		val stack_slot = { 0 };
 
-		fprintf(octx->fout, "\t# restore '%s'\n", val_str(v));
+		comment(octx, "restore '%s'", val_str(v));
 
 		make_stack_slot(&stack_slot, off, v->ty);
 
