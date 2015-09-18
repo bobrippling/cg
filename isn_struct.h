@@ -21,6 +21,7 @@ struct isn
 		ISN_EXT,
 		ISN_PTR2INT,
 		ISN_INT2PTR,
+		ISN_PTRCAST,
 		ISN_BR,
 		ISN_JMP,
 		ISN_RET,
@@ -68,7 +69,7 @@ struct isn
 		struct
 		{
 			struct val *from, *to;
-		} copy, ptr2int;
+		} copy, ptr2int, ptrcast;
 
 		struct
 		{

@@ -668,6 +668,7 @@ static void parse_ident(parse *p, char *spel)
 
 		case tok_ptr2int:
 		case tok_int2ptr:
+		case tok_ptrcast:
 		{
 			type *to = parse_type(p);
 			val *input;
@@ -677,7 +678,7 @@ static void parse_ident(parse *p, char *spel)
 				/* fine */
 			}else{
 				sema_error(p, "%s type expected for %s",
-						tok == tok_ptr2int ? "pointer" : "integer",
+						tok == tok_int2ptr ? "integer" : "pointer",
 						token_to_str(tok));
 			}
 
@@ -687,7 +688,14 @@ static void parse_ident(parse *p, char *spel)
 
 			vres = uniq_val(p, spel, to, VAL_CREATE);
 
-			(tok == tok_ptr2int ? isn_ptr2int : isn_int2ptr)(p->entry, input, vres);
+			if(tok == tok_ptr2int)
+				isn_ptr2int(p->entry, input, vres);
+			else if(tok == tok_int2ptr)
+				isn_int2ptr(p->entry, input, vres);
+			else if(tok == tok_ptrcast)
+				isn_ptrcast(p->entry, input, vres);
+			else
+				assert(0 && "unreachable");
 			break;
 		}
 	}

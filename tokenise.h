@@ -32,6 +32,7 @@
 	KW(ptradd)          \
 	KW(ptr2int)         \
 	KW(int2ptr)         \
+	KW(ptrcast)         \
 	KW(ret)             \
 	KW(zext) KW(sext)   \
 	KW(br)              \

@@ -72,6 +72,10 @@ static void isn_free_1(isn *isn)
 			val_release(isn->u.ptr2int.from);
 			val_release(isn->u.ptr2int.to);
 			break;
+		case ISN_PTRCAST:
+			val_release(isn->u.ptrcast.from);
+			val_release(isn->u.ptrcast.to);
+			break;
 		case ISN_RET:
 			val_release(isn->u.ret);
 			break;
@@ -125,6 +129,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_CALL:   return "call";
 		case ISN_PTR2INT:return "ptr2int";
 		case ISN_INT2PTR:return "int2ptr";
+		case ISN_PTRCAST:return "ptrcast";
 	}
 	return NULL;
 }
@@ -288,6 +293,14 @@ void isn_int2ptr(block *blk, struct val *from, struct val *to)
 	assert(type_deref(val_type(to)));
 
 	isn_i2p_p2i(blk, from, to, ISN_INT2PTR);
+}
+
+void isn_ptrcast(block *blk, struct val *from, struct val *to)
+{
+	assert(type_deref(val_type(from)));
+	assert(type_deref(val_type(to)));
+
+	isn_i2p_p2i(blk, from, to, ISN_PTRCAST);
 }
 
 void isn_elem(block *blk, val *lval, val *index, val *res)
@@ -534,6 +547,11 @@ static void isn_on_vals(
 			fn(current->u.ptr2int.from, current, ctx);
 			break;
 
+		case ISN_PTRCAST:
+			fn(current->u.ptrcast.to, current, ctx);
+			fn(current->u.ptrcast.from, current, ctx);
+			break;
+
 		case ISN_RET:
 			fn(current->u.ret, current, ctx);
 			break;
@@ -663,6 +681,15 @@ static void isn_dump1(isn *i)
 					isn_type_to_str(i->type),
 					type_to_str(val_type(i->u.ptr2int.to)),
 					val_str_rn(1, i->u.ptr2int.from));
+			break;
+		}
+
+		case ISN_PTRCAST:
+		{
+			printf("\t%s = ptrcast %s, %s\n",
+					val_str_rn(0, i->u.ptrcast.to),
+					type_to_str(val_type(i->u.ptrcast.to)),
+					val_str_rn(1, i->u.ptrcast.from));
 			break;
 		}
 

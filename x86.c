@@ -1429,6 +1429,16 @@ static void x86_ptr2int(val *from, val *to, x86_octx *octx)
 	}
 }
 
+static void x86_ptrcast(val *from, val *to, x86_octx *octx)
+{
+	type *ty_from = val_type(from), *ty_to = val_type(to);
+	unsigned sz_from = type_size(ty_from), sz_to = type_size(ty_to);
+
+	assert(sz_from == sz_to);
+
+	mov(from, to, octx);
+}
+
 static void x86_out_block1(x86_octx *octx, block *blk)
 {
 	isn *head = block_first_isn(blk);
@@ -1497,6 +1507,10 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 			case ISN_INT2PTR:
 			case ISN_PTR2INT:
 				x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
+				break;
+
+			case ISN_PTRCAST:
+				x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
 				break;
 
 			case ISN_COPY:
