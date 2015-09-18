@@ -1,0 +1,24 @@
+# test=harness 12
+
+$gbuf = [i4 x 10]
+
+$f = i4* (i4 $i)
+{
+	$first = elem $gbuf, i4 1
+
+	$y = ptradd $first, $i
+
+	ret $y
+}
+
+$test = i4()
+{
+		$inc = call $f(i4 2)
+
+		$gbuf_i = ptr2int i4, $gbuf
+		$inc_i  = ptr2int i4, $inc
+
+		$diff = sub $inc_i, $gbuf_i
+
+		ret $diff
+}
