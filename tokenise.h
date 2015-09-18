@@ -33,7 +33,7 @@
 	KW(ptr2int)         \
 	KW(int2ptr)         \
 	KW(ret)             \
-	KW(zext)            \
+	KW(zext) KW(sext)   \
 	KW(br)              \
 	KW(jmp)             \
 	KW(call)            \

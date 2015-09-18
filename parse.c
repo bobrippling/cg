@@ -589,6 +589,7 @@ static void parse_ident(parse *p, char *spel)
 		}
 
 		case tok_zext:
+		case tok_sext:
 		{
 			val *from;
 			val *vres;
@@ -597,21 +598,21 @@ static void parse_ident(parse *p, char *spel)
 			ty_to = parse_type(p);
 
 			if(!type_is_int(ty_to)){
-				sema_error(p, "zext requires integer type");
+				sema_error(p, "ext requires integer type");
 				ty_to = type_get_primitive(unit_uniqtypes(p->unit), iMAX);
 			}
 
-			eat(p, "zext", tok_comma);
+			eat(p, "ext", tok_comma);
 
 			from = parse_val(p);
 
 			if(!type_is_int(val_type(from))){
-				sema_error(p, "zext argument requires integer type");
+				sema_error(p, "ext argument requires integer type");
 			}
 
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
 
-			isn_zext(p->entry, from, vres);
+			(tok == tok_sext ? isn_sext : isn_zext)(p->entry, from, vres);
 			break;
 		}
 

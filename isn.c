@@ -221,7 +221,7 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 	isn->u.cmp.res = res;
 }
 
-void isn_zext(block *blk, val *from, val *to)
+static void isn_ext(block *blk, val *from, val *to, bool sign)
 {
 	isn *isn;
 
@@ -240,6 +240,17 @@ void isn_zext(block *blk, val *from, val *to)
 	isn = isn_new(ISN_EXT, blk);
 	isn->u.ext.from = from;
 	isn->u.ext.to = to;
+	isn->u.ext.sign = sign;
+}
+
+void isn_zext(block *blk, val *from, val *to)
+{
+	isn_ext(blk, from, to, false);
+}
+
+void isn_sext(block *blk, val *from, val *to)
+{
+	isn_ext(blk, from, to, true);
 }
 
 static void isn_i2p_p2i(

@@ -1036,11 +1036,12 @@ static void x86_op(
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, "");
 }
 
-static void x86_ext(val *from, val *to, x86_octx *octx)
+static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
-	char buf[4] = "z";
+	char buf[4] = { 0 };
+	buf[0] = (sign ? 's' : 'z');
 
 	assert(sz_to > sz_from);
 	buf[3] = '\0';
@@ -1056,7 +1057,9 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 		case 1: buf[1] = 'b'; break;
 		case 2: buf[1] = 'w'; break;
 		case 4:
-		{
+		if(sign){
+			buf[1] = 'l';
+		}else{
 			val to_shrunk;
 
 			to_shrunk = *to;
@@ -1068,6 +1071,7 @@ static void x86_ext(val *from, val *to, x86_octx *octx)
 			mov(from, &to_shrunk, octx); /* movl a, b */
 			return;
 		}
+		break;
 
 		default:
 			assert(0 && "bad extension");
@@ -1104,7 +1108,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 		ext_rhs.ty = intptr_ty;
 
 		if(rhs->kind != LITERAL){
-			x86_ext(rhs, &ext_rhs, octx);
+			x86_ext(rhs, &ext_rhs, /*sign:*/false, octx);
 		}
 
 		rhs = &ext_rhs;
@@ -1411,7 +1415,7 @@ static void x86_ptr2int(val *from, val *to, x86_octx *octx)
 	unsigned sz_from = type_size(ty_from), sz_to = type_size(ty_to);
 
 	if(sz_from < sz_to){
-		x86_ext(from, to, octx);
+		x86_ext(from, to, /*sign:*/false, octx);
 	}else if(sz_from > sz_to){
 		/* trunc */
 		val trunc = *from;
@@ -1487,7 +1491,7 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 				break;
 
 			case ISN_EXT:
-				x86_ext(i->u.ext.from, i->u.ext.to, octx);
+				x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
 				break;
 
 			case ISN_INT2PTR:

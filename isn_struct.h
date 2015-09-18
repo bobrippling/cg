@@ -68,7 +68,13 @@ struct isn
 		struct
 		{
 			struct val *from, *to;
-		} copy, ext, ptr2int;
+		} copy, ptr2int;
+
+		struct
+		{
+			struct val *from, *to;
+			bool sign;
+		} ext;
 
 		struct
 		{
