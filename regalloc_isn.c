@@ -16,6 +16,7 @@
 #include "function_struct.h"
 
 #define SHOW_REGALLOC 0
+#define SHOW_STACKALLOC 0
 
 struct greedy_ctx
 {
@@ -29,10 +30,39 @@ struct greedy_ctx
 
 static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 {
-	unsigned vsz = val_size(v);
+	unsigned size;
+	struct name_loc *loc;
 
-	ctx->spill_space += vsz;
-	assert(vsz && "unsized name val in regalloc");
+	switch(v->kind){
+		case FROM_ISN:
+			size = val_size(v);
+			break;
+		case ALLOCA:
+			size = type_size(type_deref(val_type(v)));
+			break;
+		default:
+			assert(0 && "trying to spill val that can't be spilt");
+			return;
+	}
+
+	loc = val_location(v);
+	assert(loc);
+
+	if(loc->where == NAME_SPILT)
+		return; /* already done */
+
+	loc->where = NAME_SPILT;
+
+	assert(size && "unsized name val in regalloc");
+
+	ctx->spill_space += size;
+
+	v->u.local.loc.u.off = ctx->spill_space;
+
+	if(SHOW_STACKALLOC){
+		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u\n",
+				val_str(v), type_to_str(val_type(v)), size, ctx->spill_space);
+	}
 }
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
@@ -94,10 +124,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->nregs){
 			/* no reg available */
-			regalloc_spill(v, ctx);
-
 			if(SHOW_REGALLOC)
 				fprintf(stderr, "regalloc(%s) => spill\n", val_str(v));
+
+			regalloc_spill(v, ctx);
 
 		}else{
 			ctx->in_use[i] = 1;
@@ -116,43 +146,6 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	{
 		ctx->in_use[val_locn->u.reg] = 0;
 	}
-}
-
-struct spill_ctx
-{
-	unsigned offset;
-	unsigned ptrsz;
-};
-
-static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
-{
-	struct spill_ctx *ctx = vctx;
-	unsigned size;
-	struct name_loc *loc;
-
-	(void)isn;
-
-	switch(v->kind){
-		case FROM_ISN:
-		case ALLOCA:
-			break;
-		default:
-			return;
-	}
-
-	loc = val_location(v);
-
-	if(loc->where != NAME_IN_REG || loc->u.reg != -1){
-		/* allocated already - either spilt or has a reg */
-		return;
-	}
-
-	size = val_size(v);
-
-	ctx->offset += size;
-
-	v->u.local.loc.where = NAME_SPILT;
-	v->u.local.loc.u.off = ctx->offset;
 }
 
 static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
@@ -250,7 +243,6 @@ static void regalloc_greedy(
 
 	/* any leftovers become elems in the regspill alloca block */
 	if(alloc_ctx.spill_space){
-		struct spill_ctx spill_ctx = { 0 };
 		type *spill_array_ty = type_get_ptr(
 				uniq_type_list,
 				type_get_array(
@@ -260,12 +252,7 @@ static void regalloc_greedy(
 
 		val *spill_array_val = val_new_temporary(spill_array_ty);
 
-		spill_ctx.ptrsz = alloc_ctx.ptrsz;
-
 		isn_alloca(blk, spill_array_val);
-
-		for(isn_iter = head; isn_iter; isn_iter = isn_iter->next)
-			isn_on_live_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);
 	}
 }
 
