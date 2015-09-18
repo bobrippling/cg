@@ -1406,6 +1406,23 @@ static void x86_call(
 
 static void x86_ptr2int(val *from, val *to, x86_octx *octx)
 {
+	/* if the type sizes are different we need to do a bit of wrangling */
+	type *ty_from = val_type(from), *ty_to = val_type(to);
+	unsigned sz_from = type_size(ty_from), sz_to = type_size(ty_to);
+
+	if(sz_from < sz_to){
+		x86_ext(from, to, octx);
+	}else if(sz_from > sz_to){
+		/* trunc */
+		val trunc = *from;
+
+		comment(octx, "truncate");
+		trunc.ty = ty_to;
+		mov(&trunc, to, octx);
+
+	}else{
+		mov(from, to, octx);
+	}
 }
 
 static void x86_out_block1(x86_octx *octx, block *blk)
