@@ -177,7 +177,8 @@ static const struct x86_isn isn_add = {
 		{ OPERAND_REG, OPERAND_REG },
 		{ OPERAND_REG, OPERAND_MEM },
 		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG }
+		{ OPERAND_INT, OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM }
 	}
 };
 
