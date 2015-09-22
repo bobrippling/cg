@@ -25,6 +25,7 @@
 #include "global_struct.h"
 
 #define OPERAND_SHOW_TYPE 0
+#define TEMPORARY_SHOW_MOVES 0
 
 struct x86_alloca_ctx
 {
@@ -497,6 +498,11 @@ loc:
 	return buf;
 }
 
+static const char *x86_val_str_debug(val *v, int bufidx, x86_octx *octx)
+{
+	return x86_val_str(v, bufidx, octx, val_type(v), DEREFERENCE_ANY);
+}
+
 static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
 	val_temporary_init(stack_slot, ty);
@@ -744,6 +750,8 @@ static bool emit_isn_try(
 
 	if(!is_exactmatch){
 		/* not satisfied - convert an operand to REG or MEM */
+		if(TEMPORARY_SHOW_MOVES)
+			comment(octx, "temp(s) needed for %s", isn->mnemonic);
 
 		for(j = 0; j < operand_count; j++){
 			/* ready the operands if they're inputs */
@@ -756,6 +764,14 @@ static bool emit_isn_try(
 						&operands[j].dereference, octx);
 
 				emit_vals[j] = &temporaries[j].val;
+
+				if(TEMPORARY_SHOW_MOVES){
+					comment(octx, "^ temporary for [%zu] input: %s -> %s type %s",
+							j,
+							x86_val_str_debug(operands[j].val, 0, octx),
+							x86_val_str_debug(emit_vals[j], 1, octx),
+							type_to_str(val_type(operands[j].val)));
+				}
 			}
 
 			/* ready the output operands */
@@ -768,6 +784,13 @@ static bool emit_isn_try(
 						&operands[j].dereference);
 
 				emit_vals[j] = &temporaries[j].val;
+
+				if(TEMPORARY_SHOW_MOVES){
+					comment(octx, "temporary for [%zu] output: %s -> %s",
+							j,
+							x86_val_str_debug(operands[j].val, 0, octx),
+							x86_val_str_debug(emit_vals[j], 1, octx));
+				}
 			}
 		}
 	}else{
