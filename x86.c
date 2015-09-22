@@ -1031,6 +1031,7 @@ static void x86_op(
 	}
 
 	/* no instruction selection / register merging. just this for now */
+	comment(octx, "pre-op mov:");
 	mov(lhs, res, octx);
 
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, "");
