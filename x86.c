@@ -553,8 +553,7 @@ static void make_val_temporary_store(
 	assert(to_cat != OPERAND_INT);
 
 	temporary_ty = from->ty;
-	/* this is safe - we never lea a global who needs a temporary store */
-	if(from->kind == GLOBAL)
+	if(from->kind == GLOBAL || from->kind == ALLOCA)
 		temporary_ty = type_deref(temporary_ty);
 
 	val_temporary_init(write_to, temporary_ty);
