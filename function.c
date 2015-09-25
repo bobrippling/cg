@@ -8,11 +8,11 @@
 #include "function_internal.h"
 #include "lbl.h"
 #include "block_internal.h"
-#include "regalloc_blk.h"
 #include "variable.h"
 #include "variable_struct.h"
 #include "function_struct.h"
 #include "isn_struct.h"
+#include "regalloc.h"
 
 static void function_add_block(function *, block *);
 
@@ -136,7 +136,7 @@ void function_finalize(function *f)
 	function_onblocks(f, block_finalize);
 
 	if(f->entry)
-		blk_lifecheck(f->entry);
+		block_lifecheck(f->entry);
 }
 
 void function_dump_args_and_block(function *f)
@@ -244,5 +244,5 @@ void func_regalloc(function *f, struct regalloc_context *ctx)
 
 	assign_argument_registers(f, &ctx->backend);
 
-	blk_regalloc(entry, ctx);
+	regalloc(entry, ctx);
 }

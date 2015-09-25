@@ -1,8 +1,9 @@
-#ifndef BLK_REG_H
-#define BLK_REG_H
+#ifndef ISN_REG_H
+#define ISN_REG_H
 
-#include "block.h"
 #include "backend_traits.h"
+
+struct block;
 
 struct regalloc_context
 {
@@ -11,8 +12,6 @@ struct regalloc_context
 	struct function *func;
 };
 
-void blk_regalloc(block *, struct regalloc_context *);
-
-void blk_lifecheck(block *);
+void regalloc(struct block *blk, struct regalloc_context *ctx);
 
 #endif

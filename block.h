@@ -26,4 +26,6 @@ dynmap *block_lifetime_map(block *);
 
 void block_dump(block *);
 
+void block_lifecheck(block *);
+
 #endif

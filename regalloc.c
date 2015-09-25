@@ -5,7 +5,7 @@
 #include "mem.h"
 #include "dynmap.h"
 
-#include "regalloc_isn.h"
+#include "regalloc.h"
 
 #include "isn_struct.h"
 #include "isn_internal.h"
@@ -14,6 +14,7 @@
 #include "val_internal.h"
 #include "lifetime_struct.h"
 #include "function_struct.h"
+#include "function.h"
 
 #define SHOW_REGALLOC 0
 #define SHOW_STACKALLOC 0
@@ -27,6 +28,7 @@ struct greedy_ctx
 	unsigned spill_space;
 	unsigned ptrsz;
 };
+
 
 static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 {
@@ -266,10 +268,22 @@ static void simple_regalloc(
 	regalloc_greedy(blk, func, head, uniq_type_list, backend);
 }
 
-void isn_regalloc(
+static void isn_regalloc(
 		block *blk, function *func,
 		uniq_type_list *uniq_type_list,
 		const struct backend_traits *backend)
 {
 	simple_regalloc(blk, func, uniq_type_list, backend);
+}
+
+static void blk_regalloc_pass(block *blk, void *vctx)
+{
+	const struct regalloc_context *ctx = vctx;
+
+	isn_regalloc(blk, ctx->func, ctx->uniq_type_list, &ctx->backend);
+}
+
+void regalloc(block *blk, struct regalloc_context *ctx)
+{
+	blocks_traverse(blk, blk_regalloc_pass, ctx);
 }

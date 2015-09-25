@@ -80,12 +80,12 @@ struct isn
 		struct
 		{
 			struct val *cond;
-			block *t, *f;
+			struct block *t, *f;
 		} branch;
 
 		struct
 		{
-			block *target;
+			struct block *target;
 		} jmp;
 
 		struct

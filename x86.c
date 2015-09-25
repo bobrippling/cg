@@ -15,7 +15,6 @@
 #include "isn_internal.h"
 #include "isn_struct.h"
 #include "val_struct.h"
-#include "regalloc_blk.h"
 #include "block_struct.h"
 #include "function_struct.h"
 #include "variable_struct.h"
@@ -23,6 +22,7 @@
 #include "unit_internal.h"
 #include "val_internal.h" /* val_location() */
 #include "global_struct.h"
+#include "regalloc.h"
 
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 0
