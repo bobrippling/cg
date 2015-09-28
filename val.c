@@ -89,6 +89,13 @@ bool val_is_int(val *v, size_t *const out)
 	return true;
 }
 
+bool val_is_volatile(val *v)
+{
+	struct name_loc *loc = val_location(v);
+
+	return loc && loc->where == NAME_IN_REG;
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;

@@ -1220,6 +1220,9 @@ static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 	if(dynmap_exists(val *, ctx->dontspill, v))
 		return;
 
+	if(!val_is_volatile(v))
+		return;
+
 	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
 	if(!lt)
 		lt = &lt_inf;

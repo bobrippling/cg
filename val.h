@@ -45,5 +45,6 @@ unsigned val_hash(val *);
 
 bool val_is_mem(val *);
 bool val_is_int(val *, size_t *);
+bool val_is_volatile(val *); /* e.g. reg */
 
 #endif
