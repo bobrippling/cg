@@ -223,6 +223,27 @@ static void check_val_life_isn(val *v, isn *isn, void *vctx)
 	if(v->live_across_blocks)
 		return; /* already confirmed */
 
+	/* if it's an argument, and used
+	 * (which it is, as we're in a on_live_vals() call),
+	 * then we mark it as inter-block, as:
+	 * $f = i4(i4 $arg){
+	 *    ...
+	 *    br $cond, $a, $b
+	 * $b:
+	 *    call $somewhere()
+	 *    ret $arg
+	 *    ...
+	 * }
+	 *
+	 * even though $arg is only used in one block,
+	 * it must live through potentially the $a block
+	 * in order to be valid upon arrival in $b.
+	 */
+	if(v->kind == ARGUMENT){
+		v->live_across_blocks = true;
+		return;
+	}
+
 	val_block = dynmap_get(val *, block *, ctx->values_to_block, v);
 	if(val_block){
 		/* value is alive in 'val_block' - if it's not the same as

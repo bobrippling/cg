@@ -28,3 +28,8 @@ $something = i4()
 }
 
 $a and $b need to be spilt so should be allocated on stack
+
+3) If a value is an argument, try not to set live_across_blocks for it.
+For example, if it's live in only the first block, it doesn't need to persist.
+Otherwise it does as it must survive all other blocks to make it to the block
+where it is used.
