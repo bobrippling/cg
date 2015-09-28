@@ -790,14 +790,17 @@ void isn_dump(isn *const head, block *blk)
 					block_lifetime_map(blk),
 					v);
 
-			assert(lt && "val doesn't have a lifetime");
-
-			printf("[-] %s: %u - %u. inter-block = %d\n",
-					val_str(v),
-					lt->start,
-					lt->end,
-					v->live_across_blocks
-					);
+			if(lt){
+				printf("[-] %s: %u - %u. inter-block = %d\n",
+						val_str(v),
+						lt->start,
+						lt->end,
+						v->live_across_blocks
+						);
+			}else{
+				printf("[-] %s: no-ltime inter-block = %d\n",
+						val_str(v), v->live_across_blocks);
+			}
 		}
 
 		dynmap_free(vals);
