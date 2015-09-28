@@ -1216,6 +1216,7 @@ static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 {
 	const struct lifetime lt_inf = LIFETIME_INIT_INF;
 	const struct lifetime *lt;
+	bool spill = false;
 
 	if(dynmap_exists(val *, ctx->dontspill, v))
 		return;
@@ -1227,10 +1228,14 @@ static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 	if(!lt)
 		lt = &lt_inf;
 
+	if(v->live_across_blocks)
+		spill = true;
+
 	/* don't spill if the value ends on the isn */
-	if(lt->start <= ctx->call_isn_idx
-	&& lt->end > ctx->call_isn_idx)
-	{
+	if(lt->start <= ctx->call_isn_idx && ctx->call_isn_idx < lt->end)
+		spill = true;
+
+	if(spill){
 		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
 	}
 }
