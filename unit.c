@@ -86,16 +86,19 @@ void unit_on_globals(unit *u, global_emit_func *fn)
 
 static void unit_add_global(unit *u, void *global, int is_fn)
 {
+	struct global *g;
+
 	u->nglobals++;
 	u->globals = xrealloc(u->globals, u->nglobals * sizeof *u->globals);
 
-	u->globals[u->nglobals - 1] = xmalloc(sizeof *u->globals[u->nglobals]);
+	g = xmalloc(sizeof *g);
+	u->globals[u->nglobals - 1] = g;
 
-	u->globals[u->nglobals - 1]->is_fn = is_fn;
+	g->is_fn = is_fn;
 	if(is_fn)
-		u->globals[u->nglobals - 1]->u.fn = global;
+		g->u.fn = global;
 	else
-		u->globals[u->nglobals - 1]->u.var = global;
+		g->u.var = global;
 }
 
 function *unit_function_new(
