@@ -64,7 +64,16 @@ static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 
 	*ctx->spill_space += size;
 
-	v->u.local.loc.u.off = *ctx->spill_space;
+	switch(v->kind){
+		case FROM_ISN:
+			v->u.local.loc.u.off = *ctx->spill_space;
+			break;
+		case ALLOCA:
+			v->u.alloca.loc.u.off = *ctx->spill_space;
+			break;
+		default:
+			assert(0 && "unreachable");
+	}
 
 	if(SHOW_STACKALLOC){
 		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u\n",
