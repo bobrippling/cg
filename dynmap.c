@@ -234,6 +234,18 @@ void *dynmap_nochk_rm(dynmap *map, void *key)
 	return value;
 }
 
+int dynmap_is_empty(dynmap *map)
+{
+	int i;
+	for(i = 0; i < HASH_TBL_CNT; i++){
+		const struct pair *p = &map->pairs[i];
+		if(p->key)
+			return 0;
+	}
+
+	return 1;
+}
+
 void dynmap_dump(dynmap *map)
 {
 	int i;

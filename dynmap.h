@@ -23,6 +23,8 @@ void *dynmap_nochk_value(dynmap *map, int i);
 
 void *dynmap_nochk_rm(dynmap *, void *key);
 
+int dynmap_is_empty(dynmap *);
+
 void dynmap_dump(dynmap *);
 
 /* handy */
