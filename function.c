@@ -238,11 +238,11 @@ static void assign_argument_registers(
 	}
 }
 
-void func_regalloc(function *f, struct regalloc_context *ctx)
+void func_regalloc(function *f, struct regalloc_info *info)
 {
 	block *const entry = function_entry_block(f, false);
 
-	assign_argument_registers(f, &ctx->backend);
+	assign_argument_registers(f, &info->backend);
 
-	regalloc(entry, ctx);
+	regalloc(entry, info);
 }

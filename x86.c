@@ -1653,20 +1653,20 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
 
-static void x86_init_regalloc_context(
-		struct regalloc_context *ctx,
+static void x86_init_regalloc_info(
+		struct regalloc_info *info,
 		function *func,
 		uniq_type_list *uniq_type_list)
 {
-	ctx->backend.nregs = countof(regs);
-	ctx->backend.scratch_reg = SCRATCH_REG;
-	ctx->backend.ptrsz = PTR_SZ;
-	ctx->backend.callee_save = callee_saves;
-	ctx->backend.callee_save_cnt = countof(callee_saves);
-	ctx->backend.arg_regs = arg_regs;
-	ctx->backend.arg_regs_cnt = countof(arg_regs);
-	ctx->func = func;
-	ctx->uniq_type_list = uniq_type_list;
+	info->backend.nregs = countof(regs);
+	info->backend.scratch_reg = SCRATCH_REG;
+	info->backend.ptrsz = PTR_SZ;
+	info->backend.callee_save = callee_saves;
+	info->backend.callee_save_cnt = countof(callee_saves);
+	info->backend.arg_regs = arg_regs;
+	info->backend.arg_regs_cnt = countof(arg_regs);
+	info->func = func;
+	info->uniq_type_list = uniq_type_list;
 }
 
 static void x86_out_fn(unit *unit, function *func)
@@ -1675,7 +1675,7 @@ static void x86_out_fn(unit *unit, function *func)
 	struct x86_out_ctx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
-	struct regalloc_context regalloc;
+	struct regalloc_info regalloc;
 
 	out_ctx.unit = unit;
 
@@ -1686,7 +1686,7 @@ static void x86_out_fn(unit *unit, function *func)
 	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
 
 	/* regalloc */
-	x86_init_regalloc_context(&regalloc, func, unit_uniqtypes(unit));
+	x86_init_regalloc_info(&regalloc, func, unit_uniqtypes(unit));
 	func_regalloc(func, &regalloc);
 
 	/* gather allocas - must be after regalloc */

@@ -5,13 +5,13 @@
 
 struct block;
 
-struct regalloc_context
+struct regalloc_info
 {
 	struct backend_traits backend;
 	struct uniq_type_list *uniq_type_list;
 	struct function *func;
 };
 
-void regalloc(struct block *blk, struct regalloc_context *ctx);
+void regalloc(struct block *, struct regalloc_info *);
 
 #endif

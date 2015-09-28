@@ -5,8 +5,6 @@
 #include "block.h"
 #include "variable.h"
 
-struct regalloc_context;
-
 typedef struct function function;
 
 void function_free(function *);
@@ -37,6 +35,7 @@ struct dynarray *function_arg_names(function *);
 struct name_loc *function_arg_loc(function *, size_t idx);
 size_t function_arg_count(function *);
 
-void func_regalloc(function *f, struct regalloc_context *ctx);
+struct regalloc_info;
+void func_regalloc(function *f, struct regalloc_info *);
 
 #endif
