@@ -95,12 +95,12 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		case ALLOCA:
 			if(isn->type == ISN_ALLOCA){
-				regalloc_spill(v, ctx);
-
 				if(SHOW_REGALLOC){
 					fprintf(stderr, "regalloc(%s) => spill [because of alloca]\n",
 							val_str(v));
 				}
+
+				regalloc_spill(v, ctx);
 			}else{
 				/* use of alloca in non-alloca isn, leave it for now */
 			}
