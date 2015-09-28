@@ -89,14 +89,6 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	/* if it lives across blocks we must use memory */
-	if(v->live_across_blocks){
-		/* optimisation - ensure the value is in the same register for all blocks
-		 * mem2reg or something similar should do this */
-		regalloc_spill(v, ctx);
-		return;
-	}
-
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
@@ -126,6 +118,14 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		case BACKEND_TEMP:
 			assert(0 && "shouldn't have temps here");
+	}
+
+	/* if it lives across blocks we must use memory */
+	if(v->live_across_blocks){
+		/* optimisation - ensure the value is in the same register for all blocks
+		 * mem2reg or something similar should do this */
+		regalloc_spill(v, ctx);
+		return;
 	}
 
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
