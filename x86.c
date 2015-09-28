@@ -1319,10 +1319,13 @@ static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
 	 * we only spill arguments that are actually used, for the moment,
 	 * that's any argument used at all, regardless of blocks
 	 */
+	dynmap *markers = BLOCK_DYNMAP_NEW();
 	block *blk = function_entry_block(func, false);
 	assert(blk);
 
-	blocks_traverse(blk, find_args_in_block, spillctx);
+	blocks_traverse(blk, find_args_in_block, spillctx, markers);
+
+	dynmap_free(markers);
 }
 
 static dynmap *x86_spillregs(
@@ -1463,8 +1466,9 @@ static void x86_ptrcast(val *from, val *to, x86_octx *octx)
 	mov(from, to, octx);
 }
 
-static void x86_out_block1(x86_octx *octx, block *blk)
+static void x86_out_block1(block *blk, void *vctx)
 {
+	x86_octx *const octx = vctx;
 	isn *head = block_first_isn(blk);
 	isn *i;
 	unsigned idx;
@@ -1572,31 +1576,6 @@ static void x86_out_block1(x86_octx *octx, block *blk)
 	}
 }
 
-static void x86_out_block(block *const blk, x86_octx *octx)
-{
-	bool *const flag = block_flag(blk);
-
-	if(*flag)
-		return;
-	*flag = true;
-
-	x86_out_block1(octx, blk);
-	switch(blk->type){
-		case BLK_UNKNOWN:
-			assert(0 && "unknown block type");
-		case BLK_ENTRY:
-		case BLK_EXIT:
-			break;
-		case BLK_BRANCH:
-			x86_out_block(blk->u.branch.t, octx);
-			x86_out_block(blk->u.branch.f, octx);
-			break;
-		case BLK_JMP:
-			x86_out_block(blk->u.jmp.target, octx);
-			break;
-	}
-}
-
 static void x86_sum_alloca(block *blk, void *vctx)
 {
 	struct x86_alloca_ctx *const ctx = vctx;
@@ -1676,6 +1655,7 @@ static void x86_out_fn(unit *unit, function *func)
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
 	struct regalloc_info regalloc;
+	dynmap *markers = BLOCK_DYNMAP_NEW();
 
 	out_ctx.unit = unit;
 
@@ -1690,7 +1670,7 @@ static void x86_out_fn(unit *unit, function *func)
 	func_regalloc(func, &regalloc);
 
 	/* gather allocas - must be after regalloc */
-	blocks_traverse(entry, x86_sum_alloca, &alloca_ctx);
+	blocks_traverse(entry, x86_sum_alloca, &alloca_ctx, markers);
 
 	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
@@ -1699,7 +1679,7 @@ static void x86_out_fn(unit *unit, function *func)
 	/* start at the bottom of allocas */
 	out_ctx.alloca_bottom = alloca_ctx.alloca;
 
-	x86_out_block(entry, &out_ctx);
+	blocks_traverse(entry, x86_out_block1, &out_ctx, markers);
 	x86_emit_epilogue(&out_ctx, exit);
 
 	dynmap_free(alloca_ctx.alloca2stack);
@@ -1715,7 +1695,7 @@ static void x86_out_fn(unit *unit, function *func)
 
 	fclose(out_ctx.fout);
 
-	blocks_clear_flags(entry);
+	dynmap_free(markers);
 }
 
 static void x86_out_var(variable *var)

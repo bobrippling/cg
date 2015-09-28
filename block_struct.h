@@ -24,7 +24,7 @@ struct block
 		BLK_JMP
 	} type;
 
-	bool flag_user, flag_iter;
+	bool flag_iter;
 
 	union
 	{

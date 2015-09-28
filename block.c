@@ -103,18 +103,23 @@ void block_set_type(block *blk, enum block_type type)
 	blk->type = type;
 }
 
-bool *block_flag(block *blk)
-{
-	return &blk->flag_user;
-}
-
-void blocks_traverse(block *blk, void fn(block *, void *), void *ctx)
+static void blocks_traverse_r(
+		block *blk,
+		void fn(block *, void *),
+		void *ctx,
+		dynmap *markers)
 {
 	bool *const flag = &blk->flag_iter;
 
-	if(*flag)
-		return;
-	*flag = true;
+	if(markers){
+		if(dynmap_get(block *, int, markers, blk))
+			return;
+		dynmap_set(block *, int, markers, blk, 1);
+	}else{
+		if(*flag)
+			return;
+		*flag = true;
+	}
 
 	fn(blk, ctx);
 
@@ -125,26 +130,29 @@ void blocks_traverse(block *blk, void fn(block *, void *), void *ctx)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			blocks_traverse(blk->u.branch.t, fn, ctx);
-			blocks_traverse(blk->u.branch.f, fn, ctx);
+			blocks_traverse_r(blk->u.branch.t, fn, ctx, markers);
+			blocks_traverse_r(blk->u.branch.f, fn, ctx, markers);
 			break;
 		case BLK_JMP:
-			blocks_traverse(blk->u.jmp.target, fn, ctx);
+			blocks_traverse_r(blk->u.jmp.target, fn, ctx, markers);
 			break;
 	}
 
-	*flag = false;
+	if(markers)
+		dynmap_rm(block *, int, markers, blk);
+	else
+		*flag = false;
 }
 
-static void clear_flag(block *blk, void *ctx)
+void blocks_traverse(
+		block *blk,
+		void fn(block *, void *),
+		void *ctx,
+		dynmap *markers)
 {
-	(void)ctx;
-	blk->flag_user = false;
-}
-
-void blocks_clear_flags(block *blk)
-{
-	blocks_traverse(blk, clear_flag, NULL);
+	assert(!markers || dynmap_is_empty(markers));
+	blocks_traverse_r(blk, fn, ctx, markers);
+	assert(!markers || dynmap_is_empty(markers));
 }
 
 struct lifetime_assign_ctx
@@ -249,9 +257,14 @@ void block_lifecheck(block *blk)
 	/* find out which values live outside their block */
 	dynmap *values_to_block = dynmap_new(val *, NULL, val_hash);
 
-	blocks_traverse(blk, check_val_life_block, values_to_block);
+	blocks_traverse(blk, check_val_life_block, values_to_block, NULL);
 
 	dynmap_free(values_to_block);
+}
+
+unsigned block_hash(block *b)
+{
+	return (b->lbl ? dynmap_strhash(b->lbl) : 0) ^ (unsigned)b;
 }
 
 static void block_dump1(block *blk)

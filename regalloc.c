@@ -288,8 +288,11 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 void regalloc(block *blk, struct regalloc_info *info)
 {
 	struct regalloc_ctx ctx = { 0 };
+	dynmap *alloc_markers = BLOCK_DYNMAP_NEW();
 
 	ctx.info = info;
 
-	blocks_traverse(blk, blk_regalloc_pass, &ctx);
+	blocks_traverse(blk, blk_regalloc_pass, &ctx, alloc_markers);
+
+	dynmap_free(alloc_markers);
 }
