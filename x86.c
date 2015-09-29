@@ -1436,25 +1436,10 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	dynmap_free(regs);
 }
 
-static void x86_call(
-		block *blk, unsigned isn_idx,
-		val *into_or_null, val *fn,
-		dynarray *args,
-		x86_octx *octx)
+static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 {
-	val *except[3];
-	dynmap *spilt;
 	size_t i;
 
-	except[0] = fn;
-	except[1] = into_or_null;
-	except[2] = NULL;
-
-	octx->max_align = 16; /* ensure 16-byte alignment for calls */
-
-	spilt = x86_spillregs(blk, except, isn_idx, octx);
-
-	/* all regs spilt, can now shift arguments into arg regs */
 	dynarray_iter(args, i){
 		val *arg = dynarray_ent(args, i);
 
@@ -1469,6 +1454,27 @@ static void x86_call(
 			assert(0 && "TODO: stack args");
 		}
 	}
+}
+
+static void x86_call(
+		block *blk, unsigned isn_idx,
+		val *into_or_null, val *fn,
+		dynarray *args,
+		x86_octx *octx)
+{
+	val *except[3];
+	dynmap *spilt;
+
+	except[0] = fn;
+	except[1] = into_or_null;
+	except[2] = NULL;
+
+	octx->max_align = 16; /* ensure 16-byte alignment for calls */
+
+	spilt = x86_spillregs(blk, except, isn_idx, octx);
+
+	/* all regs spilt, can now shift arguments into arg regs */
+	x86_call_assign_arg_regs(args, octx);
 
 	if(fn->kind == GLOBAL){
 		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));
