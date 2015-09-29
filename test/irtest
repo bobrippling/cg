@@ -67,6 +67,22 @@ case "$type" in
 			[ $ec -eq $rest ]
 		)
 		;;
+	exec)
+		"$ir" $opt "$f" > "$f".s
+		cc -o "$f".e "$f".s
+
+		expected="$(echo "$rest" | cut -d' ' -f1)"
+		args="$(echo "$rest" | cut -d' ' -f2-)"
+
+		set +e
+		./"$f".e $args
+		ec=$?
+		set -e
+
+		rm -f "$f".s "$f".e
+
+		test $ec -eq $expected
+		;;
 	sh)
 		export f
 		sh <<-!

@@ -1066,7 +1066,7 @@ static void x86_op(
 	comment(octx, "pre-op mov:");
 	mov(lhs, res, octx);
 
-	emit_isn_binary(&opisn, octx, rhs, false, res, false, "");
+	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
 
 static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)

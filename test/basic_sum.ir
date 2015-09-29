@@ -1,0 +1,42 @@
+# test=exec 6 1 2 3
+
+$sum = i4(i4 $a, i4 $b)
+{
+	$added = add $a, $b
+	ret $added
+}
+
+$_atoi = i4(i8*)
+
+$_main = i4(i4 $argc, i8** $argv)
+{
+	$i = alloca i4
+	store $i, i4 1
+
+	$tot = alloca i4
+	store $tot, i4 0
+
+$begin:
+	$i_loaded_1 = load $i
+	$argv_p = ptradd $argv, $i_loaded_1
+	$arg = load $argv_p
+
+	$num = call $_atoi($arg)
+
+	$itot = load $tot
+
+	$sum_result = call $sum($num, $itot)
+
+	store $tot, $sum_result
+
+	$preinc = load $i
+	$postinc = add $preinc, i4 1
+	store $i, $postinc
+
+	$done = eq $postinc, $argc
+	br $done, $fin, $begin
+
+$fin:
+	$totl = load $tot
+	ret $totl
+}
