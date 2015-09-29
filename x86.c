@@ -1074,6 +1074,13 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
 	char buf[4] = { 0 };
+	struct name_loc *from_loc = val_location(from);
+	struct name_loc *to_loc = val_location(to);
+
+	/* zext requires something in a reg */
+	assert(from_loc && from_loc->where == NAME_IN_REG
+			&& to_loc && to_loc->where == NAME_IN_REG);
+
 	buf[0] = (sign ? 's' : 'z');
 
 	assert(sz_to > sz_from);
@@ -1135,12 +1142,46 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	val reg;
 
 	if(type_size(rhs_ty) != ptrsz){
+		bool need_temp_reg = false;
+		val ext_from_temp;
+
 		assert(type_size(rhs_ty) < ptrsz);
 
-		ext_rhs = *rhs;
-		ext_rhs.ty = intptr_ty;
+		switch(rhs->kind){
+			case LITERAL:
+				/* fine */
+				break;
+			case GLOBAL:
+				need_temp_reg = true;
+				break;
+			case ARGUMENT:
+			case FROM_ISN:
+			case ALLOCA:
+			case BACKEND_TEMP:
+			{
+				struct name_loc *loc = val_location(rhs);
+				need_temp_reg = (!loc || loc->where == NAME_SPILT);
+				break;
+			}
+		}
 
-		if(rhs->kind != LITERAL){
+		if(need_temp_reg){
+			/* use scratch for the ext */
+			make_reg(&ext_rhs, SCRATCH_REG, val_type(lhs));
+
+			/* smaller scratch */
+			ext_from_temp = ext_rhs;
+			ext_from_temp.ty = rhs_ty;
+
+			/* populate smaller scratch */
+			mov(rhs, &ext_from_temp, octx);
+
+			/* extend to bigger scratch */
+			x86_ext(&ext_from_temp, &ext_rhs, /*sign:*/false, octx);
+
+		}else{
+			ext_rhs = *rhs;
+			ext_rhs.ty = intptr_ty;
 			x86_ext(rhs, &ext_rhs, /*sign:*/false, octx);
 		}
 
