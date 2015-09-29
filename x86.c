@@ -1712,6 +1712,11 @@ static void x86_init_regalloc_info(
 	info->uniq_type_list = uniq_type_list;
 }
 
+static long x86_alloca_total(x86_octx *octx)
+{
+	return octx->alloca_bottom + octx->spill_alloca_max;
+}
+
 static void x86_out_fn(unit *unit, function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
@@ -1751,7 +1756,7 @@ static void x86_out_fn(unit *unit, function *func)
 	/* now we spit out the prologue first */
 	x86_emit_prologue(
 			func,
-			out_ctx.alloca_bottom + out_ctx.spill_alloca_max,
+			x86_alloca_total(&out_ctx),
 			out_ctx.max_align);
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
