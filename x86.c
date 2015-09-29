@@ -880,14 +880,15 @@ static bool must_lea_val(val *v)
 	return false;
 }
 
-static void mov_deref(
+static void mov_deref_force(
 		val *from, val *to,
 		x86_octx *octx,
-		bool deref_from, bool deref_to)
+		bool deref_from, bool deref_to,
+		bool const force)
 {
 	const struct x86_isn *chosen_isn = &isn_mov;
 
-	if(!deref_from && !deref_to){
+	if(!force && !deref_from && !deref_to){
 		struct name_loc *loc_from, *loc_to;
 
 		loc_from = val_location(from);
@@ -912,6 +913,14 @@ static void mov_deref(
 			from, deref_from,
 			to, deref_to,
 			NULL);
+}
+
+static void mov_deref(
+		val *from, val *to,
+		x86_octx *octx,
+		bool deref_from, bool deref_to)
+{
+	mov_deref_force(from, to, octx, deref_from, deref_to, 0);
 }
 
 static void mov(val *from, val *to, x86_octx *octx)
@@ -1092,7 +1101,7 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 
 			assert(sz_to == 8);
 			comment(octx, "zext:");
-			mov(from, &to_shrunk, octx); /* movl a, b */
+			mov_deref_force(from, &to_shrunk, octx, false, false, /*force:*/true);
 			return;
 		}
 		break;
