@@ -11,6 +11,7 @@
 #include "dynmap.h"
 
 #include "x86.h"
+#include "x86_internal.h"
 
 #include "isn_internal.h"
 #include "isn_struct.h"
@@ -24,6 +25,9 @@
 #include "global_struct.h"
 #include "regalloc.h"
 
+#include "x86_call.h"
+#include "x86_isns.h"
+
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 0
 
@@ -31,28 +35,6 @@ struct x86_alloca_ctx
 {
 	dynmap *alloca2stack;
 	long alloca;
-};
-
-typedef struct x86_out_ctx
-{
-	dynmap *alloca2stack;
-	block *exitblk;
-	function *func;
-	unit *unit;
-	FILE *fout;
-	long alloca_bottom; /* max of ALLOCA instructions */
-	unsigned long spill_alloca_max; /* max of spill space */
-	unsigned max_align;
-} x86_octx;
-
-struct x86_spill_ctx
-{
-	dynmap *alloca2stack;
-	dynmap *dontspill;
-	dynmap *spill;
-	block *blk;
-	unsigned long spill_alloca;
-	unsigned call_isn_idx;
 };
 
 static const char *const regs[][4] = {
@@ -72,208 +54,12 @@ static const int callee_saves[] = {
 	1 /* ebx */
 };
 
-static const int arg_regs[] = {
-	4,
-	5,
-	3,
-	2,
-	/* TODO: r8, r9 */
-};
-
 enum deref_type
 {
 	DEREFERENCE_FALSE, /* match 0 for false */
 	DEREFERENCE_TRUE,  /* match 1 for true */
 	DEREFERENCE_ANY    /* for debugging - don't crash */
 };
-
-typedef enum operand_category
-{
-	/* 0 means no entry / end of entries */
-	OPERAND_REG = 1,
-	OPERAND_MEM,
-	OPERAND_INT
-} operand_category;
-
-#define MAX_OPERANDS 3
-#define MAX_ISN_COMBOS 6
-
-struct x86_isn
-{
-	const char *mnemonic;
-
-	unsigned arg_count;
-	bool may_suffix;
-
-	enum {
-		OPERAND_INPUT = 1 << 0,
-		OPERAND_OUTPUT = 1 << 1,
-		OPERAND_LEA = 1 << 2
-	} arg_ios[MAX_OPERANDS];
-
-	struct x86_isn_constraint
-	{
-		operand_category category[MAX_OPERANDS];
-	} constraints[MAX_ISN_COMBOS];
-};
-
-static const struct x86_isn isn_mov = {
-	"mov",
-	2,
-	true,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT | OPERAND_OUTPUT,
-		0
-	},
-	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_INT },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM }
-	}
-};
-
-static const struct x86_isn isn_lea = {
-	"lea",
-	2,
-	false,
-	{
-		OPERAND_INPUT | OPERAND_LEA,
-		OPERAND_OUTPUT,
-		0
-	},
-	{
-		{ OPERAND_MEM, OPERAND_REG },
-	}
-};
-
-static const struct x86_isn isn_movzx = {
-	"mov",
-	2,
-	false,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT | OPERAND_OUTPUT,
-		0
-	},
-	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-	}
-};
-
-static const struct x86_isn isn_add = {
-	"add",
-	2,
-	true,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT | OPERAND_OUTPUT,
-		0
-	},
-	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM }
-	}
-};
-
-static const struct x86_isn isn_imul = {
-	"imul",
-	3,
-	true,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT,
-		OPERAND_OUTPUT
-	},
-	{
-		/* imul{bwl} imm[16|32], r/m[16|32], reg[16|32] */
-		{ OPERAND_INT, OPERAND_REG, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM, OPERAND_REG }
-	}
-};
-
-static const struct x86_isn isn_cmp = {
-	"cmp",
-	2,
-	true,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT,
-		0
-	},
-	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM },
-	}
-};
-
-static const struct x86_isn isn_test = {
-	"test",
-	2,
-	true,
-	{
-		OPERAND_INPUT,
-		OPERAND_INPUT,
-		0
-	},
-	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM },
-	}
-};
-
-static const struct x86_isn isn_call = {
-	"call",
-	1,
-	false,
-	{
-		OPERAND_INPUT,
-		0,
-		0
-	},
-	{
-		{ OPERAND_REG },
-		{ OPERAND_MEM },
-	}
-};
-
-static const struct x86_isn isn_set = {
-	"set",
-	1,
-	false,
-	{
-		OPERAND_OUTPUT,
-		0,
-		0
-	},
-	{
-		{ OPERAND_REG },
-		{ OPERAND_MEM }, /* 1-byte */
-	}
-};
-
-typedef struct emit_isn_operand {
-	val *val;
-	bool dereference;
-} emit_isn_operand;
-
-static void mov_deref(
-		val *from, val *to,
-		x86_octx *,
-		bool deref_from, bool deref_to);
 
 
 static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx);
@@ -356,7 +142,7 @@ static const char *x86_size_suffix(unsigned sz)
 	assert(0);
 }
 
-static void comment(x86_octx *octx, const char *fmt, ...)
+void x86_comment(x86_octx *octx, const char *fmt, ...)
 {
 	va_list l;
 
@@ -503,7 +289,7 @@ static const char *x86_val_str_debug(val *v, int bufidx, x86_octx *octx)
 	return x86_val_str(v, bufidx, octx, val_type(v), DEREFERENCE_ANY);
 }
 
-static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
+void x86_make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
 	val_temporary_init(stack_slot, ty);
 
@@ -511,8 +297,7 @@ static void make_stack_slot(val *stack_slot, unsigned off, type *ty)
 	stack_slot->u.temp_loc.u.off = off;
 }
 
-attr_nonnull()
-static void make_reg(val *reg, int regidx, type *ty)
+void x86_make_reg(val *reg, int regidx, type *ty)
 {
 	val_temporary_init(reg, ty);
 
@@ -520,9 +305,9 @@ static void make_reg(val *reg, int regidx, type *ty)
 	reg->u.temp_loc.u.reg = regidx;
 }
 
-static void temporary_x86_make_eax(val *out, type *ty)
+void x86_make_eax(val *out, type *ty)
 {
-	make_reg(out, /* XXX: hard coded eax: */ 0, ty);
+	x86_make_reg(out, /* XXX: hard coded eax: */ 0, ty);
 }
 
 static void make_val_temporary_reg(val *valp, type *ty)
@@ -662,7 +447,7 @@ static void ready_input(
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
-	mov_deref(orig_val, temporary_store, octx, *deref_val, false);
+	x86_mov_deref(orig_val, temporary_store, octx, *deref_val, false);
 	*deref_val = false;
 }
 
@@ -713,7 +498,7 @@ static bool emit_isn_try(
 		const struct x86_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
 		unsigned operand_count,
-		const char *isn_suffix)
+		const char *x86_isn_suffix)
 {
 	val *emit_vals[MAX_OPERANDS];
 	bool orig_dereference[MAX_OPERANDS];
@@ -750,7 +535,7 @@ static bool emit_isn_try(
 	if(!is_exactmatch){
 		/* not satisfied - convert an operand to REG or MEM */
 		if(TEMPORARY_SHOW_MOVES)
-			comment(octx, "temp(s) needed for %s", isn->mnemonic);
+			x86_comment(octx, "temp(s) needed for %s", isn->mnemonic);
 
 		for(j = 0; j < operand_count; j++){
 			/* ready the operands if they're inputs */
@@ -765,7 +550,7 @@ static bool emit_isn_try(
 				emit_vals[j] = &temporaries[j].val;
 
 				if(TEMPORARY_SHOW_MOVES){
-					comment(octx, "^ temporary for [%zu] input: %s -> %s type %s",
+					x86_comment(octx, "^ temporary for [%zu] input: %s -> %s type %s",
 							j,
 							x86_val_str_debug(operands[j].val, 0, octx),
 							x86_val_str_debug(emit_vals[j], 1, octx),
@@ -785,7 +570,7 @@ static bool emit_isn_try(
 				emit_vals[j] = &temporaries[j].val;
 
 				if(TEMPORARY_SHOW_MOVES){
-					comment(octx, "temporary for [%zu] output: %s -> %s",
+					x86_comment(octx, "temporary for [%zu] output: %s -> %s",
 							j,
 							x86_val_str_debug(operands[j].val, 0, octx),
 							x86_val_str_debug(emit_vals[j], 1, octx));
@@ -796,12 +581,12 @@ static bool emit_isn_try(
 		/* satisfied */
 	}
 
-	if(!isn_suffix && isn->may_suffix)
-		isn_suffix = maybe_generate_isn_suffix(operand_count, emit_vals, operands);
-	if(!isn_suffix)
-		isn_suffix = "";
+	if(!x86_isn_suffix && isn->may_suffix)
+		x86_isn_suffix = maybe_generate_isn_suffix(operand_count, emit_vals, operands);
+	if(!x86_isn_suffix)
+		x86_isn_suffix = "";
 
-	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, isn_suffix);
+	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, x86_isn_suffix);
 
 	for(j = 0; j < operand_count; j++){
 		type *operand_ty;
@@ -829,7 +614,7 @@ static bool emit_isn_try(
 		if(op_categories[j] != operands_target->category[j]
 		&& isn->arg_ios[j] & OPERAND_OUTPUT)
 		{
-			mov_deref(
+			x86_mov_deref(
 					emit_vals[j], operands[j].val,
 					octx,
 					false, orig_dereference[j]);
@@ -839,13 +624,13 @@ static bool emit_isn_try(
 	return true;
 }
 
-static void emit_isn(
+void x86_emit_isn(
 		const struct x86_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
 		unsigned operand_count,
-		const char *isn_suffix)
+		const char *x86_isn_suffix)
 {
-	bool did = emit_isn_try(isn, octx, operands, operand_count, isn_suffix);
+	bool did = emit_isn_try(isn, octx, operands, operand_count, x86_isn_suffix);
 
 	assert(did && "couldn't satisfy operands for isn");
 }
@@ -854,7 +639,7 @@ static void emit_isn_binary(
 		const struct x86_isn *isn, x86_octx *octx,
 		val *const lhs, bool deref_lhs,
 		val *const rhs, bool deref_rhs,
-		const char *isn_suffix)
+		const char *x86_isn_suffix)
 {
 	emit_isn_operand operands[2];
 
@@ -864,7 +649,7 @@ static void emit_isn_binary(
 	operands[1].val = rhs;
 	operands[1].dereference = deref_rhs;
 
-	emit_isn(isn, octx, operands, 2, isn_suffix);
+	x86_emit_isn(isn, octx, operands, 2, x86_isn_suffix);
 }
 
 static bool must_lea_val(val *v)
@@ -886,7 +671,7 @@ static void mov_deref_force(
 		bool deref_from, bool deref_to,
 		bool const force)
 {
-	const struct x86_isn *chosen_isn = &isn_mov;
+	const struct x86_isn *chosen_isn = &x86_isn_mov;
 
 	if(!force && !deref_from && !deref_to){
 		struct name_loc *loc_from, *loc_to;
@@ -903,10 +688,10 @@ static void mov_deref_force(
 		}
 	}
 
-	/* if we're mov:ing from a non-lvalue (i.e. array, struct [alloca])
+	/* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
 	 * we actually want its address*/
 	if(!deref_from && must_lea_val(from)){
-		chosen_isn = &isn_lea;
+		chosen_isn = &x86_isn_lea;
 	}
 
 	emit_isn_binary(chosen_isn, octx,
@@ -915,7 +700,7 @@ static void mov_deref_force(
 			NULL);
 }
 
-static void mov_deref(
+void x86_mov_deref(
 		val *from, val *to,
 		x86_octx *octx,
 		bool deref_from, bool deref_to)
@@ -923,9 +708,9 @@ static void mov_deref(
 	mov_deref_force(from, to, octx, deref_from, deref_to, 0);
 }
 
-static void mov(val *from, val *to, x86_octx *octx)
+void x86_mov(val *from, val *to, x86_octx *octx)
 {
-	mov_deref(from, to, octx, false, false);
+	x86_mov_deref(from, to, octx, false, false);
 }
 
 static bool elem_get_offset(val *maybe_int, type *elem_ty, long *const offset)
@@ -1033,21 +818,21 @@ static void x86_op(
 		operands[1].val = rhs;
 		operands[2].val = res;
 
-		if(emit_isn_try(&isn_imul, octx, operands, 3, NULL)){
+		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
 			return;
 		}
 
 		/* try swapping lhs and rhs */
 		operands[0].val = rhs;
 		operands[1].val = lhs;
-		if(emit_isn_try(&isn_imul, octx, operands, 3, NULL)){
+		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
 			return;
 		}
 
 		/* else fall back to 2-operand mode */
 	}
 
-	opisn = isn_add;
+	opisn = x86_isn_add;
 
 	switch(op){
 		case op_add:
@@ -1063,8 +848,8 @@ static void x86_op(
 	}
 
 	/* no instruction selection / register merging. just this for now */
-	comment(octx, "pre-op mov:");
-	mov(lhs, res, octx);
+	x86_comment(octx, "pre-op x86_mov:");
+	x86_mov(lhs, res, octx);
 
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
@@ -1107,7 +892,7 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 			to_shrunk.ty = type_get_primitive(unit_uniqtypes(octx->unit), i4);
 
 			assert(sz_to == 8);
-			comment(octx, "zext:");
+			x86_comment(octx, "zext:");
 			mov_deref_force(from, &to_shrunk, octx, false, false, /*force:*/true);
 			return;
 		}
@@ -1125,7 +910,7 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 			assert(0 && "bad extension");
 	}
 
-	emit_isn_binary(&isn_movzx, octx,
+	emit_isn_binary(&x86_isn_movzx, octx,
 			from, false, to, false, buf);
 }
 
@@ -1167,14 +952,14 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 
 		if(need_temp_reg){
 			/* use scratch for the ext */
-			make_reg(&ext_rhs, SCRATCH_REG, val_type(lhs));
+			x86_make_reg(&ext_rhs, SCRATCH_REG, val_type(lhs));
 
 			/* smaller scratch */
 			ext_from_temp = ext_rhs;
 			ext_from_temp.ty = rhs_ty;
 
 			/* populate smaller scratch */
-			mov(rhs, &ext_from_temp, octx);
+			x86_mov(rhs, &ext_from_temp, octx);
 
 			/* extend to bigger scratch */
 			x86_ext(&ext_from_temp, &ext_rhs, /*sign:*/false, octx);
@@ -1214,19 +999,19 @@ static void x86_cmp(
 	val *zero;
 	emit_isn_operand set_operand;
 
-	emit_isn_binary(&isn_cmp, octx,
+	emit_isn_binary(&x86_isn_cmp, octx,
 			lhs, false,
 			rhs, false,
 			NULL);
 
 	zero = val_retain(val_new_i(0, lhs->ty));
 
-	mov(zero, res, octx);
+	x86_mov(zero, res, octx);
 
 	set_operand.val = res;
 	set_operand.dereference = false;
 
-	emit_isn(&isn_set, octx, &set_operand, 1, x86_cmp_str(cmp));
+	x86_emit_isn(&x86_isn_set, octx, &set_operand, 1, x86_cmp_str(cmp));
 
 	val_release(zero);
 }
@@ -1240,7 +1025,7 @@ static void x86_jmp(x86_octx *octx, block *target)
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
-	emit_isn_binary(&isn_test, octx,
+	emit_isn_binary(&x86_isn_test, octx,
 			cond, false,
 			cond, false,
 			NULL);
@@ -1262,243 +1047,6 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 			blk->lbl);
 }
 
-static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
-{
-	const struct lifetime lt_inf = LIFETIME_INIT_INF;
-	const struct lifetime *lt;
-	bool spill = false;
-
-	if(dynmap_exists(val *, ctx->dontspill, v))
-		return;
-
-	if(!val_is_volatile(v))
-		return;
-
-	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
-	if(!lt)
-		lt = &lt_inf;
-
-	if(v->live_across_blocks)
-		spill = true;
-
-	/* don't spill if the value ends on the isn */
-	if(lt->start <= ctx->call_isn_idx && ctx->call_isn_idx < lt->end)
-		spill = true;
-
-	if(spill){
-		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
-	}
-}
-
-static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
-{
-	const struct x86_spill_ctx *ctx = vctx;
-
-	(void)isn;
-
-	switch(v->kind){
-		case LITERAL:
-		case GLOBAL:
-		case BACKEND_TEMP:
-		case ALLOCA:
-			return; /* no need to spill */
-
-		case FROM_ISN:
-		case ARGUMENT:
-			break;
-	}
-
-	gather_for_spill(v, ctx);
-}
-
-static void gather_live_vals(block *blk, struct x86_spill_ctx *spillctx)
-{
-	isn *isn;
-	for(isn = block_first_isn(blk); isn; isn = isn->next){
-		if(isn->skip)
-			continue;
-
-		isn_on_live_vals(isn, maybe_gather_for_spill, spillctx);
-	}
-}
-
-static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
-{
-	size_t idx;
-	val *v;
-
-	for(idx = 0; (v = dynmap_key(val *, spillctx->spill, idx)); idx++){
-		val stack_slot = { 0 };
-
-		spillctx->spill_alloca += type_size(v->ty);
-
-		make_stack_slot(
-				&stack_slot,
-				octx->alloca_bottom + spillctx->spill_alloca,
-				v->ty);
-
-		comment(octx, "spill '%s'", val_str(v));
-
-		mov_deref(v, &stack_slot, octx, false, true);
-
-		assert(stack_slot.kind == BACKEND_TEMP);
-		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
-		dynmap_set(
-				val *, uintptr_t,
-				spillctx->spill,
-				v,
-				(uintptr_t)stack_slot.u.temp_loc.u.off);
-	}
-}
-
-static void find_args_in_isn(val *v, isn *isn, void *vctx)
-{
-	struct x86_spill_ctx *spillctx = vctx;
-
-	(void)isn;
-
-	if(v->kind != ARGUMENT)
-		return;
-
-	gather_for_spill(v, spillctx);
-}
-
-static void find_args_in_block(block *blk, void *vctx)
-{
-	struct x86_spill_ctx *spillctx = vctx;
-
-	isn_on_live_vals(block_first_isn(blk), find_args_in_isn, spillctx);
-}
-
-static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
-{
-	/* can't just spill regs in this block, need to spill 'live' regs,
-	 * e.g.  argument regs
-	 * we only spill arguments that are actually used, for the moment,
-	 * that's any argument used at all, regardless of blocks
-	 */
-	dynmap *markers = BLOCK_DYNMAP_NEW();
-	block *blk = function_entry_block(func, false);
-	assert(blk);
-
-	blocks_traverse(blk, find_args_in_block, spillctx, markers);
-
-	dynmap_free(markers);
-}
-
-static dynmap *x86_spillregs(
-		block *blk,
-		val *except[],
-		unsigned call_isn_idx,
-		x86_octx *octx)
-{
-	struct x86_spill_ctx spillctx = { 0 };
-	val **vi;
-
-	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
-	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
-	spillctx.alloca2stack = octx->alloca2stack;
-	spillctx.call_isn_idx = call_isn_idx;
-	spillctx.blk = blk;
-
-	for(vi = except; *vi; vi++){
-		dynmap_set(val *, void *, spillctx.dontspill, *vi, (void *)NULL);
-	}
-
-	gather_live_vals(blk, &spillctx);
-	gather_arg_vals(octx->func, &spillctx);
-
-	spill_vals(octx, &spillctx);
-
-	if(spillctx.spill_alloca > octx->spill_alloca_max)
-		octx->spill_alloca_max = spillctx.spill_alloca;
-
-	dynmap_free(spillctx.dontspill);
-	return spillctx.spill;
-}
-
-static void x86_restoreregs(dynmap *regs, x86_octx *octx)
-{
-	size_t idx;
-	val *v;
-
-	for(idx = 0; (v = dynmap_key(val *, regs, idx)); idx++){
-		unsigned off = dynmap_value(uintptr_t, regs, idx);
-		val stack_slot = { 0 };
-
-		comment(octx, "restore '%s'", val_str(v));
-
-		make_stack_slot(&stack_slot, off, v->ty);
-
-		mov_deref(&stack_slot, v, octx, true, false);
-	}
-
-	dynmap_free(regs);
-}
-
-static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
-{
-	size_t i;
-
-	dynarray_iter(args, i){
-		val *arg = dynarray_ent(args, i);
-
-		if(i < countof(arg_regs)){
-			val reg;
-
-			make_reg(&reg, arg_regs[i], arg->ty);
-
-			mov(arg, &reg, octx);
-
-		}else{
-			assert(0 && "TODO: stack args");
-		}
-	}
-}
-
-static void x86_call(
-		block *blk, unsigned isn_idx,
-		val *into_or_null, val *fn,
-		dynarray *args,
-		x86_octx *octx)
-{
-	val *except[3];
-	dynmap *spilt;
-
-	except[0] = fn;
-	except[1] = into_or_null;
-	except[2] = NULL;
-
-	octx->max_align = 16; /* ensure 16-byte alignment for calls */
-
-	spilt = x86_spillregs(blk, except, isn_idx, octx);
-
-	/* all regs spilt, can now shift arguments into arg regs */
-	x86_call_assign_arg_regs(args, octx);
-
-	if(fn->kind == GLOBAL){
-		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));
-	}else{
-		emit_isn_operand operand;
-
-		operand.val = fn;
-		operand.dereference = false;
-
-		emit_isn(&isn_call, octx, &operand, 1, " *");
-	}
-
-	if(into_or_null){
-		type *ty = type_func_call(type_deref(fn->ty), NULL);
-		val eax;
-
-		temporary_x86_make_eax(&eax, ty);
-
-		mov(&eax, into_or_null, octx);
-	}
-
-	x86_restoreregs(spilt, octx);
-}
-
 static void x86_ptr2int(val *from, val *to, x86_octx *octx)
 {
 	/* if the type sizes are different we need to do a bit of wrangling */
@@ -1511,12 +1059,12 @@ static void x86_ptr2int(val *from, val *to, x86_octx *octx)
 		/* trunc */
 		val trunc = *from;
 
-		comment(octx, "truncate");
+		x86_comment(octx, "truncate");
 		trunc.ty = ty_to;
-		mov(&trunc, to, octx);
+		x86_mov(&trunc, to, octx);
 
 	}else{
-		mov(from, to, octx);
+		x86_mov(from, to, octx);
 	}
 }
 
@@ -1527,7 +1075,7 @@ static void x86_ptrcast(val *from, val *to, x86_octx *octx)
 
 	assert(sz_from == sz_to);
 
-	mov(from, to, octx);
+	x86_mov(from, to, octx);
 }
 
 static void x86_out_block1(block *blk, void *vctx)
@@ -1551,9 +1099,9 @@ static void x86_out_block1(block *blk, void *vctx)
 			{
 				if(!type_is_void(i->u.ret->ty)){
 					val veax;
-					temporary_x86_make_eax(&veax, i->u.ret->ty);
+					x86_make_eax(&veax, i->u.ret->ty);
 
-					mov(i->u.ret, &veax, octx);
+					x86_mov(i->u.ret, &veax, octx);
 				}
 
 				fprintf(octx->fout, "\tjmp %s%s\n",
@@ -1564,13 +1112,13 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_STORE:
 			{
-				mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
+				x86_mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
+				x86_mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
 				break;
 			}
 
@@ -1607,7 +1155,7 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_COPY:
 			{
-				mov(i->u.copy.from, i->u.copy.to, octx);
+				x86_mov(i->u.copy.from, i->u.copy.to, octx);
 				break;
 			}
 
@@ -1629,7 +1177,7 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_CALL:
 			{
-				x86_call(blk, idx,
+				x86_emit_call(blk, idx,
 						i->u.call.into_or_null,
 						i->u.call.fn,
 						&i->u.call.args,
@@ -1706,8 +1254,8 @@ static void x86_init_regalloc_info(
 	info->backend.ptrsz = PTR_SZ;
 	info->backend.callee_save = callee_saves;
 	info->backend.callee_save_cnt = countof(callee_saves);
-	info->backend.arg_regs = arg_regs;
-	info->backend.arg_regs_cnt = countof(arg_regs);
+	info->backend.arg_regs = x86_arg_regs;
+	info->backend.arg_regs_cnt = x86_arg_reg_count;
 	info->func = func;
 	info->uniq_type_list = uniq_type_list;
 }
@@ -1720,7 +1268,7 @@ static long x86_alloca_total(x86_octx *octx)
 static void x86_out_fn(unit *unit, function *func)
 {
 	struct x86_alloca_ctx alloca_ctx = { 0 };
-	struct x86_out_ctx out_ctx = { 0 };
+	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func);
 	struct regalloc_info regalloc;
