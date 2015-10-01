@@ -218,24 +218,131 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	dynmap_free(regs);
 }
 
+static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
+{
+	/*
+	 * mov x(%rip), %eax
+	 * mov x(%rip), %edx
+	 * mov x(%rip), %edi
+	 * mov x(%rip), %esi
+	 * mov %eax, %edi
+	 * mov %edx, %esi
+	 * mov %edi, %edx
+	 * mov %esi, %ecx
+	 * call ...
+	 *
+	 * "->" means depends on
+	 * edi -> eax
+	 * esi -> edx
+	 * edx -> edi
+	 * ecx -> esi
+	 *
+	 * ecx -> esi -> edx -> edi -> eax
+	 *
+	 * have eax, so we do reverse order for mov:ing
+	 */
+	const size_t n_reg_args = MIN(
+			dynarray_count(args), countof(x86_arg_regs));
+	typedef struct dep
+	{
+		int needs, needed; /* register indexes */
+		int next, prev;
+		bool done;
+	} dep;
+	dep *deps = xmalloc(n_reg_args * sizeof *deps);
+	size_t i;
+
+	/* initialise */
+	for(i = 0; i < n_reg_args; i++){
+		val *varg = dynarray_ent(args, i);
+		struct name_loc *loc = val_location(varg);
+		assert(loc->where == NAME_IN_REG);
+
+		deps[i].needs = x86_arg_regs[i];
+		deps[i].needed = loc->u.reg;
+		deps[i].next = -1;
+		deps[i].prev = -1;
+		deps[i].done = false;
+	}
+
+	/* dependency generation */
+	for(i = 0; i < n_reg_args; i++){
+		size_t j;
+
+		assert(i < countof(x86_arg_regs));
+
+		for(j = 0; j < n_reg_args; j++){
+			if(i == j)
+				continue;
+
+			if(deps[i].needed == deps[j].needs){
+				assert(deps[i].next == -1
+						&& deps[j].prev == -1
+						&& "cyclic reference resolving register args");
+
+				deps[i].next = j;
+				deps[j].prev = i;
+				/* continue for cyclic reference check */
+			}
+		}
+	}
+
+	/* need to do all the deps with -1 as their prev,
+	 * as they have no registers they need to rely on.
+	 *
+	 * then we walk down all of the next chains performing the mov:s
+	 * until we have exhausted everything.
+	 */
+
+	for(i = 0; i < n_reg_args; i++){
+		int j;
+
+		if(deps[i].done)
+			continue;
+		if(deps[i].prev != -1)
+			continue;
+
+		/* walk the dep chain */
+		for(j = i; j != -1; j = deps[j].next){
+			val *arg = dynarray_ent(args, j);
+			struct name_loc *loc = val_location(arg);
+			val reg;
+
+			assert(loc->where == NAME_IN_REG);
+			assert(loc->u.reg == deps[j].needed);
+
+			x86_make_reg(&reg, deps[j].needs, arg->ty);
+
+			x86_mov(arg, &reg, octx);
+
+			deps[j].done = true;
+		}
+	}
+
+	for(i = 0; i < n_reg_args; i++){
+		assert(deps[i].done);
+	}
+
+	free(deps);
+}
+
 static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 {
 	size_t i;
 
+	/* do stack moves first, before we reserve the scratch_reg */
 	dynarray_iter(args, i){
-		val *arg = dynarray_ent(args, i);
+		val *arg;
 
-		if(i < x86_arg_reg_count){
-			val reg;
+		if(i < countof(x86_arg_regs))
+			continue;
 
-			x86_make_reg(&reg, x86_arg_regs[i], arg->ty);
+		arg = dynarray_ent(args, i);
 
-			x86_mov(arg, &reg, octx);
-
-		}else{
-			assert(0 && "TODO: stack args");
-		}
+		assert(0 && "TODO: stack args");
 	}
+
+	topographical_reg_args_move(args, octx);
 }
 
 void x86_emit_call(
