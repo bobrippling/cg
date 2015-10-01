@@ -110,6 +110,7 @@ static val *uniq_val(
 	global *glob;
 	type *arg_ty;
 	size_t arg_idx;
+	const char *const name_to_print = name;
 
 	if(ty){
 		assert(opts & VAL_CREATE);
@@ -122,7 +123,7 @@ static val *uniq_val(
 		if(v){
 found:
 			if(opts & VAL_CREATE)
-				parse_error(p, "pre-existing identifier '%s'", name);
+				parse_error(p, "pre-existing identifier '%s'", name_to_print);
 
 			free(name);
 
@@ -151,7 +152,7 @@ found:
 	}
 
 	if((opts & VAL_CREATE) == 0)
-		parse_error(p, "undeclared identifier '%s'", name);
+		parse_error(p, "undeclared identifier '%s'", name_to_print);
 
 	v = val_new_local(name, ty, opts & VAL_ALLOCA);
 
