@@ -256,23 +256,32 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 	for(i = 0; i < n_reg_args; i++){
 		val *varg = dynarray_ent(args, i);
 		struct name_loc *loc = val_location(varg);
-		assert(loc->where == NAME_IN_REG);
 
-		deps[i].needs = x86_arg_regs[i];
-		deps[i].needed = loc->u.reg;
 		deps[i].next = -1;
 		deps[i].prev = -1;
 		deps[i].done = false;
+
+		assert(i < countof(x86_arg_regs));
+		deps[i].needs = x86_arg_regs[i];
+
+		if(loc->where == NAME_IN_REG){
+			deps[i].needed = loc->u.reg;
+		}else{
+			deps[i].needed = -1;
+		}
 	}
 
 	/* dependency generation */
 	for(i = 0; i < n_reg_args; i++){
 		size_t j;
 
-		assert(i < countof(x86_arg_regs));
+		if(deps[i].done)
+			continue;
 
 		for(j = 0; j < n_reg_args; j++){
 			if(i == j)
+				continue;
+			if(deps[j].done)
 				continue;
 
 			if(deps[i].needed == deps[j].needs){
@@ -308,8 +317,11 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			struct name_loc *loc = val_location(arg);
 			val reg;
 
-			assert(loc->where == NAME_IN_REG);
-			assert(loc->u.reg == deps[j].needed);
+			if(loc->where == NAME_IN_REG){
+				assert(deps[j].needed == loc->u.reg);
+			}else{
+				assert(deps[j].needed == -1);
+			}
 
 			x86_make_reg(&reg, deps[j].needs, arg->ty);
 
