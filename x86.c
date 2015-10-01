@@ -1090,6 +1090,10 @@ static void x86_out_block1(block *blk, void *vctx)
 	isn *i;
 	unsigned idx;
 
+	if(blk->emitted)
+		return;
+	blk->emitted = 1;
+
 	x86_block_enter(octx, blk);
 
 	for(i = head, idx = 0; i; i = i->next, idx++){
