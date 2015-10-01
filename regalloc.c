@@ -117,7 +117,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			break;
 
 		case BACKEND_TEMP:
-			assert(0 && "shouldn't have temps here");
+			return;
 	}
 
 	/* if it lives across blocks we must use memory */
