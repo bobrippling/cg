@@ -11,7 +11,10 @@ typedef struct x86_octx
 	long alloca_bottom; /* max of ALLOCA instructions */
 	unsigned long spill_alloca_max; /* max of spill space */
 	unsigned max_align;
+	bool scratch_reg_reserved;
 } x86_octx;
+
+#define SCRATCH_REG 2 /* ecx */
 
 /* ===--- value generation ---=== */
 void x86_make_stack_slot(struct val *stack_slot, unsigned off, struct type *ty);

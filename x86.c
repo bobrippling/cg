@@ -46,7 +46,6 @@ static const char *const regs[][4] = {
 	{ "sil", "si", "esi", "rsi" },
 };
 
-#define SCRATCH_REG 2 /* ecx */
 #define PTR_SZ 8
 #define PTR_TY i8
 
@@ -323,7 +322,8 @@ static void make_val_temporary_store(
 		val *from,
 		val *write_to,
 		operand_category from_cat,
-		operand_category to_cat)
+		operand_category to_cat,
+		x86_octx *octx)
 {
 	type *temporary_ty;
 
@@ -348,6 +348,8 @@ static void make_val_temporary_store(
 
 		write_to->u.local.loc.where = NAME_IN_REG;
 		write_to->u.local.loc.u.reg = SCRATCH_REG;
+
+		assert(!octx->scratch_reg_reserved);
 
 	}else{
 		assert(to_cat == OPERAND_MEM);
@@ -443,7 +445,8 @@ static void ready_input(
 {
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category);
+			orig_val_category, operand_category,
+			octx);
 
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
@@ -456,12 +459,14 @@ static void ready_output(
 		val *temporary_store,
 		operand_category orig_val_category,
 		operand_category operand_category,
-		bool *const deref_val)
+		bool *const deref_val,
+		x86_octx *octx)
 {
 	/* wait to store the value until after the main isn */
 	make_val_temporary_store(
 			orig_val, temporary_store,
-			orig_val_category, operand_category);
+			orig_val_category, operand_category,
+			octx);
 
 	/* using a register as a temporary rhs - no dereference */
 	*deref_val = 0;
@@ -565,7 +570,7 @@ static bool emit_isn_try(
 				ready_output(
 						operands[j].val, &temporaries[j].val,
 						op_categories[j], operands_target->category[j],
-						&operands[j].dereference);
+						&operands[j].dereference, octx);
 
 				emit_vals[j] = &temporaries[j].val;
 

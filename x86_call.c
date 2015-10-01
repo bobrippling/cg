@@ -316,6 +316,10 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			x86_mov(arg, &reg, octx);
 
 			deps[j].done = true;
+
+			if(deps[j].needs /* reg index */ == SCRATCH_REG){
+				octx->scratch_reg_reserved = true;
+			}
 		}
 	}
 
@@ -375,6 +379,8 @@ void x86_emit_call(
 
 		x86_emit_isn(&x86_isn_call, octx, &operand, 1, " *");
 	}
+
+	octx->scratch_reg_reserved = false;
 
 	if(into_or_null){
 		type *ty = type_func_call(type_deref(fn->ty), NULL);
