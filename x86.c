@@ -1009,7 +1009,7 @@ static void x86_cmp(
 			rhs, false,
 			NULL);
 
-	zero = val_retain(val_new_i(0, lhs->ty));
+	zero = val_retain(val_new_i(0, res->ty));
 
 	x86_mov(zero, res, octx);
 
