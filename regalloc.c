@@ -128,6 +128,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		return;
 	}
 
+	/* if already spilt, return */
+	if(val_locn->where == NAME_SPILT)
+		return;
+
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
 
@@ -158,8 +162,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	if(!v->live_across_blocks
 	&& lt->end == ctx->isn_num
+	&& val_locn->where == NAME_IN_REG
 	&& val_locn->u.reg >= 0)
 	{
+		assert(val_locn->u.reg < ctx->nregs);
 		ctx->in_use[val_locn->u.reg] = 0;
 	}
 }
