@@ -2,6 +2,10 @@
 
 try_cflag(){
 	flag="$1"
+	target="$2"
+	if test -z "$target"
+	then target='CFLAGS_CONFIGURE'
+	fi
 
 	printf 'checking whether compiler accepts %s... ' "$flag"
 	echo "typedef int abc;" >"$ctmp"
@@ -9,7 +13,7 @@ try_cflag(){
 	if $CC "$flag" -c -o /dev/null "$ctmp" >/dev/null 2>&1
 	then
 		echo yes
-		echo "CFLAGS_CONFIGURE += $flag" >> Makefile.cfg
+		echo "$target += $flag" >> Makefile.cfg
 		return 0
 	else
 		echo no
@@ -59,3 +63,4 @@ try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-missing-braces
 
 try_cflag -g
+try_cflag -g LDFLAGS_CONFIGURE
