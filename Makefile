@@ -24,22 +24,24 @@ CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L
 CFLAGS = ${CFLAGS_CONFIGURE} ${CFLAGS_DEFINE}
 LDFLAGS = ${LDFLAGS_CONFIGURE}
 
+Q = @
+
 all: tags ir
 
 ir: ${OBJ}
 	@echo link $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS}
+	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 %.o: %.c
 	@echo compile $<
-	@${CC} -c -o $@ $< ${CFLAGS}
+	$Q${CC} -c -o $@ $< ${CFLAGS}
 
 check: ir
 	make -Ctest
 
 tags: ${SRC}
 	@echo ctags
-	@ctags ${SRC} ${HEADERS}
+	$Qctags ${SRC} ${HEADERS}
 
 clean:
 	make -C test clean
@@ -50,7 +52,7 @@ Makefile.dep: ${SRC} ${HEADERS}
 
 .%.d: %.c
 	@echo depend $<
-	@${CC} -MM ${CFLAGS} $< > $@
+	$Q${CC} -MM ${CFLAGS} $< > $@
 
 -include ${OBJ:%.o=.%.d}
 -include Makefile.cfg
