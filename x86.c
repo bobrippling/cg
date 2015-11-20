@@ -94,6 +94,19 @@ static int alloca_offset(dynmap *alloca2stack, val *val)
 }
 #endif
 
+static const char *x86_size_name(unsigned sz)
+{
+	switch(sz){
+		case 1: return "byte";
+		case 2: return "word";
+		case 4: return "long";
+		case 8: return "quad";
+		default:
+			assert(0 && "bad int size");
+			return NULL;
+	}
+}
+
 static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 {
 	int sz_idx;
@@ -1335,6 +1348,16 @@ static void x86_out_var(variable_global *var)
 	printf("%s:\n", name);
 
 	if(init){
+		switch(init->type){
+			case init_int:
+				printf(".%s %#llx\n",
+						x86_size_name(variable_size(inner)),
+						init->u.i);
+				break;
+
+			default:
+				assert(0 && "TODO: missing init");
+		}
 	}else{
 		printf(".space %u\n", variable_size(inner));
 	}
