@@ -881,8 +881,48 @@ static void parse_function(
 
 static void parse_variable(parse *p, char *name, type *ty)
 {
-	/* TODO: init */
-	unit_variable_new(p->unit, name, ty);
+	variable_global *v;
+	bool is_string = false;
+	struct init *init = NULL;
+
+	if(token_accept(p->tok, tok_lbrace) || (is_string = token_accept(p->tok, tok_string))){
+		/* init */
+		init = xmalloc(sizeof *init);
+
+		if(is_string){
+			struct string str;
+			token_last_string(p->tok, &str);
+
+			fprintf(stderr, "TODO: string init\n");
+			exit(3);
+
+		}else if(type_array_element(ty)){
+			fprintf(stderr, "TODO: array init\n");
+			exit(3);
+
+		}else if(type_is_struct(ty)){
+			fprintf(stderr, "TODO: struct init\n");
+			exit(3);
+
+		}else if(type_deref(ty)){
+			fprintf(stderr, "TODO: pointer init\n");
+			exit(3);
+
+		}else{
+			/* number */
+			eat(p, "int initialiser", tok_int);
+
+			init->type = init_int;
+			init->u.i = token_last_int(p->tok);
+		}
+
+		if(!is_string)
+			eat(p, "init closing brace", tok_rbrace);
+	}
+
+	v = unit_variable_new(p->unit, name, ty);
+	if(init)
+		variable_global_init_set(v, init);
 }
 
 static void parse_global(parse *p)
