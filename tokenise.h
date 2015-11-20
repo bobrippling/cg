@@ -12,6 +12,7 @@
 	OTHER(bareword)     \
 	OTHER(eof)          \
 	OTHER(unknown)      \
+	OTHER(string)       \
 	PUNCT(lparen, '(')  \
 	PUNCT(rparen, ')')  \
 	PUNCT(lbrace, '{')  \
@@ -94,6 +95,7 @@ bool token_accept(tokeniser *, enum token);
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
 char *token_last_bareword(tokeniser *);
+char *token_last_string(tokeniser *, size_t *const);
 
 void token_curline(tokeniser *, char *out, size_t len, size_t *const off);
 unsigned token_curlineno(tokeniser *);

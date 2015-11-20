@@ -26,6 +26,8 @@ struct tokeniser
 
 	char *lastident;
 	char *lastbareword;
+	char *laststring;
+	size_t laststringlen;
 	long lastint;
 };
 
@@ -123,6 +125,75 @@ static char *tokenise_ident(tokeniser *t)
 	t->linep += len - 1;
 
 	return buf;
+}
+
+static bool octdigit(int ch)
+{
+	return '0' <= ch && ch < '8';
+}
+
+static enum token parse_string(tokeniser *t)
+{
+	char *const start = t->linep;
+	char *str;
+	char *end, *p;
+	size_t stri, len;
+
+	++t->linep;
+
+	/* string is alphanumeric or /\\[0-7]{1,3}/ */
+	end = strchr(t->linep, '"');
+	if(!end){
+		fprintf(stderr, "no terminating '\"' in '%s'\n", start);
+		return tok_unknown;
+	}
+
+	len = end - t->linep;
+	str = xmalloc(len);
+
+	for(p = t->linep, stri = 0; p != end; p++, stri++){
+		if(*p == '\\'){
+			const size_t n_to_end = end - (p + 1);
+			char buf[4];
+			int octval;
+			size_t i;
+
+			if(n_to_end == 0){
+				fprintf(stderr, "empty escape sequence in '%s'\n", start);
+				goto bad_esc;
+			}
+
+			for(i = 0; i < MIN(n_to_end, 3); i++){
+				buf[i] = p[i + 1];
+
+				if(!octdigit(buf[i])){
+					buf[i] = '\0';
+					break;
+				}
+			}
+			buf[3] = '\0';
+
+			if(sscanf(buf, "%o", &octval) != 1){
+				fprintf(stderr, "bad escape sequence in '%s'\n", start);
+				goto bad_esc;
+			}
+
+			str[stri] = octval;
+			p += strlen(buf);
+		}else{
+			str[stri] = *p;
+		}
+	}
+
+	free(t->laststring);
+	t->laststring = str;
+	t->laststringlen = stri;
+	assert(stri <= len);
+
+	return tok_string;
+bad_esc:
+	free(str);
+	return tok_unknown;
 }
 
 enum token token_next(tokeniser *t)
@@ -230,6 +301,10 @@ enum token token_next(tokeniser *t)
 		return tok_bareword;
 	}
 
+	if(*t->linep == '"'){
+		return parse_string(t);
+	}
+
 	fprintf(stderr, "unknown token '%s'\n", t->linep);
 
 	return tok_unknown;
@@ -320,6 +395,12 @@ char *token_last_ident(tokeniser *t)
 char *token_last_bareword(tokeniser *t)
 {
 	return token_last_(&t->lastbareword);
+}
+
+char *token_last_string(tokeniser *t, size_t *const len)
+{
+	*len = t->laststringlen;
+	return token_last_(&t->laststring);
 }
 
 int token_is_op(enum token t, enum op *const o)
