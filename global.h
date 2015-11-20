@@ -2,7 +2,7 @@
 #define GLOBAL_H
 
 #include "function.h"
-#include "variable.h"
+#include "variable_global.h"
 
 struct unit;
 struct uniq_type_list;

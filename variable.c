@@ -4,16 +4,28 @@
 #include "mem.h"
 
 #include "variable.h"
+#include "variable_global.h"
 #include "variable_internal.h"
 #include "variable_struct.h"
+
+static void variable_new_at(variable *v, const char *name, struct type *ty)
+{
+	v->name = xstrdup(name);
+	v->ty = ty;
+}
 
 variable *variable_new(const char *name, struct type *ty)
 {
 	variable *v = xmalloc(sizeof *v);
+	variable_new_at(v, name, ty);
+	return v;
+}
 
-	v->name = xstrdup(name);
-	v->ty = ty;
-
+variable_global *variable_global_new(const char *name, struct type *ty)
+{
+	variable_global *v = xmalloc(sizeof *v);
+	variable_new_at(&v->var, name, ty);
+	v->init = NULL;
 	return v;
 }
 

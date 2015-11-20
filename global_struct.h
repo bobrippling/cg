@@ -7,7 +7,7 @@ struct global
 	union
 	{
 		function *fn;
-		variable *var;
+		variable_global *var;
 	} u;
 };
 

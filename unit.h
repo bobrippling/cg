@@ -21,7 +21,7 @@ function *unit_function_new(
 		unit *u, const char *lbl,
 		struct type *fnty, struct dynarray *toplvl_args);
 
-variable *unit_variable_new(
+variable_global *unit_variable_new(
 		unit *u, const char *lbl,
 		struct type *ty);
 

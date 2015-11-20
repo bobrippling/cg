@@ -112,9 +112,9 @@ function *unit_function_new(
 	return fn;
 }
 
-variable *unit_variable_new(unit *u, const char *lbl, struct type *ty)
+variable_global *unit_variable_new(unit *u, const char *lbl, struct type *ty)
 {
-	variable *var = variable_new(lbl, ty);
+	variable_global *var = variable_global_new(lbl, ty);
 
 	unit_add_global(u, var, 0);
 
@@ -130,7 +130,7 @@ global *unit_global_find(unit *u, const char *spel)
 		if(u->globals[i]->is_fn)
 			sp = function_name(u->globals[i]->u.fn);
 		else
-			sp = variable_name(u->globals[i]->u.var);
+			sp = variable_name(variable_global_var(u->globals[i]->u.var));
 
 		if(!strcmp(sp, spel))
 			return u->globals[i];
