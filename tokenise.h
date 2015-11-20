@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "macros.h"
 #include "op.h"
+#include "string.h"
 
 #define TOKENS        \
 	OTHER(int)          \
@@ -95,7 +96,7 @@ bool token_accept(tokeniser *, enum token);
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
 char *token_last_bareword(tokeniser *);
-char *token_last_string(tokeniser *, size_t *const);
+void token_last_string(tokeniser *, struct string *);
 
 void token_curline(tokeniser *, char *out, size_t len, size_t *const off);
 unsigned token_curlineno(tokeniser *);

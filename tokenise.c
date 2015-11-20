@@ -397,10 +397,10 @@ char *token_last_bareword(tokeniser *t)
 	return token_last_(&t->lastbareword);
 }
 
-char *token_last_string(tokeniser *t, size_t *const len)
+void token_last_string(tokeniser *t, struct string *const str)
 {
-	*len = t->laststringlen;
-	return token_last_(&t->laststring);
+	str->len = t->laststringlen;
+	str->str = token_last_(&t->laststring);
 }
 
 int token_is_op(enum token t, enum op *const o)
