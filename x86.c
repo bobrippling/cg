@@ -1328,10 +1328,16 @@ static void x86_out_var(variable_global *var)
 {
 	variable *inner = variable_global_var(var);
 	const char *name = variable_name(inner);
+	struct init *init = variable_global_init(var);
 
 	printf(".bss\n");
 	printf(".globl %s\n", name);
-	printf("%s: .space %u\n", name, variable_size(inner));
+	printf("%s:\n", name);
+
+	if(init){
+	}else{
+		printf(".space %u\n", variable_size(inner));
+	}
 }
 
 void x86_out(unit *unit, global *glob)

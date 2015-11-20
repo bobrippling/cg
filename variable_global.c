@@ -10,3 +10,8 @@ void variable_global_init_set(variable_global *g, struct init *init)
 {
 	g->init = init;
 }
+
+struct init *variable_global_init(variable_global *g)
+{
+	return g->init;
+}

@@ -9,5 +9,6 @@ typedef struct variable_global variable_global;
 variable *variable_global_var(variable_global *);
 
 void variable_global_init_set(variable_global *, struct init *);
+struct init *variable_global_init(variable_global *);
 
 #endif
