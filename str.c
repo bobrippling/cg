@@ -10,7 +10,7 @@ int str_beginswith(const char *full, const char *prefix)
 
 int isident(char ch, int digit)
 {
-	if(ch == '_')
+	if(ch == '_' || ch == '.')
 		return 1;
 	return digit ? isalnum(ch) : isalpha(ch);
 }
