@@ -891,10 +891,16 @@ static void parse_variable(parse *p, char *name, type *ty)
 
 		if(is_string){
 			struct string str;
+			type *elem = type_array_element(ty);
+
 			token_last_string(p->tok, &str);
 
-			fprintf(stderr, "TODO: string init\n");
-			exit(3);
+			if(!elem || !type_is_primitive(elem, i1)){
+				sema_error(p, "\"%s\" init not an i1 array", name);
+			}
+
+			init->type = init_str;
+			init->u.str = str;
 
 		}else if(type_array_element(ty)){
 			fprintf(stderr, "TODO: array init\n");
