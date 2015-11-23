@@ -57,3 +57,10 @@ struct type *global_type_as_ptr(struct uniq_type_list *us, global *g)
 {
 	return type_get_ptr(us, global_type_noptr(g));
 }
+
+bool global_is_forward_decl(global *g)
+{
+	if(g->is_fn)
+		return function_is_forward_decl(g->u.fn);
+	return variable_global_is_forward_decl(g->u.var);
+}

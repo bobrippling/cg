@@ -246,3 +246,8 @@ void func_regalloc(function *f, struct regalloc_info *info)
 
 	regalloc(entry, info);
 }
+
+bool function_is_forward_decl(function *f)
+{
+	return !function_entry_block(f, false);
+}

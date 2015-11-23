@@ -1,0 +1,12 @@
+# test=irdiff
+$g = i4()
+$f = i4()
+{
+	$x = call $g()
+	ret $x
+}
+$g = i4()
+{
+	$x = call $f()
+	ret $x
+}

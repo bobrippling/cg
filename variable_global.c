@@ -15,3 +15,8 @@ struct init *variable_global_init(variable_global *g)
 {
 	return g->init;
 }
+
+bool variable_global_is_forward_decl(variable_global *g)
+{
+	return !g->init;
+}

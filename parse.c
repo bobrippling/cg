@@ -936,15 +936,17 @@ static void parse_global(parse *p)
 	type *ty;
 	char *name;
 	dynarray toplvl_args = DYNARRAY_INIT;
+	global *already;
 
 	eat(p, "decl name", tok_ident);
 	name = token_last_ident(p->tok);
-	if(!name || unit_global_find(p->unit, name)){
-		if(name){
-			/* found it */
-			sema_error(p, "global '%s' already defined", name);
-		}
-		name = xstrdup("_error");
+	if(!name){
+		name = xstrdup("_error"); /* error already emitted by eat() */
+	}
+	else if((already = unit_global_find(p->unit, name))
+	&& !global_is_forward_decl(already))
+	{
+		sema_error(p, "global '%s' already defined", name);
 	}
 
 	eat(p, "global assign", tok_equal);

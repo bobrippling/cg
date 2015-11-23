@@ -38,4 +38,6 @@ size_t function_arg_count(function *);
 struct regalloc_info;
 void func_regalloc(function *f, struct regalloc_info *);
 
+bool function_is_forward_decl(function *);
+
 #endif
