@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <stdint.h>
+#include <ctype.h>
 
 #include "macros.h"
 #include "die.h"
@@ -1343,7 +1344,8 @@ static void x86_out_var(variable_global *var)
 	const char *name = variable_name(inner);
 	struct init *init = variable_global_init(var);
 
-	printf(".bss\n");
+	/* TODO: use .bss for zero-init */
+	printf(".data\n");
 	printf(".globl %s\n", name);
 	printf("%s:\n", name);
 
@@ -1354,6 +1356,21 @@ static void x86_out_var(variable_global *var)
 						x86_size_name(variable_size(inner)),
 						init->u.i);
 				break;
+
+			case init_str:
+			{
+				size_t i;
+				printf(".ascii \"");
+				for(i = 0; i < init->u.str.len; i++){
+					char ch = init->u.str.str[i];
+					if(isprint(ch))
+						printf("%c", ch);
+					else
+						printf("\\%03o", (unsigned)ch);
+				}
+				printf("\"\n");
+				break;
+			}
 
 			default:
 				assert(0 && "TODO: missing init");
