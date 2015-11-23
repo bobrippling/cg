@@ -150,8 +150,9 @@ static enum token parse_string(tokeniser *t)
 
 	len = end - t->linep;
 	str = xmalloc(len);
+	t->linep = end + 1;
 
-	for(p = t->linep, stri = 0; p != end; p++, stri++){
+	for(p = start + 1, stri = 0; p != end; p++, stri++){
 		if(*p == '\\'){
 			const size_t n_to_end = end - (p + 1);
 			char buf[4];
