@@ -1374,11 +1374,19 @@ static void x86_out_var(variable_global *var)
 
 void x86_out(unit *unit, global *glob)
 {
+	if(global_is_forward_decl(glob)){
+		x86_octx octx = { 0 };
+		octx.fout = stdout;
+		x86_comment(&octx, "forward decl %s", global_name(glob));
+		return;
+	}
+
 	if(glob->is_fn){
 		function *fn = glob->u.fn;
 
-		if(function_entry_block(fn, false))
-			x86_out_fn(unit, fn);
+		/* should have entry block, otherwise it's a forward decl */
+		assert(function_entry_block(fn, false));
+		x86_out_fn(unit, fn);
 
 	}else{
 		x86_out_var(glob->u.var);
