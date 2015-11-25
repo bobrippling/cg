@@ -27,6 +27,7 @@
 	PUNCT(semi, ';')    \
 	PUNCT(star, '*')    \
 	PUNCTSTR(arrow, "->")\
+	PUNCTSTR(ellipses, "...") \
 	KW(load)            \
 	KW(store)           \
 	KW(alloca)          \

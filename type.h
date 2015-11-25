@@ -40,7 +40,7 @@ type *type_get_void(uniq_type_list *);
 type *type_get_primitive(uniq_type_list *, enum type_primitive);
 type *type_get_ptr(uniq_type_list *, type *);
 type *type_get_array(uniq_type_list *, type *, unsigned long);
-type *type_get_func(uniq_type_list *, type *, /*consumed*/dynarray *);
+type *type_get_func(uniq_type_list *, type *, /*consumed*/dynarray *, bool variadic);
 type *type_get_struct(uniq_type_list *, dynarray *);
 
 

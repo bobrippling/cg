@@ -180,8 +180,12 @@ static int parse_finished(tokeniser *tok)
 static void parse_type_list(
 		parse *p, dynarray *types,
 		dynarray *toplvl_args,
+		bool *const variadic,
 		enum token lasttok)
 {
+	if(variadic)
+		*variadic = false;
+
 	if(token_peek(p->tok) != lasttok){
 		bool have_idents = false;
 
@@ -215,8 +219,14 @@ static void parse_type_list(
 
 			dynarray_add(types, memb);
 
-			if(token_accept(p->tok, tok_comma))
-				continue;
+			if(token_accept(p->tok, tok_comma)){
+				if(variadic && token_accept(p->tok, tok_ellipses)){
+					*variadic = true;
+				}else{
+					/* , xyz */
+					continue;
+				}
+			}
 			break;
 		}
 	}
@@ -267,7 +277,7 @@ prim:
 		{
 			dynarray types = DYNARRAY_INIT;
 
-			parse_type_list(p, &types, NULL, tok_rbrace);
+			parse_type_list(p, &types, NULL, NULL, tok_rbrace);
 
 			t = type_get_struct(unit_uniqtypes(p->unit), &types);
 			break;
@@ -308,10 +318,11 @@ prim:
 
 		if(token_accept(p->tok, tok_lparen)){
 			dynarray types = DYNARRAY_INIT;
+			bool variadic;
 
-			parse_type_list(p, &types, toplvl_args, tok_rparen);
+			parse_type_list(p, &types, toplvl_args, &variadic, tok_rparen);
 
-			t = type_get_func(unit_uniqtypes(p->unit), t, &types);
+			t = type_get_func(unit_uniqtypes(p->unit), t, &types, variadic);
 			continue;
 		}
 

@@ -39,6 +39,7 @@ struct type
 			type *ret;
 			dynarray args;
 			struct uniq_type_list *uniqs;
+			bool variadic;
 		} func;
 		struct
 		{
@@ -278,7 +279,7 @@ type *type_get_array(uniq_type_list *us, type *t, unsigned long n)
 	return array;
 }
 
-type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args)
+type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args, bool variadic)
 {
 	size_t i;
 	type *func;
@@ -287,14 +288,19 @@ type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args)
 		type *ent = dynarray_ent(&ret->up.funcs, i);
 
 		assert(ent->kind == FUNC);
-		if(ent->u.func.ret == ret && dynarray_refeq(&ent->u.func.args, args))
+		if(ent->u.func.ret == ret
+		&& ent->u.func.variadic == variadic
+		&& dynarray_refeq(&ent->u.func.args, args))
+		{
 			return ent;
+		}
 	}
 
 	func = tnew(FUNC);
 	memset(&func->u.func.args, 0, sizeof func->u.func.args);
 	dynarray_move(&func->u.func.args, args);
 	func->u.func.ret = ret;
+	func->u.func.variadic = variadic;
 	func->u.func.uniqs = us;
 
 	dynarray_add(&ret->up.funcs, func);
