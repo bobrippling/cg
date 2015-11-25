@@ -234,6 +234,25 @@ enum token token_next(tokeniser *t)
 
 	t->last_tok_start = t->linep;
 
+	/* check for long string before single chars - handle '...' before '.' */
+#define OTHER(x)
+#define KW(x)
+#define PUNCT(t, c)
+#define PUNCTSTR(tok, s) \
+	if(!strncmp(t->linep, s, strlen(s))){ \
+		t->linep += strlen(s); \
+		return tok_ ## tok; \
+	}
+#define OP(x)
+#define CMP(x)
+	TOKENS
+#undef OTHER
+#undef KW
+#undef PUNCTSTR
+#undef PUNCT
+#undef OP
+#undef CMP
+
 	switch(*t->linep++){
 #define OTHER(x)
 #define KW(x)
@@ -256,24 +275,6 @@ enum token token_next(tokeniser *t)
 		default:
 			t->linep--;
 	}
-
-#define OTHER(x)
-#define KW(x)
-#define PUNCT(t, c)
-#define PUNCTSTR(tok, s) \
-	if(!strncmp(t->linep, s, strlen(s))){ \
-		t->linep += strlen(s); \
-		return tok_ ## tok; \
-	}
-#define OP(x)
-#define CMP(x)
-	TOKENS
-#undef OTHER
-#undef KW
-#undef PUNCTSTR
-#undef PUNCT
-#undef OP
-#undef CMP
 
 	if('0' <= *t->linep && *t->linep <= '9'){
 		char *end;
