@@ -264,7 +264,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 		assert(i < countof(x86_arg_regs));
 		deps[i].needs = x86_arg_regs[i];
 
-		if(loc->where == NAME_IN_REG){
+		if(loc && loc->where == NAME_IN_REG){
 			deps[i].needed = loc->u.reg;
 		}else{
 			deps[i].needed = -1;
@@ -317,7 +317,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			struct name_loc *loc = val_location(arg);
 			val reg;
 
-			if(loc->where == NAME_IN_REG){
+			if(loc && loc->where == NAME_IN_REG){
 				assert(deps[j].needed == loc->u.reg);
 			}else{
 				assert(deps[j].needed == -1);
