@@ -342,8 +342,11 @@ type *type_deref(type *t)
 	return t->u.ptr.pointee;
 }
 
-type *type_func_call(type *t, dynarray **const args)
+type *type_func_call(type *t, dynarray **const args, bool *const variadic)
 {
+	if(variadic)
+		*variadic = false;
+
 	if(!t)
 		return NULL;
 
@@ -354,6 +357,9 @@ type *type_func_call(type *t, dynarray **const args)
 		*args = &t->u.func.args;
 	}
 
+	if(variadic)
+		*variadic = t->u.func.variadic;
+
 	return t->u.func.ret;
 }
 
@@ -363,7 +369,7 @@ dynarray *type_func_args(type *t)
 	if(!t)
 		return NULL;
 
-	type_func_call(t, &args);
+	type_func_call(t, &args, NULL);
 	return args;
 }
 

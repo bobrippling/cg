@@ -15,7 +15,7 @@ void global_dump(struct unit *unit, global *glob)
 
 	if(glob->is_fn){
 		name = function_name(glob->u.fn);
-		ty = type_func_call(function_type(glob->u.fn), NULL);
+		ty = type_func_call(function_type(glob->u.fn), NULL, NULL);
 	}else{
 		variable *v = variable_global_var(glob->u.var);
 

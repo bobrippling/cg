@@ -341,7 +341,7 @@ static type *parse_type_maybe_func(parse *p, dynarray *toplvl_args)
 		return default_type(p);
 	}
 
-	if(type_array_element(type_func_call(t, NULL))){
+	if(type_array_element(type_func_call(t, NULL, NULL))){
 		sema_error(p, "function returning array");
 		return default_type(p);
 	}
@@ -398,6 +398,7 @@ static void parse_call(parse *p, char *ident_or_null)
 	val *into;
 	dynarray args = DYNARRAY_INIT;
 	dynarray *argtys;
+	bool variadic = false;
 	bool tyerror = false;
 	type *retty = NULL;
 	size_t i;
@@ -406,7 +407,7 @@ static void parse_call(parse *p, char *ident_or_null)
 
 	type *ptr = type_deref(val_type(target));
 	if(ptr)
-		retty = type_func_call(ptr, &argtys);
+		retty = type_func_call(ptr, &argtys, &variadic);
 
 	if(!retty){
 		retty = default_type(p);
@@ -454,6 +455,8 @@ static void parse_call(parse *p, char *ident_or_null)
 							type_to_str_r(buf, sizeof buf, val_type(arg)),
 							type_to_str(argty));
 				}
+			}else if(variadic){
+				/* fine */
 			}else{
 				sema_error(p, "too many arguments to function");
 			}
@@ -715,7 +718,7 @@ static void parse_ident(parse *p, char *spel)
 
 static void parse_ret(parse *p)
 {
-	type *expected_ty = type_func_call(function_type(p->func), NULL);
+	type *expected_ty = type_func_call(function_type(p->func), NULL, NULL);
 	val *v = parse_val(p);
 
 	if(val_type(v) != expected_ty){

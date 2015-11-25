@@ -403,6 +403,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 	size_t i;
 	type *fn_ret;
 	dynarray *argtys;
+	bool variadic;
 
 	if(into)
 		val_retain(into);
@@ -412,12 +413,16 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 		val_retain(dynarray_ent(args, i));
 	}
 
-	fn_ret = type_func_call(type_deref(val_type(fn)), &argtys);
+	fn_ret = type_func_call(type_deref(val_type(fn)), &argtys, &variadic);
 
 	assert(!into || val_type(into) == fn_ret);
 
-	assert(dynarray_count(args) == dynarray_count(argtys));
-	dynarray_iter(args, i){
+	if(variadic){
+		assert(dynarray_count(args) >= dynarray_count(argtys));
+	}else{
+		assert(dynarray_count(args) == dynarray_count(argtys));
+	}
+	dynarray_iter(argtys, i){
 		assert(val_type(dynarray_ent(args, i)) == dynarray_ent(argtys, i));
 	}
 

@@ -395,7 +395,7 @@ void x86_emit_call(
 	octx->scratch_reg_reserved = false;
 
 	if(into_or_null){
-		type *ty = type_func_call(type_deref(fn->ty), NULL);
+		type *ty = type_func_call(type_deref(fn->ty), NULL, NULL);
 		val eax;
 
 		x86_make_eax(&eax, ty);
