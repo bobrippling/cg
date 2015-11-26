@@ -1,0 +1,9 @@
+# test=irdiff
+$_printf = i4(i1*, ...)
+$s = [i1 x 0] "hi %d %p\012\000"
+$_main = i4()
+{
+	$x = elem $s, i1 0
+	call $_printf($x, i4 5, $x)
+	ret i4 0
+}
