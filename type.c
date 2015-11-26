@@ -58,6 +58,11 @@ bool type_is_fn(type *t)
 	return t && t->kind == FUNC;
 }
 
+bool type_is_fn_variadic(type *t)
+{
+	return type_is_fn(t) && t->u.func.variadic;
+}
+
 bool type_is_struct(type *t)
 {
 	return t && t->kind == STRUCT;
@@ -185,6 +190,16 @@ static bool type_to_strbuf(strbuf_fixed *const buf, type *t)
 					return false;
 
 				comma = ", ";
+			}
+
+			if(t->u.func.variadic){
+				if(!strbuf_fixed_printf(
+							buf,
+							"%s...",
+							dynarray_is_empty(&t->u.func.args) ? "" : ", "))
+				{
+					return false;
+				}
 			}
 
 			return strbuf_fixed_printf(buf, ")");

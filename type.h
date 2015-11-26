@@ -27,6 +27,7 @@ enum type_primitive
 };
 
 bool type_is_fn(type *);
+bool type_is_fn_variadic(type *);
 bool type_is_primitive(type *, enum type_primitive);
 bool type_is_int(type *);
 bool type_is_void(type *);

@@ -164,6 +164,10 @@ void function_dump_args_and_block(function *f)
 				i == nargs - 1 ? "" : ", ");
 	}
 
+	if(type_is_fn_variadic(f->fnty)){
+		printf("%s...", i > 0 ? ", " : "");
+	}
+
 	printf(")");
 
 	if(f->entry){
