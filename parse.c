@@ -186,7 +186,11 @@ static void parse_type_list(
 	if(variadic)
 		*variadic = false;
 
-	if(token_peek(p->tok) != lasttok){
+
+	if(token_accept(p->tok, tok_ellipses)){
+		*variadic = true;
+
+	}else if(token_peek(p->tok) != lasttok){
 		bool have_idents = false;
 
 		for(;;){
