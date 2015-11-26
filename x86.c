@@ -3,7 +3,6 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <stdint.h>
-#include <ctype.h>
 
 #include "macros.h"
 #include "die.h"
@@ -1359,15 +1358,8 @@ static void x86_out_var(variable_global *var)
 
 			case init_str:
 			{
-				size_t i;
 				printf(".ascii \"");
-				for(i = 0; i < init->u.str.len; i++){
-					char ch = init->u.str.str[i];
-					if(isprint(ch))
-						printf("%c", ch);
-					else
-						printf("\\%03o", (unsigned)ch);
-				}
+				dump_escaped_string(&init->u.str);
 				printf("\"\n");
 				break;
 			}

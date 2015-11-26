@@ -24,4 +24,6 @@ struct init
 	} u;
 };
 
+void init_dump(struct init *);
+
 #endif

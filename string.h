@@ -7,4 +7,6 @@ struct string
 	size_t len;
 };
 
+int dump_escaped_string(const struct string *);
+
 #endif
