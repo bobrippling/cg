@@ -193,6 +193,7 @@ int main(int argc, char *argv[])
 	global_emit_func *emit_fn = NULL;
 	unit *unit = NULL;
 	const char *fname = NULL;
+	const char *output = NULL;
 	int i;
 	int parse_err = 0;
 
@@ -208,6 +209,23 @@ int main(int argc, char *argv[])
 				OPTS
 #undef X
 #endif
+			}
+
+		}else if(!strncmp(argv[i], "-o", 2)){
+			if(output){
+				fprintf(stderr, "already given a '-o' option\n");
+				usage(*argv);
+			}
+
+			if(argv[i][2]){
+				output = argv[i] + 2;
+			}else{
+				i++;
+				if(!argv[i]){
+					fprintf(stderr, "'-o' requires an argument\n");
+					usage(*argv);
+				}
+				output = argv[i];
 			}
 
 		}else if(!strcmp(argv[i], "--dump-tokens")){
@@ -267,6 +285,11 @@ int main(int argc, char *argv[])
 
 	if(parse_err)
 		return 1;
+
+	if(output && !freopen(output, "w", stdout)){
+		fprintf(stderr, "%s: open %s: %s\n", *argv, output, strerror(errno));
+		return 1;
+	}
 
 	if(!emit_fn)
 		emit_fn = default_backend();
