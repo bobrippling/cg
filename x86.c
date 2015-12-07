@@ -853,20 +853,21 @@ static void x86_op(
 	opisn = x86_isn_add;
 
 	switch(op){
-		case op_add:
-			break;
-		case op_sub:
-			opisn.mnemonic = "sub";
-			break;
-		case op_mul:
-			opisn.mnemonic = "imul";
-			break;
+		case op_add: break;
+
+		case op_sub:          opisn.mnemonic = "sub"; break;
+		case op_mul:          opisn.mnemonic = "imul"; break;
+		case op_and:          opisn.mnemonic = "and"; break;
+		case op_or:           opisn.mnemonic = "or"; break;
+		case op_xor:          opisn.mnemonic = "xor"; break;
+
 		case op_shiftl:       opisn.mnemonic = "shl"; break;
 		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
 		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
 
-		default:
-			assert(0 && "TODO: other ops");
+		case op_div:
+		case op_mod:
+			assert(0 && "TODO: x86 division");
 	}
 
 	/* no instruction selection / register merging. just this for now */
