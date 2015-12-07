@@ -861,6 +861,10 @@ static void x86_op(
 		case op_mul:
 			opisn.mnemonic = "imul";
 			break;
+		case op_shiftl:       opisn.mnemonic = "shl"; break;
+		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
+		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
+
 		default:
 			assert(0 && "TODO: other ops");
 	}

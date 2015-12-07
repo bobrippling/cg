@@ -55,8 +55,8 @@
 	OP(or)              \
 	OP(and)             \
 	OP(shiftl)          \
-	OP(shiftr)          \
-	OP(shiftra)         \
+	OP(shiftr_logic)    \
+	OP(shiftr_arith)    \
 	CMP(eq)             \
 	CMP(ne)             \
 	CMP(gt)             \

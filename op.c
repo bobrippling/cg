@@ -23,8 +23,8 @@ int op_exe(enum op op, int l, int r, int *const div0)
 		case op_or: return l | r;
 		case op_xor: return l ^ r;
 		case op_shiftl: return l << r;
-		case op_shiftr: return l >> r;
-		case op_shiftra: return (unsigned)l >> (unsigned)r;
+		case op_shiftr_arith: return l >> r;
+		case op_shiftr_logic: return (unsigned)l >> (unsigned)r;
 	}
 	assert(0);
 }
