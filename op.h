@@ -10,11 +10,9 @@
 	X(and)      \
 	X(or)       \
 	X(xor)      \
-	X(and_sc)   \
-	X(or_sc)    \
-	X(shiftl)   \
-	X(shiftr)   \
-	X(shiftra)
+	X(shiftl)      \
+	X(shiftr_logic)\
+	X(shiftr_arith)
 
 #define CMPS \
 	X(eq)      \

@@ -54,8 +54,6 @@
 	OP(xor)             \
 	OP(or)              \
 	OP(and)             \
-	OP(or_sc)           \
-	OP(and_sc)          \
 	OP(shiftl)          \
 	OP(shiftr)          \
 	OP(shiftra)         \

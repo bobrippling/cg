@@ -22,8 +22,6 @@ int op_exe(enum op op, int l, int r, int *const div0)
 		case op_and: return l & r;
 		case op_or: return l | r;
 		case op_xor: return l ^ r;
-		case op_and_sc: return l && r;
-		case op_or_sc: return l || r;
 		case op_shiftl: return l << r;
 		case op_shiftr: return l >> r;
 		case op_shiftra: return (unsigned)l >> (unsigned)r;
