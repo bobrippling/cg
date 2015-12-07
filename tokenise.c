@@ -276,7 +276,7 @@ enum token token_next(tokeniser *t)
 			t->linep--;
 	}
 
-	if('0' <= *t->linep && *t->linep <= '9'){
+	if(isdigit(*t->linep) || (*t->linep == '-' && isdigit(t->linep[1]))){
 		char *end;
 		t->lastint = strtol(t->linep, &end, 0);
 		assert(end > t->linep);
