@@ -13,6 +13,7 @@
 #include "function_struct.h"
 #include "isn_struct.h"
 #include "regalloc.h"
+#include "unit_internal.h"
 
 static void function_add_block(function *, block *);
 
@@ -85,26 +86,28 @@ block *function_entry_block(function *f, bool create)
 	return f->entry;
 }
 
-block *function_exit_block(function *f)
+block *function_exit_block(function *f, unit *unit)
 {
 	if(!f->exit)
-		f->exit = function_block_new(f);
+		f->exit = function_block_new(f, unit);
 
 	return f->exit;
 }
 
-block *function_block_new(function *f)
+block *function_block_new(function *f, unit *unit)
 {
-	block *b = block_new(lbl_new(f->uniq_counter));
+	block *b = block_new(lbl_new_private(f->uniq_counter, unit_lbl_private_prefix(unit)));
 	function_add_block(f, b);
 	return b;
 }
 
 block *function_block_find(
 		function *f,
+		unit *unit,
 		char *ident /*takes ownership*/,
 		int *const created)
 {
+	const char *prefix = unit_lbl_private_prefix(unit);
 	size_t i;
 	block *b;
 
@@ -114,7 +117,7 @@ block *function_block_find(
 		b = f->blocks[i];
 		lbl = block_label(b);
 
-		if(lbl && !strcmp(ident, lbl)){
+		if(lbl && lbl_equal_to_ident(lbl, ident, prefix)){
 			if(created)
 				*created = 0;
 
@@ -126,7 +129,8 @@ block *function_block_find(
 	if(created)
 		*created = 1;
 
-	b = block_new(ident);
+	b = block_new(lbl_new_ident(ident, prefix));
+	free(ident);
 	function_add_block(f, b);
 	return b;
 }

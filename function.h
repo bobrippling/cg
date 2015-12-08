@@ -6,6 +6,7 @@
 #include "variable.h"
 
 typedef struct function function;
+struct unit;
 
 void function_free(function *);
 
@@ -18,14 +19,15 @@ void function_finalize(function *);
 void function_onblocks(function *, void (block *));
 
 block *function_entry_block(function *, bool create);
-block *function_exit_block(function *);
+block *function_exit_block(function *, struct unit *unit);
 
 block *function_block_find(
 		function *f,
+		struct unit *unit,
 		char *ident /*takes ownership*/,
 		int *const created);
 
-block *function_block_new(function *f);
+block *function_block_new(function *f, struct unit *unit);
 
 bool function_arg_find(
 		function *f, const char *name,

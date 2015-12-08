@@ -781,8 +781,8 @@ static void parse_br(parse *p)
 	eat(p, "br false", tok_ident);
 	lfalse = token_last_ident(p->tok);
 
-	btrue = function_block_find(p->func, ltrue, NULL);
-	bfalse = function_block_find(p->func, lfalse, NULL);
+	btrue = function_block_find(p->func, p->unit, ltrue, NULL);
+	bfalse = function_block_find(p->func, p->unit, lfalse, NULL);
 
 	isn_br(p->entry, cond, btrue, bfalse);
 
@@ -797,7 +797,7 @@ static void parse_jmp(parse *p)
 	eat(p, "jmp label", tok_ident);
 	lbl = token_last_ident(p->tok);
 
-	target = function_block_find(p->func, lbl, NULL);
+	target = function_block_find(p->func, p->unit, lbl, NULL);
 
 	isn_jmp(p->entry, target);
 
@@ -834,7 +834,7 @@ static void parse_block(parse *p)
 
 				eat(p, "label colon", tok_colon);
 
-				p->entry = function_block_find(p->func, xstrdup(ident), &created);
+				p->entry = function_block_find(p->func, p->unit, xstrdup(ident), &created);
 
 				if(!created && !block_tenative(p->entry)){
 					parse_error(p, "block '%s' already exists", ident);

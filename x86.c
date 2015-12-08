@@ -30,6 +30,7 @@
 
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 0
+#define USER_LABEL_FORMAT "%s_%s"
 
 struct x86_alloca_ctx
 {
@@ -1041,9 +1042,7 @@ static void x86_cmp(
 
 static void x86_jmp(x86_octx *octx, block *target)
 {
-	fprintf(octx->fout, "\tjmp %s%s\n",
-			unit_lbl_private_prefix(octx->unit),
-			target->lbl);
+	fprintf(octx->fout, "\tjmp %s\n", target->lbl);
 }
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
@@ -1053,9 +1052,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 			cond, false,
 			NULL);
 
-	fprintf(octx->fout, "\tjz %s%s\n",
-			unit_lbl_private_prefix(octx->unit),
-			bf->lbl);
+	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 
 	x86_jmp(octx, bt);
 }
@@ -1065,9 +1062,7 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 	if(!blk->lbl)
 		return;
 
-	fprintf(octx->fout, "%s%s:\n",
-			unit_lbl_private_prefix(octx->unit),
-			blk->lbl);
+	fprintf(octx->fout, "%s:\n", blk->lbl);
 }
 
 static void x86_ptr2int(val *from, val *to, x86_octx *octx)
@@ -1131,9 +1126,7 @@ static void x86_out_block1(block *blk, void *vctx)
 					x86_mov(i->u.ret, &veax, octx);
 				}
 
-				fprintf(octx->fout, "\tjmp %s%s\n",
-						unit_lbl_private_prefix(octx->unit),
-						octx->exitblk->lbl);
+				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
 				break;
 			}
 
@@ -1297,7 +1290,7 @@ static void x86_out_fn(unit *unit, function *func)
 	struct x86_alloca_ctx alloca_ctx = { 0 };
 	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
-	block *const exit = function_exit_block(func);
+	block *const exit = function_exit_block(func, unit);
 	struct regalloc_info regalloc;
 	dynmap *markers = BLOCK_DYNMAP_NEW();
 
