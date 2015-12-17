@@ -1,0 +1,20 @@
+# test=sh ! $ir $f | grep 'call[a-z]* *\*'
+# shouldn't have any indirect calls, particularly $f2
+
+$f = i4(i4 $a)
+{
+	ret $a
+}
+
+$main = i4()
+{
+	$f2 = ptrcast i4(i4, i4)*, $f
+
+	# $f2 shouldn't be loaded into a register - this should be a no-op cast behind the scenes
+
+	$x = call $f2(i4 3, i4 9)
+
+	$y = call $f(i4 2)
+
+	ret $x
+}
