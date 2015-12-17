@@ -1,6 +1,8 @@
 #ifndef ISN_H
 #define ISN_H
 
+#include <stdbool.h>
+
 #include "op.h"
 #include "block.h"
 #include "dynarray.h"
@@ -31,5 +33,7 @@ void isn_jmp(block *, block *);
 void isn_ret(block *, struct val *);
 
 void isn_call(block *, struct val *into, struct val *fn, dynarray *args /*not consumed*/);
+
+bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
 
 #endif

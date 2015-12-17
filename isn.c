@@ -488,6 +488,40 @@ void isn_jmp(block *current, block *new)
 	current->u.jmp.target = new; /* weak ref */
 }
 
+bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
+{
+	switch(isn->type){
+		case ISN_STORE:
+		case ISN_LOAD:
+		case ISN_ALLOCA:
+		case ISN_ELEM:
+		case ISN_PTRADD:
+		case ISN_OP:
+		case ISN_CMP:
+		case ISN_COPY:
+		case ISN_EXT:
+		case ISN_RET:
+		case ISN_JMP:
+		case ISN_BR:
+		case ISN_CALL:
+			break;
+
+		case ISN_PTR2INT:
+		case ISN_INT2PTR:
+			*src = isn->u.ptr2int.from;
+			*dest = isn->u.ptr2int.to;
+			return val_size(*src) == val_size(*dest);
+
+		case ISN_PTRCAST:
+			/* assumes all pointers are the same size and representation */
+			*src = isn->u.ptrcast.from;
+			*dest = isn->u.ptrcast.to;
+			return true;
+	}
+
+	return false;
+}
+
 static void isn_on_vals(
 		isn *current,
 		void fn(val *, isn *, void *),

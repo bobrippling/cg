@@ -81,13 +81,17 @@ static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 	}
 }
 
+static void regalloc_mirror(val *dest, val *src)
+{
+	val_mirror(dest, src);
+}
+
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
 	struct name_loc *val_locn;
-
-	(void)isn;
+	val *src, *dest;
 
 	switch(v->kind){
 		case LITERAL:
@@ -118,6 +122,23 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		case BACKEND_TEMP:
 			return;
+	}
+
+	/* if the instruction is a no-op (e.g. ptrcast, ptr2int/int2ptr where the sizes match),
+	 * then we reuse the source register/spill */
+	if(isn_is_noop(isn, &src, &dest)){
+		if(v == src){
+			/* if we're the source register, we need allocation */
+		}else{
+			if(SHOW_REGALLOC){
+				fprintf(stderr, "regalloc(%s) => reuse of source register\n", val_str(v));
+			}
+
+			assert(v == dest);
+			regalloc_mirror(dest, src);
+			isn->skip = 1;
+			return;
+		}
 	}
 
 	/* if it lives across blocks we must use memory */

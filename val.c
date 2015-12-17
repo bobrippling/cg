@@ -288,6 +288,15 @@ static void val_free(val *v)
 	free(v);
 }
 
+void val_mirror(val *dest, val *src)
+{
+	const unsigned dest_retains = dest->retains;
+
+	*dest = *src;
+
+	dest->retains = dest_retains;
+}
+
 void val_release(val *v)
 {
 	assert(v->retains > 0 && "unretained val");
