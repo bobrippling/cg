@@ -3,12 +3,13 @@
 #include <string.h>
 #include <assert.h>
 
+#include <strbuf_fixed.h>
+
 #include "mem.h"
 #include "macros.h"
 
 #include "type.h"
 #include "type_uniq_struct.h"
-#include "strbuf_fixed.h"
 
 struct uptype
 {
