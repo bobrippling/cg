@@ -9,13 +9,6 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
 
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
 
-HEADERS = backend.h dyn.h dynmap.h \
-          isn.h isn_internal.h regalloc.h isn_struct.h \
-          mem.h op.h opt_cprop.h \
-          val.h val_internal.h val_struct.h \
-          block.h block_internal.h block_struct.h \
-          x86.h x86_call.h x86_internal.h x86_isns.h
-
 SRC = ${OBJ:.o=.c}
 
 CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L -Istrbuf
@@ -40,15 +33,12 @@ check: ir
 
 tags: ${SRC}
 	@echo ctags
-	$Qctags ${SRC} ${HEADERS}
+	$Qctags ${SRC} *.h
 
 clean:
 	make -C test clean
 	make -C strbuf clean
 	rm -f ir ${OBJ} ${OBJ:%.o=.%.d}
-
-Makefile.dep: ${SRC} ${HEADERS}
-	${CC} -MM ${SRC} > $@
 
 .%.d: %.c
 	@echo depend $<
