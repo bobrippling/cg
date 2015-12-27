@@ -2,6 +2,8 @@
 #define FUNCTION_STRUCT_H
 
 #include "variable_struct.h"
+
+#include "val.h"
 #include "val_struct.h"
 
 struct function
@@ -21,7 +23,9 @@ struct function
 	} *args;
 	size_t nargs;
 
-	unsigned retsz;
+	dynarray toplvl_args;
+
+	type *fnty;
 };
 
 #endif

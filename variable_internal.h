@@ -1,6 +1,8 @@
 #ifndef VARIABLE_INTERNAL_H
 #define VARIABLE_INTERNAL_H
 
-variable *variable_new(const char *, unsigned);
+struct type;
+
+variable *variable_new(const char *, struct type *);
 
 #endif

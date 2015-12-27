@@ -5,6 +5,7 @@
 #include "regalloc_blk.h"
 #include "regalloc_isn.h"
 
+#include "val.h"
 #include "val_struct.h"
 #include "isn_struct.h"
 

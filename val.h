@@ -1,47 +1,30 @@
 #ifndef VAL_H
 #define VAL_H
 
-#include "block.h"
+#include "macros.h"
+
+struct type;
+struct variable;
+struct global;
 
 typedef struct val val;
 
-val *val_new_i(int i, unsigned sz);
-val *val_new_ptr_from_int(int);
+val *val_new_i(int i, struct type *);
 
-val *val_new_lbl(char * /*consumed*/);
+/* refer to a local, arg or global */
+val *val_new_global(struct global *) attr_nonnull;
+val *val_new_argument(struct variable *) attr_nonnull;
+val *val_new_local(struct variable *); /* maybe null */
 
-val *val_new_arg(size_t idx, char * /*consumed*/, unsigned size);
+unsigned val_size(val *);
+struct type *val_type(val *);
 
-val *val_make_alloca(block *, int n, unsigned elemsz);
-
-val *val_element(
-		block *, val *lval,
-		int i, unsigned elemsz,
-		char *ident_to); /* i'th element */
-
-val *val_element_noop(val *lval, int i, unsigned elemsz);
-
-void val_store(block *, val *rval, val *lval);
-val *val_load(block *, val *, unsigned size);
-
-val *val_add(block *, val *, val *);
-val *val_equal(block *, val *, val *);
-
-/* TODO: sext and trunc */
-val *val_zext(block *, val *, unsigned);
-
-void val_ret(block *, val *);
-
-/* anonymous */
-val *val_alloca(void);
-val *val_name_new(unsigned sz, char *ident);
-
-/* util */
+/* --- util */
 #define VAL_STR_SZ 32
 
 char *val_str(val *);
 char *val_str_r(char buf[], val *);
-char *val_str_rn(unsigned buf_n, val *);
+char *val_str_rn(unsigned bufindex, val *);
 
 unsigned val_hash(val *);
 

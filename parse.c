@@ -12,8 +12,9 @@
 
 #include "dynmap.h"
 #include "val.h"
-#include "val_allocas.h"
 #include "isn.h"
+#include "type.h"
+#include "variable_struct.h"
 
 typedef struct {
 	tokeniser *tok;
@@ -30,23 +31,48 @@ enum val_opts
 	VAL_ALLOCA = 1 << 1
 };
 
-attr_printf(2, 3)
-static void parse_error(parse *p, const char *fmt, ...)
+static type *parse_type(parse *);
+
+
+attr_printf(2, 0)
+static void error_v(parse *p, const char *fmt, va_list l)
 {
 	char buf[32];
-	va_list l;
 
 	fprintf(stderr, "%s:%u: ", token_curfile(p->tok), token_curlineno(p->tok));
 
-	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
-	va_end(l);
 	fputc('\n', stderr);
 
 	token_curline(p->tok, buf, sizeof buf);
 	fprintf(stderr, "at: '%s'\n", buf);
 
 	p->err = 1;
+}
+
+attr_printf(2, 3)
+static void parse_error(parse *p, const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	error_v(p, fmt, l);
+	va_end(l);
+}
+
+attr_printf(2, 3)
+static void sema_error(parse *p, const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	error_v(p, fmt, l);
+	va_end(l);
+}
+
+static type *default_type(parse *p)
+{
+	return type_get_primitive(unit_uniqtypes(p->unit), i4);
 }
 
 static void create_names2vals(parse *p)
@@ -71,12 +97,21 @@ static val *map_val(parse *p, char *name, val *v)
 }
 
 static val *uniq_val(
-		parse *p, char *name, int size, enum val_opts opts)
+		parse *p,
+		char *name,
+		type *ty,
+		enum val_opts opts)
 {
 	val *v;
 	global *glob;
 	variable *var;
 	size_t arg_idx;
+
+	if(ty){
+		assert(opts & VAL_CREATE);
+	}else{
+		assert(!(opts & VAL_CREATE));
+	}
 
 	if(p->names2vals){
 		v = dynmap_get(char *, val *, p->names2vals, name);
@@ -93,7 +128,7 @@ found:
 
 	/* check args */
 	if((var = function_arg_find(p->func, name, &arg_idx))){
-		v = val_new_arg(arg_idx, name, variable_size(var, 0));
+		v = val_new_argument(var);
 
 		map_val(p, name, v);
 
@@ -106,7 +141,7 @@ found:
 	glob = unit_global_find(p->unit, name);
 
 	if(glob){
-		v = val_new_lbl(name);
+		v = val_new_global(glob);
 		name = NULL;
 		goto found;
 	}
@@ -115,9 +150,13 @@ found:
 		parse_error(p, "undeclared identifier '%s'", name);
 
 	if(opts & VAL_ALLOCA){
-		v = val_alloca();
+		v = val_new_local(NULL);
 	}else{
-		v = val_name_new(size, name);
+#if 0
+		var = (variable){ }; /* TODO */
+#endif
+		(void)ty;
+		v = val_new_local(var);
 	}
 
 	return map_val(p, name, v);
@@ -129,8 +168,11 @@ static void eat(parse *p, const char *desc, enum token expect)
 	if(got == expect)
 		return;
 
-	parse_error(p, "expected %s for %s, got %s",
-			token_to_str(expect), desc, token_to_str(got));
+	parse_error(p, "expected %s%s%s, got %s",
+			token_to_str(expect),
+			desc ? " for " : "",
+			desc,
+			token_to_str(got));
 }
 
 static int parse_finished(tokeniser *tok)
@@ -138,65 +180,185 @@ static int parse_finished(tokeniser *tok)
 	return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
 }
 
-static val *parse_lval(parse *p)
+static void parse_type_list(
+		parse *p, dynarray *types,
+		dynarray *toplvl_args,
+		enum token lasttok)
 {
-	enum token t = token_next(p->tok);
+	if(token_peek(p->tok) != lasttok){
+		for(;;){
+			type *memb = parse_type(p);
 
-	switch(t){
-		case tok_int:
-			return val_new_ptr_from_int(token_last_int(p->tok));
+			dynarray_add(types, memb);
 
-		case tok_ident:
-			return uniq_val(p, token_last_ident(p->tok), -1, 0);
+			if(toplvl_args){
+				char *ident;
 
-		default:
-			parse_error(p, "memory operand expected, got %s", token_to_str(t));
-			return val_new_ptr_from_int(0);
+				eat(p, "argument name", tok_ident);
+
+				ident = token_last_ident(p->tok);
+				dynarray_add(toplvl_args, ident);
+			}
+
+			if(token_accept(p->tok, tok_comma))
+				continue;
+			break;
+		}
 	}
+
+	eat(p, NULL, lasttok);
 }
 
-static int parse_dot_size(parse *p)
-{
-	eat(p, "dot-size", tok_dot);
-	eat(p, "dot-size", tok_int);
-	return token_last_int(p->tok);
-}
 
-static val *parse_rval(parse *p, unsigned size)
+static type *parse_type_maybe_func(parse *p, dynarray *toplvl_args)
 {
-	enum token t = token_next(p->tok);
+	/*
+	 * void
+	 * i1, i2, i4, i8
+	 * f4, f8, flarge
+	 * { i2, f4 }
+	 * [ i2 x 7 ]
+	 * i8 *
+	 * f4 (i2)
+	 */
+	type *t = NULL;
+	enum token tok;
 
-	switch(t){
-		case tok_int:
-		{
-			int i = token_last_int(p->tok);
-			return val_new_i(i, size);
-		}
+	switch((tok = token_next(p->tok))){
+			enum type_primitive prim;
 
 		case tok_ident:
+			/* TODO: type alias lookup */
+			parse_error(p, "TODO: type alias");
+			return default_type(p);
+
+		case tok_i1: prim = i1; goto prim;
+		case tok_i2: prim = i2; goto prim;
+		case tok_i4: prim = i4; goto prim;
+		case tok_i8: prim = i8; goto prim;
+
+		case tok_f4:     prim = f4; goto prim;
+		case tok_f8:     prim = f8; goto prim;
+		case tok_flarge: prim = flarge; goto prim;
+prim:
+			t = type_get_primitive(unit_uniqtypes(p->unit), prim);
+			break;
+
+		case tok_void:
+			t = type_get_void(unit_uniqtypes(p->unit));
+			break;
+
+		case tok_lbrace:
 		{
-			char *ident = token_last_ident(p->tok);
-			return uniq_val(p, ident, size, 0);
+			dynarray types = DYNARRAY_INIT;
+
+			parse_type_list(p, &types, NULL, tok_rbrace);
+
+			t = type_get_struct(unit_uniqtypes(p->unit), &types);
+			break;
+		}
+
+		case tok_lsquare:
+		{
+			type *elemty = parse_type(p);
+			char *mul;
+			unsigned nelems;
+
+			eat(p, "array multiplier", tok_ident);
+			mul = token_last_ident(p->tok);
+			if(strcmp(mul, "x")){
+				parse_error(p, "'x' expected for array multiplier, got %s", mul);
+			}
+			free(mul);
+
+			eat(p, "array multiple", tok_int);
+			nelems = token_last_int(p->tok);
+
+			t = type_get_array(unit_uniqtypes(p->unit), elemty, nelems);
+			break;
 		}
 
 		default:
-			parse_error(p, "rvalue operand expected, got %s", token_to_str(t));
-			return val_new_i(0, size);
+			parse_error(p, "type expected, got %s", token_to_str(tok));
+			return default_type(p);
 	}
+
+	for(;;){
+		if(token_accept(p->tok, tok_star)){
+			t = type_get_ptr(unit_uniqtypes(p->unit), t);
+			continue;
+		}
+
+		if(token_accept(p->tok, tok_lparen)){
+			dynarray types = DYNARRAY_INIT;
+
+			parse_type_list(p, &types, toplvl_args, tok_rparen);
+
+			t = type_get_func(unit_uniqtypes(p->unit), t, &types);
+			continue;
+		}
+
+		break;
+	}
+
+	return t;
+}
+
+static type *parse_type(parse *p)
+{
+	return parse_type_maybe_func(p, NULL);
+}
+
+static val *parse_val(parse *p)
+{
+	type *ty;
+
+	if(token_peek(p->tok) == tok_ident){
+		char *ident = token_last_ident(p->tok);
+		val *v = uniq_val(p, ident, NULL, 0);
+
+		return v;
+	}
+
+	/* need a type and a literal, e.g. i32 5 */
+	ty = parse_type(p);
+
+	if(!ty){
+		parse_error(p, "value type expected, got %s",
+				token_to_str(token_peek(p->tok)));
+
+		ty = default_type(p);
+	}
+
+	if(token_accept(p->tok, tok_int)){
+		int i = token_last_int(p->tok);
+
+		return val_new_i(i, ty);
+	}
+
+	parse_error(p, "value operand expected, got %s",
+			token_to_str(token_peek(p->tok)));
+
+	return val_new_i(0, ty);
 }
 
 static void parse_call(parse *p, char *ident_or_null)
 {
 	val *target;
 	val *into;
-	unsigned sz = parse_dot_size(p);
 	dynarray args = DYNARRAY_INIT;
+	type *retty;
 
 	assert(ident_or_null && "TODO: void");
 
-	target = parse_rval(p, 0);
+	target = parse_val(p);
 
-	into = uniq_val(p, ident_or_null, sz, VAL_CREATE);
+	if(!(retty = type_func_call(val_type(target)))){
+		retty = default_type(p);
+		sema_error(p, "call requires function operand");
+	}
+
+	into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
 
 	eat(p, "call paren", tok_lparen);
 
@@ -210,12 +372,14 @@ static void parse_call(parse *p, char *ident_or_null)
 			eat(p, "call comma", tok_comma);
 		}
 
-		arg = parse_rval(p, 0);
+		arg = parse_val(p);
 
 		dynarray_add(&args, arg);
 
 		if(token_peek(p->tok) == tok_rparen || parse_finished(p->tok))
 			break;
+
+#warning tycheck
 	}
 
 	eat(p, "call paren", tok_rparen);
@@ -227,8 +391,7 @@ static void parse_call(parse *p, char *ident_or_null)
 
 static void parse_ident(parse *p)
 {
-	/* x = load y */
-	char *lhs = token_last_ident(p->tok);
+	char *spel = token_last_ident(p->tok);
 	enum token tok;
 
 	eat(p, "assignment", tok_equal);
@@ -238,43 +401,54 @@ static void parse_ident(parse *p)
 	switch(tok){
 		case tok_load:
 		{
-			unsigned isn_sz = parse_dot_size(p);
-			val *vlhs = uniq_val(p, lhs, isn_sz, VAL_CREATE);
-			isn_load(p->entry, vlhs, parse_lval(p));
+			val *rhs = parse_val(p);
+			type *deref_ty = type_deref(val_type(rhs));
+			val *lhs;
+
+			if(!deref_ty){
+				sema_error(p, "load operand not a pointer type");
+				deref_ty = default_type(p);
+			}
+
+			lhs = uniq_val(p, spel, deref_ty, VAL_CREATE);
+			isn_load(p->entry, lhs, rhs);
 			break;
 		}
 
 		case tok_alloca:
 		{
-			unsigned amt;
 			val *vlhs;
+			type *ty = parse_type(p);
 
-			eat(p, "alloca", tok_int);
-			amt = token_last_int(p->tok);
+			vlhs = uniq_val(
+					p, spel,
+					type_get_ptr(unit_uniqtypes(p->unit), ty),
+					VAL_CREATE | VAL_ALLOCA);
 
-			vlhs = uniq_val(p, lhs, -1, VAL_CREATE | VAL_ALLOCA);
-
-			isn_alloca(p->entry, amt, vlhs);
+			isn_alloca(p->entry, vlhs);
 			break;
 		}
 
 		case tok_elem:
 		{
+#if 0
 			val *vlhs;
-			char *ident = lhs ? xstrdup(lhs) : NULL;
-			val *index_into = parse_lval(p);
+			char *ident = spel ? xstrdup(spel) : NULL;
+			val *index_into = parse_val(p);
 			val *idx;
 
 			eat(p, "elem", tok_comma);
 
-			idx = parse_rval(p, 0);
+			idx = parse_val(p);
 
-			/*vlhs = val_element(NULL, index_into, idx, 0, ident);*/
-			vlhs = val_name_new(0, ident);
+			vlhs = val_new_local(ident);
 
-			map_val(p, lhs, vlhs);
+			map_val(p, spel, vlhs);
 
 			isn_elem(p->entry, index_into, idx, vlhs);
+			break;
+#endif
+			assert(0 && "TODO: elem");
 			break;
 		}
 
@@ -283,22 +457,34 @@ static void parse_ident(parse *p)
 			unsigned to;
 			val *from;
 			val *vres;
+			type *ty_to;
+			enum type_primitive prim;
 
 			eat(p, "extend-to", tok_int);
 			to = token_last_int(p->tok);
 
 			eat(p, "zext", tok_comma);
 
-			from = parse_rval(p, /*unused except for literal int*/to);
+			from = parse_val(p);
 
-			vres = uniq_val(p, lhs, to, VAL_CREATE);
+			if(!type_size_to_primitive(to, &prim)){
+				sema_error(p, "zext operand not a valid integer size");
+				prim = i4;
+			}
+
+			ty_to = type_get_primitive(unit_uniqtypes(p->unit), prim);
+
+			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
+
+#warning tycheck / ensure from is int
+
 			isn_zext(p->entry, from, vres);
 			break;
 		}
 
 		case tok_call:
 		{
-			parse_call(p, lhs);
+			parse_call(p, spel);
 			break;
 		}
 
@@ -310,10 +496,19 @@ static void parse_ident(parse *p)
 
 			if(token_is_op(tok, &op) || (is_cmp = 1, token_is_cmp(tok, &cmp))){
 				/* x = add a, b */
-				unsigned isn_sz = parse_dot_size(p);
-				val *vlhs = parse_rval(p, isn_sz);
-				val *vrhs = (eat(p, "operator", tok_comma), parse_rval(p, isn_sz));
-				val *vres = uniq_val(p, lhs, is_cmp ? 1 : isn_sz, VAL_CREATE);
+				val *vlhs = parse_val(p);
+				val *vrhs = (eat(p, "operator", tok_comma), parse_val(p));
+				val *vres;
+				type *opty;
+
+				if(val_type(vlhs) != val_type(vrhs)){
+					sema_error(p, "mismatching types in op");
+				}
+
+				opty = val_type(vlhs);
+				vres = uniq_val(p, spel, opty, VAL_CREATE);
+
+#warning tycheck / pointer-vs-int check
 
 				if(is_cmp)
 					isn_cmp(p->entry, cmp, vlhs, vrhs, vres);
@@ -330,20 +525,20 @@ static void parse_ident(parse *p)
 
 static void parse_ret(parse *p)
 {
-	isn_ret(p->entry, parse_rval(p, parse_dot_size(p)));
+#warning tycheck
+	isn_ret(p->entry, parse_val(p));
 }
 
 static void parse_store(parse *p)
 {
 	val *lval;
 	val *rval;
-	unsigned isn_sz;
 
-	isn_sz = parse_dot_size(p);
+	lval = parse_val(p);
+	eat(p, "store comma", tok_comma);
+	rval = parse_val(p);
 
-	lval = parse_lval(p);
-	eat(p, "store", tok_comma);
-	rval = parse_rval(p, isn_sz);
+#warning tycheck
 
 	isn_store(p->entry, rval, lval);
 }
@@ -358,7 +553,9 @@ static void parse_br(parse *p)
 	/* br cond, ltrue, lfalse */
 	char *ltrue, *lfalse;
 	block *btrue, *bfalse;
-	val *cond = parse_rval(p, 1);
+	val *cond = parse_val(p);
+
+#warning tycheck cond must be integral
 
 	eat(p, "br comma", tok_comma);
 	eat(p, "br true", tok_ident);
@@ -443,10 +640,6 @@ static void parse_block(parse *p)
 			break;
 		}
 
-		case tok_jmp:
-			parse_jmp(p);
-			break;
-
 		case tok_br:
 			parse_br(p);
 			break;
@@ -457,43 +650,16 @@ static void parse_block(parse *p)
 	}
 }
 
-static void parse_decl_start(parse *p, unsigned *const sz, char **const name)
+static void parse_function(
+		parse *p,
+		char *name, type *ty,
+		dynarray *toplvl_args)
 {
-	eat(p, "decl type", tok_int);
-	*sz = token_last_int(p->tok);
+	function *fn = unit_function_new(p->unit, name, ty, toplvl_args);
 
-	eat(p, "decl name", tok_ident);
-	*name = token_last_ident(p->tok);
-
-	if(!*name)
-		*name = xstrdup("_error");
-}
-
-static function *parse_function(parse *p, unsigned ret, char *name)
-{
-	function *fn = unit_function_new(p->unit, name, ret);
-
-	eat(p, "function open paren", tok_lparen);
-
-	while(token_peek(p->tok) != tok_rparen && !parse_finished(p->tok)){
-		char *arg_name;
-		unsigned arg_sz;
-		parse_decl_start(p, &arg_sz, &arg_name);
-
-		function_arg_add(fn, arg_sz, arg_name);
-
-		if(token_peek(p->tok) != tok_comma)
-			break;
-
-		eat(p, "arg comma", tok_comma);
-	}
-
-	eat(p, "function close paren", tok_rparen);
-
-	if(token_peek(p->tok) == tok_semi){
+	if(token_accept(p->tok, tok_semi)){
 		/* declaration */
-		eat(p, "function semi", tok_semi);
-		return fn;
+		return;
 	}
 
 	eat(p, "function open brace", tok_lbrace);
@@ -505,33 +671,37 @@ static function *parse_function(parse *p, unsigned ret, char *name)
 		parse_block(p);
 	}
 
+	dynmap_clear(p->names2vals);
+
 	eat(p, "function close brace", tok_rbrace);
 
 	function_finalize(fn);
-
-	return fn;
 }
 
-static void parse_variable(parse *p, unsigned sz, char *name)
+static void parse_variable(parse *p, char *name, type *ty)
 {
-	eat(p, "variable end", tok_semi);
-
-	unit_variable_new(p->unit, name, sz);
+	/* TODO: init */
+	unit_variable_new(p->unit, name, ty);
 }
 
 static void parse_global(parse *p)
 {
-	unsigned sz;
+	type *ty;
 	char *name;
+	dynarray toplvl_args = DYNARRAY_INIT;
 
-	parse_decl_start(p, &sz, &name);
+	eat(p, "decl name", tok_ident);
+	name = token_last_ident(p->tok);
+	if(!name)
+		name = xstrdup("_error");
 
-	if(token_peek(p->tok) == tok_lparen)
-		parse_function(p, sz, name);
-	else
-		parse_variable(p, sz, name);
+	ty = parse_type_maybe_func(p, &toplvl_args);
 
-	dynmap_clear(p->names2vals);
+	if(type_is_fn(ty)){
+		parse_function(p, name, ty, &toplvl_args);
+	}else{
+		parse_variable(p, name, ty);
+	}
 }
 
 unit *parse_code(tokeniser *tok, int *const err)

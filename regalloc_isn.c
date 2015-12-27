@@ -26,7 +26,7 @@ struct greedy_ctx
 
 static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 {
-	unsigned vsz = val_size(v, ctx->ptrsz);
+	unsigned vsz = val_size(v);
 
 	ctx->spill_space += vsz;
 	assert(vsz && "unsized name val in regalloc");
@@ -36,6 +36,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
+	struct name_loc *val_locn;
 
 	(void)isn;
 
@@ -47,18 +48,25 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		return;
 	}
 
-	switch(v->type){
-		case NAME:
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
+			/* not something we need to regalloc */
+			return;
+
+		case ARGUMENT:
+			/* done elsewhere */
+			return;
+
+		case FROM_ISN:
+			val_locn = &v->u.local.loc;
 			break;
-		case ARG: /* allocated elsewhere */
-		default:
-			return; /* not something we need to regalloc */
 	}
 
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
 
-	if(lt->start == ctx->isn_num && v->u.addr.u.name.loc.u.reg == -1){
+	if(lt->start == ctx->isn_num && val_locn->u.reg == -1){
 		int i;
 
 		for(i = 0; i < ctx->nregs; i++)
@@ -72,17 +80,17 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		}else{
 			ctx->in_use[i] = 1;
 
-			v->u.addr.u.name.loc.where = NAME_IN_REG;
-			v->u.addr.u.name.loc.u.reg = i;
+			val_locn->where = NAME_IN_REG;
+			val_locn->u.reg = i;
 		}
 
 	}
 
 	if(!v->live_across_blocks
 	&& lt->end == ctx->isn_num
-	&& v->u.addr.u.name.loc.u.reg >= 0)
+	&& val_locn->u.reg >= 0)
 	{
-		ctx->in_use[v->u.addr.u.name.loc.u.reg] = 0;
+		ctx->in_use[val_locn->u.reg] = 0;
 	}
 }
 
@@ -99,19 +107,19 @@ static void regalloc_greedy_spill(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	if(v->type != NAME
-	|| v->u.addr.u.name.loc.where != NAME_IN_REG
-	|| v->u.addr.u.name.loc.u.reg != -1)
+	if(v->kind != FROM_ISN
+	|| v->u.local.loc.where != NAME_IN_REG
+	|| v->u.local.loc.u.reg != -1)
 	{
 		return;
 	}
 
-	size = val_size(v, ctx->ptrsz);
-
-	v->u.addr.u.name.loc.where = NAME_SPILT;
-	v->u.addr.u.name.loc.u.off = ctx->offset + size;
+	size = val_size(v);
 
 	ctx->offset += size;
+
+	v->u.local.loc.where = NAME_SPILT;
+	v->u.local.loc.u.off = ctx->offset;
 }
 
 static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
@@ -122,16 +130,16 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 	/* isn may be null from mark_arg_vals_as_used() */
 	(void)isn;
 
-	switch(v->type){
-		case NAME:
-			if(v->u.addr.u.name.loc.where == NAME_SPILT)
+	switch(v->kind){
+		case FROM_ISN:
+			if(v->u.local.loc.where == NAME_SPILT)
 				return;
-			idx = v->u.addr.u.name.loc.u.reg;
+			idx = v->u.local.loc.u.reg;
 			break;
-		case ARG:
-			if(v->u.arg.loc.where == NAME_SPILT)
+		case ARGUMENT:
+			if(v->u.argument.loc.where == NAME_SPILT)
 				return;
-			idx = v->u.arg.loc.u.reg;
+			idx = v->u.argument.loc.u.reg;
 			break;
 		default:
 			return;
@@ -200,11 +208,10 @@ static void regalloc_greedy(
 	/* any leftovers become elems in the regspill alloca block */
 	if(alloc_ctx.spill_space){
 		struct spill_ctx spill_ctx = { 0 };
-		val *spill_alloca = val_alloca();
-
 		spill_ctx.ptrsz = alloc_ctx.ptrsz;
 
-		isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);
+#warning todo
+		/*isn_alloca(blk, alloc_ctx.spill_space, spill_alloca);*/
 
 		for(isn_iter = head; isn_iter; isn_iter = isn_iter->next)
 			isn_on_live_vals(isn_iter, regalloc_greedy_spill, &spill_ctx);

@@ -30,7 +30,7 @@ struct block
 	{
 		struct
 		{
-			val *cond;
+			struct val *cond;
 			block *t, *f;
 		} branch;
 		struct

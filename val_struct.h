@@ -19,66 +19,31 @@ struct name_loc
 
 struct val
 {
-	enum val_type
-	{
-		INT,       /* sized */
-		INT_PTR,
-		NAME,      /* sized */
-		ALLOCA,
-		LBL,
-		ARG        /* sized */
-	} type;
-	unsigned retains;
+	struct type *ty;
 
 	union
 	{
-		struct
+		int i;
+		struct variable *global;
+		struct sym
 		{
-			int i;
-			int val_size;
-		} i;
-		struct
-		{
-			char *name;
-			size_t idx;
+			struct variable *var;
 			struct name_loc loc;
-			unsigned val_size;
-		} arg;
-		struct
-		{
-			union
-			{
-				struct
-				{
-					char *spel;
-					int val_size;
-					struct name_loc loc;
-				} name;
-				struct
-				{
-					unsigned bytesz;
-					int idx;
-				} alloca;
-				struct
-				{
-					char *spel;
-					unsigned offset;
-				} lbl;
-			} u;
-			struct val_idxpair
-			{
-				val *val;
-				unsigned idx;
-				struct val_idxpair *next;
-			} *idxpair;
-			/* val* => val*
-			 * where .first is a INT */
-		} addr;
+		} argument, local;
 	} u;
 
 	void *pass_data;
 
+	unsigned retains;
 	bool live_across_blocks;
+
+	enum val_kind
+	{
+		LITERAL,  /* i32 5, { i32, [i8 x 2] }* 54 */
+		GLOBAL,   /* $x from global */
+		ARGUMENT, /* $x from arg */
+		FROM_ISN  /* $y = load i32* 1 */
+	} kind;
 };
 
 #endif

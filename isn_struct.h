@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "dynarray.h"
+#include "op.h"
 
 struct isn
 {
@@ -27,44 +28,43 @@ struct isn
 	{
 		struct
 		{
-			val *lval, *to;
+			struct val *lval, *to;
 		} load;
 		struct
 		{
-			val *lval, *from;
+			struct val *lval, *from;
 		} store;
 
 		struct
 		{
 			enum op op;
-			val *lhs, *rhs, *res;
+			struct val *lhs, *rhs, *res;
 		} op;
 
 		struct
 		{
 			enum op_cmp cmp;
-			val *lhs, *rhs, *res;
+			struct val *lhs, *rhs, *res;
 		} cmp;
 
 		struct
 		{
-			val *lval, *add, *res;
+			struct val *lval, *add, *res;
 		} elem;
 
 		struct
 		{
-			unsigned sz;
-			val *out;
+			struct val *out;
 		} alloca;
 
 		struct
 		{
-			val *from, *to;
+			struct val *from, *to;
 		} copy, ext;
 
 		struct
 		{
-			val *cond;
+			struct val *cond;
 			block *t, *f;
 		} branch;
 
@@ -75,11 +75,11 @@ struct isn
 
 		struct
 		{
-			val *into, *fn;
+			struct val *into, *fn;
 			dynarray args;
 		} call;
 
-		val *ret;
+		struct val *ret;
 	} u;
 
 	struct isn *next;

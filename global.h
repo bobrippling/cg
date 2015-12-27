@@ -4,7 +4,7 @@
 #include "function.h"
 #include "variable.h"
 
-typedef struct
+typedef struct global
 {
 	int is_fn;
 	union

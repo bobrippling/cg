@@ -8,7 +8,11 @@
 #include "block.h"
 #include "block_struct.h"
 #include "block_internal.h"
+
 #include "isn_struct.h"
+
+#include "val.h"
+#include "val_internal.h"
 #include "val_struct.h"
 
 block *block_new(char *lbl)
@@ -150,11 +154,11 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	switch(v->type){
-		case NAME:
+	switch(v->kind){
+		case FROM_ISN:
 			start = ctx->isn_count;
 			break;
-		case ARG:
+		case ARGUMENT:
 			start = 0;
 			break;
 		default:

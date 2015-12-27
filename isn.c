@@ -13,6 +13,7 @@
 #include "block_struct.h"
 #include "block_internal.h"
 #include "block.h"
+#include "type.h"
 
 static isn *isn_new(enum isn_type t, block *blk)
 {
@@ -129,6 +130,7 @@ void isn_load(block *blk, val *to, val *lval)
 
 	isn = isn_new(ISN_LOAD, blk);
 
+#warning TODO: error checks
 	isn->u.load.lval = lval;
 	isn->u.load.to = to;
 }
@@ -235,9 +237,12 @@ void isn_elem(block *blk, val *lval, val *add, val *res)
 	isn->u.elem.res = res;
 }
 
-void isn_alloca(block *blk, unsigned sz, val *v)
+void isn_alloca(block *blk, val *v)
 {
 	isn *isn;
+
+	assert(type_deref(val_type(v))
+			&& "pointer expected for alloca next type");
 
 	val_retain(v);
 
@@ -247,7 +252,6 @@ void isn_alloca(block *blk, unsigned sz, val *v)
 	}
 
 	isn = isn_new(ISN_ALLOCA, blk);
-	isn->u.alloca.sz = sz;
 	isn->u.alloca.out = v;
 }
 
@@ -432,8 +436,7 @@ static void isn_dump1(isn *i)
 	switch(i->type){
 		case ISN_STORE:
 		{
-			printf("\tstore.%u %s, %s\n",
-					val_size(i->u.store.from, 0),
+			printf("\tstore %s, %s\n",
 					val_str_rn(0, i->u.store.lval),
 					val_str_rn(1, i->u.store.from));
 			break;
@@ -441,9 +444,8 @@ static void isn_dump1(isn *i)
 
 		case ISN_LOAD:
 		{
-			printf("\t%s = load.%u %s\n",
+			printf("\t%s = load %s\n",
 					val_str_rn(0, i->u.load.to),
-					val_size(i->u.load.to, 0),
 					val_str_rn(1, i->u.load.lval));
 
 			break;
@@ -451,9 +453,9 @@ static void isn_dump1(isn *i)
 
 		case ISN_ALLOCA:
 		{
-			printf("\t%s = alloca %u\n",
+			printf("\t%s = alloca %s\n",
 					val_str(i->u.alloca.out),
-					i->u.alloca.sz);
+					type_to_str(type_deref(val_type(i->u.alloca.out))));
 			break;
 		}
 
@@ -468,10 +470,9 @@ static void isn_dump1(isn *i)
 
 		case ISN_CMP:
 		{
-			printf("\t%s = %s.%u %s, %s\n",
+			printf("\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.cmp.res),
 					op_cmp_to_str(i->u.cmp.cmp),
-					val_size(i->u.cmp.lhs, 0),
 					val_str_rn(1, i->u.cmp.lhs),
 					val_str_rn(2, i->u.cmp.rhs));
 			break;
@@ -479,10 +480,9 @@ static void isn_dump1(isn *i)
 
 		case ISN_OP:
 		{
-			printf("\t%s = %s.%u %s, %s\n",
+			printf("\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.op.res),
 					op_to_str(i->u.op.op),
-					val_size(i->u.op.lhs, 0),
 					val_str_rn(1, i->u.op.lhs),
 					val_str_rn(2, i->u.op.rhs));
 			break;
@@ -500,16 +500,14 @@ static void isn_dump1(isn *i)
 		{
 			printf("\t%s = zext %u, %s\n",
 					val_str_rn(0, i->u.copy.to),
-					val_size(i->u.copy.to, 0),
+					val_size(i->u.copy.to),
 					val_str_rn(1, i->u.copy.from));
 			break;
 		}
 
 		case ISN_RET:
 		{
-			printf("\tret.%u %s\n",
-					val_size(i->u.ret, 0),
-					val_str(i->u.ret));
+			printf("\tret %s\n", val_str(i->u.ret));
 			break;
 		}
 
@@ -557,15 +555,17 @@ static void isn_dump1(isn *i)
 
 #include "dynmap.h"
 #include "val_struct.h"
-static void get_val(val *v, isn *isn, void *ctx)
+static void get_named_val(val *v, isn *isn, void *ctx)
 {
 	(void)isn;
-	switch(v->type){
-		case NAME:
-		case ARG:
-			break;
-		default:
+
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
 			return;
+		case ARGUMENT:
+		case FROM_ISN:
+			break;
 	}
 
 	dynmap_set(val *, long, ctx, v, 0l);
@@ -591,7 +591,7 @@ void isn_dump(isn *const head, block *blk)
 		dynmap *vals = dynmap_new(val *, 0, val_hash);
 
 		for(i = head; i; i = i->next)
-			isn_on_live_vals(i, get_val, vals);
+			isn_on_live_vals(i, get_named_val, vals);
 
 		val *v;
 		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
@@ -606,7 +606,8 @@ void isn_dump(isn *const head, block *blk)
 					val_str(v),
 					lt->start,
 					lt->end,
-					v->live_across_blocks);
+					v->live_across_blocks
+					);
 		}
 
 		dynmap_free(vals);

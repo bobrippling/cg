@@ -17,14 +17,18 @@
 static void function_add_block(function *, block *);
 
 function *function_new(
-		const char *lbl, unsigned retsz,
+		const char *lbl, struct type *fnty,
+		dynarray *toplvl_args,
 		unsigned *uniq_counter)
 {
 	function *fn = xcalloc(1, sizeof *fn);
 
 	fn->name = xstrdup(lbl);
-	fn->retsz = retsz;
+	fn->fnty = fnty;
 	fn->uniq_counter = uniq_counter;
+
+	dynarray_init(&fn->toplvl_args);
+	dynarray_move(&fn->toplvl_args, toplvl_args);
 
 	return fn;
 }
@@ -124,7 +128,7 @@ void function_dump(function *f)
 {
 	size_t i;
 
-	printf("%u %s(", f->retsz, f->name);
+	printf("%s = %s(", f->name, type_to_str(f->fnty));
 	for(i = 0; i < f->nargs; i++)
 		variable_dump(&f->args[i].var, i == f->nargs - 1 ? "" : ", ");
 
@@ -148,6 +152,7 @@ const char *function_name(function *f)
 	return f->name;
 }
 
+#if 0
 void function_arg_add(function *f, unsigned sz, char *name)
 {
 	f->nargs++;
@@ -161,6 +166,7 @@ void function_arg_add(function *f, unsigned sz, char *name)
 			0,
 			sizeof f->args[f->nargs - 1].val);
 }
+#endif
 
 variable *function_arg_find(function *f, const char *name, size_t *const idx)
 {
@@ -176,22 +182,23 @@ variable *function_arg_find(function *f, const char *name, size_t *const idx)
 }
 
 static void assign_arg_reg(
-		val *v, unsigned idx, unsigned size,
+		val *v, unsigned idx,
 		const struct backend_traits *backend)
 {
-	v->type = ARG;
+	v->kind = ARGUMENT;
 
 	v->live_across_blocks = 1;
 
-	v->u.arg.idx = idx;
-	v->u.arg.name = NULL;
-	v->u.arg.val_size = size;
-
-	if(v->u.arg.idx >= backend->arg_regs_cnt){
+	if(idx >= backend->arg_regs_cnt){
 		assert(0 && "TODO: arg on stack");
 	}else{
-		v->u.arg.loc.where = NAME_IN_REG;
-		v->u.arg.loc.u.reg = backend->arg_regs[v->u.arg.idx];
+		v->u.argument.loc.where = NAME_IN_REG;
+		v->u.argument.loc.u.reg = backend->arg_regs[idx];
+
+		fprintf(stderr, "assign arg %s index [%u] reg %d\n",
+				val_str(v),
+				idx,
+				v->u.argument.loc.u.reg);
 	}
 }
 
@@ -201,11 +208,7 @@ static void assign_argument_registers(
 {
 	size_t i;
 	for(i = 0; i < f->nargs; i++){
-		assign_arg_reg(
-				&f->args[i].val,
-				i,
-				variable_size(&f->args[i].var, backend->ptrsz),
-				backend);
+		assign_arg_reg(&f->args[i].val, i, backend);
 	}
 }
 

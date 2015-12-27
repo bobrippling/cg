@@ -7,12 +7,12 @@
 #include "variable_internal.h"
 #include "variable_struct.h"
 
-variable *variable_new(const char *name, unsigned sz)
+variable *variable_new(const char *name, struct type *ty)
 {
 	variable *v = xmalloc(sizeof *v);
 
 	v->name = xstrdup(name);
-	v->sz = sz;
+	v->ty = ty;
 
 	return v;
 }
@@ -28,25 +28,27 @@ const char *variable_name(variable *v)
 	return v->name;
 }
 
-void variable_size_align(
-		variable *v, unsigned ptrsz,
-		unsigned *sz, unsigned *align)
+type *variable_type(variable *v)
 {
-	*sz = v->sz ? v->sz : ptrsz;
-	*align = *sz; /* for now */
+	return v->ty;
 }
 
-unsigned variable_size(variable *v, unsigned ptrsz)
+void variable_size_align(variable *v, unsigned *sz, unsigned *align)
+{
+	type_size_align(v->ty, sz, align);
+}
+
+unsigned variable_size(variable *v)
 {
 	unsigned sz, align;
-	variable_size_align(v, ptrsz, &sz, &align);
+	variable_size_align(v, &sz, &align);
 	return sz;
 }
 
 void variable_dump(variable *v, const char *post)
 {
-	printf("%u %s%s",
-			v->sz,
+	printf("%s = %s%s",
 			variable_name(v),
+			type_to_str(v->ty),
 			post);
 }

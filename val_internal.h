@@ -8,6 +8,7 @@
 val *val_retain(val *);
 void val_release(val *);
 
+#if 0
 bool val_op_maybe(enum op, val *, val *, int *res);
 bool val_op_maybe_val(enum op, val *, val *, val **res);
 val *val_op_symbolic(enum op, val *, val *);
@@ -28,5 +29,6 @@ int val_size(val *, unsigned ptrsz);
 bool val_is_mem(val *);
 
 struct name_loc *val_location(val *);
+#endif
 
 #endif

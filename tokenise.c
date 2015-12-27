@@ -178,10 +178,12 @@ enum token token_next(tokeniser *t)
 		if(consume_word(t, keywords[i].kw))
 			return keywords[i].tok;
 
-	if(isident(*t->linep, 0)){
+	if(*t->linep == '$' && isident(t->linep[1], 0)){
 		char *end;
 		char *buf;
 		size_t len;
+
+		t->linep++; /* skip '$' */
 
 		for(end = t->linep + 1; isident(*end, 1); end++);
 
@@ -210,6 +212,15 @@ enum token token_peek(tokeniser *t)
 		t->unget = token_next(t);
 
 	return t->unget;
+}
+
+bool token_accept(tokeniser *t, enum token tk)
+{
+	if(token_peek(t) == tk){
+		token_next(t);
+		return true;
+	}
+	return false;
 }
 
 void token_curline(tokeniser *t, char *out, size_t len)

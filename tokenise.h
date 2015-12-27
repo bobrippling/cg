@@ -1,6 +1,7 @@
 #ifndef TOKENISE_H
 #define TOKENISE_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include "macros.h"
 #include "op.h"
@@ -14,11 +15,14 @@
 	PUNCT(rparen, ')')  \
 	PUNCT(lbrace, '{')  \
 	PUNCT(rbrace, '}')  \
+	PUNCT(lsquare, '[') \
+	PUNCT(rsquare, ']') \
 	PUNCT(dot, '.')     \
 	PUNCT(comma, ',')   \
 	PUNCT(equal, '=')   \
 	PUNCT(colon, ':')   \
 	PUNCT(semi, ';')    \
+	PUNCT(star, '*')    \
 	KW(load)            \
 	KW(store)           \
 	KW(alloca)          \
@@ -28,6 +32,11 @@
 	KW(br)              \
 	KW(jmp)             \
 	KW(call)            \
+	KW(i1) KW(i2)       \
+	KW(i4) KW(i8)       \
+	KW(f4) KW(f8)       \
+	KW(flarge)          \
+	KW(void)            \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \
@@ -72,6 +81,7 @@ const char *token_to_str(enum token);
 
 enum token token_next(tokeniser *);
 enum token token_peek(tokeniser *);
+bool token_accept(tokeniser *, enum token);
 
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);

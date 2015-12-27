@@ -61,86 +61,6 @@ static const struct
 
 static const char *argv0;
 
-static void eg1(function *fn, block *const entry)
-{
-	val *a = val_new_i(3, INT_SIZE);
-	val *b = val_new_i(5, INT_SIZE);
-	val *store = val_new_ptr_from_int(0);
-
-	(void)fn;
-
-	/* store = 3 */
-	val_store(entry, a, store);
-
-	/* loaded = 3 */
-	val *loaded = val_load(entry, store, INT_SIZE);
-
-	val *other_store = val_make_alloca(entry, 2, INT_SIZE);
-
-	val_store(entry,
-			val_new_i(7, INT_SIZE),
-			other_store);
-
-	val_store(entry,
-			val_new_i(9, INT_SIZE),
-			val_element(entry, other_store, 1, INT_SIZE, NULL));
-
-	/* other_store = { 7, 9 } */
-
-	val *added = val_add(entry,
-			b,
-			val_add(
-				entry,
-				val_load(entry, other_store, INT_SIZE),
-				loaded));
-
-	/* added = 5 + (7 + 3) = 15 */
-
-	val *add_again =
-		val_add(entry,
-				val_add(entry,
-					val_load(entry, store, INT_SIZE),
-					val_load(entry, other_store, INT_SIZE)),
-				added);
-
-	/* add_again = (3 + 7) + 15 = 25 */
-
-	val *alloca_p = val_element(entry, other_store, 1, 4, NULL);
-
-	val *final = val_add(entry, val_load(entry, alloca_p, INT_SIZE), add_again);
-	/* 9 + 25 = 34 */
-
-	val_ret(entry, final);
-}
-
-static void egjmp(function *const fn, block *const entry)
-{
-	val *arg = val_new_i(5, INT_SIZE);
-
-	val *cmp = val_equal(entry, arg, val_new_i(3, INT_SIZE));
-
-	block *btrue = function_block_new(fn);
-	block *bfalse = function_block_new(fn);
-
-	isn_br(entry, cmp, btrue, bfalse);
-
-	val *escaped_bad;
-
-	{
-		val *added = val_add(btrue,
-				val_zext(btrue, cmp, INT_SIZE),
-				val_new_i(1, INT_SIZE));
-
-		val_ret(btrue, added);
-
-		escaped_bad = added;
-	}
-
-	{
-		val_ret(bfalse, escaped_bad); /*val_new_i(0));*/
-	}
-}
-
 static unit *read_and_parse(
 		const char *fname, bool dump_tok, int *const err)
 {
@@ -319,21 +239,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(fname){
-		int jmp = 0;
-
-		if(!strcmp(fname, "--eg") || (jmp = 1, !strcmp(fname, "--eg-jmp"))){
-			function *fn;
-
-			unit = unit_new();
-			fn = unit_function_new(unit, "main", INT_SIZE);
-
-			(jmp ? egjmp : eg1)(fn, function_entry_block(fn, 1));
-
-		}else if(!strcmp(fname, "-")){
-			fname = NULL;
-		}
-	}
+	if(fname && !strcmp(fname, "-"))
+		fname = NULL;
 
 	if(!unit){
 		unit = read_and_parse(fname, dump_tok, &parse_err);
