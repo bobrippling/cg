@@ -1,11 +1,12 @@
-OBJ = val.o val_allocas.o main.o mem.o dynarray.o op.o \
-      dynmap.o opt_cprop.o opt_storeprop.o opt_dse.o \
-      opt_loadmerge.o \
+OBJ = val.o  main.o mem.o dynarray.o op.o \
+      dynmap.o \
       isn.o regalloc_isn.o regalloc_blk.o \
       function.o variable.o global.o block.o unit.o \
       die.o io.o str.o lbl.o \
       tokenise.o parse.o \
       x86.o
+
+#opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
 
 HEADERS = backend.h dyn.h dynmap.h \
           isn.h isn_internal.h regalloc_isn.h isn_struct.h \
