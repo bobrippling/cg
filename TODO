@@ -1,9 +1,30 @@
+//===---------------------------------------------------------------------===//
+functions
+
 function arguments
 	- r8 and r9 handling
 	- arguments > 6 handling
 	- calling
-
-identifiers vs. keywords - @add vs. add
 callee save registers
-block predecessors + successors for val regalloc
-struct types
+
+//===---------------------------------------------------------------------===//
+regalloc improvements
+
+1) stack allocations mirror register allocations - reuse stack across blocks
+2) attempt to have values which need to be spilt assigned
+
+e.g.
+
+$something = i4()
+{
+	$a = call $f()
+	$b = call $f()
+	$c = call $f()
+
+	$x = add $a, $b
+	$y = add $x, $c
+
+	ret $y
+}
+
+$a and $b need to be spilt so should be allocated on stack
