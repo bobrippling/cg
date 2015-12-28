@@ -148,8 +148,11 @@ static void find_args_in_isn(val *v, isn *isn, void *vctx)
 static void find_args_in_block(block *blk, void *vctx)
 {
 	struct x86_spill_ctx *spillctx = vctx;
+	isn *isn;
 
-	isn_on_live_vals(block_first_isn(blk), find_args_in_isn, spillctx);
+	for(isn = block_first_isn(blk); isn; isn = isn->next){
+		isn_on_live_vals(isn, find_args_in_isn, spillctx);
+	}
 }
 
 static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
