@@ -891,23 +891,15 @@ static void x86_trunc(val *from, val *to, x86_octx *octx)
 	from->ty = from_type;
 }
 
-static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
+static void x86_ext_reg(
+		val *from,
+		val *to,
+		x86_octx *octx,
+		bool sign,
+		unsigned sz_from,
+		unsigned sz_to)
 {
-	unsigned sz_from = val_size(from);
-	unsigned sz_to = val_size(to);
 	char buf[4] = { 0 };
-	struct name_loc *from_loc = val_location(from);
-	struct name_loc *to_loc = val_location(to);
-
-	if(sz_from > sz_to){
-		/* trunc */
-		return x86_trunc(from, to, octx);
-	}
-
-	/* zext requires something in a reg */
-	assert(from_loc && from_loc->where == NAME_IN_REG
-			&& to_loc && to_loc->where == NAME_IN_REG);
-
 	buf[0] = (sign ? 's' : 'z');
 
 	assert(sz_to > sz_from);
@@ -954,6 +946,30 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 
 	emit_isn_binary(&x86_isn_movzx, octx,
 			from, false, to, false, buf);
+}
+
+static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
+{
+	unsigned sz_from = val_size(from);
+	unsigned sz_to = val_size(to);
+	struct name_loc *from_loc = val_location(from);
+	struct name_loc *to_loc = val_location(to);
+
+	if(sz_from > sz_to){
+		/* trunc */
+		return x86_trunc(from, to, octx);
+	}
+
+	/* zext requires something in a reg */
+	if(from_loc && from_loc->where == NAME_IN_REG
+	&& to_loc   && to_loc->where == NAME_IN_REG)
+	{
+		x86_ext_reg(from, to, octx, sign, sz_from, sz_to);
+	}
+	else
+	{
+		assert(0 && "TODO: [zs]ext non-register");
+	}
 }
 
 static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
