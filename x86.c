@@ -337,6 +337,7 @@ static void make_val_temporary_store(
 		val *write_to,
 		operand_category from_cat,
 		operand_category to_cat,
+		bool const deref_val,
 		x86_octx *octx)
 {
 	type *temporary_ty;
@@ -352,7 +353,7 @@ static void make_val_temporary_store(
 	assert(to_cat != OPERAND_INT);
 
 	temporary_ty = from->ty;
-	if(from->kind == GLOBAL || from->kind == ALLOCA)
+	if(deref_val)
 		temporary_ty = type_deref(temporary_ty);
 
 	val_temporary_init(write_to, temporary_ty);
@@ -460,6 +461,7 @@ static void ready_input(
 	make_val_temporary_store(
 			orig_val, temporary_store,
 			orig_val_category, operand_category,
+			*deref_val,
 			octx);
 
 	/* orig_val needs to be loaded before the instruction
@@ -480,6 +482,7 @@ static void ready_output(
 	make_val_temporary_store(
 			orig_val, temporary_store,
 			orig_val_category, operand_category,
+			*deref_val,
 			octx);
 
 	/* using a register as a temporary rhs - no dereference */

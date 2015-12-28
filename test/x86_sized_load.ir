@@ -19,3 +19,22 @@ $f = void ()
 	$1 = load $gp
 	ret void
 }
+
+$use = void(i4)
+
+$g = void(i4 $x)
+{
+	$u0 = load i4* 0
+	$u1 = load i4* 0
+	$u2 = load i4* 0
+	#
+	# run out of regs - should load correctly (via scratch) into memory
+	$u3 = load i4* 0
+
+	call $use($u0)
+	call $use($u1)
+	call $use($u2)
+	call $use($u3)
+
+	ret void
+}
