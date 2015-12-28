@@ -706,9 +706,9 @@ static void isn_dump1(isn *i)
 		case ISN_EXT:
 		{
 			printf("\t%s = zext %s, %s\n",
-					val_str_rn(0, i->u.copy.to),
-					type_to_str(val_type(i->u.copy.to)),
-					val_str_rn(1, i->u.copy.from));
+					val_str_rn(0, i->u.ext.to),
+					type_to_str(val_type(i->u.ext.to)),
+					val_str_rn(1, i->u.ext.from));
 			break;
 		}
 
