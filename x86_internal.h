@@ -26,6 +26,7 @@ void x86_make_eax(struct val *out, struct type *ty);
 
 
 /* ===--- commenting ---=== */
+attr_printf(2, 0)
 void x86_comment(x86_octx *octx, const char *fmt, ...);
 
 
