@@ -1,9 +1,0 @@
-4 main()
-{
-	#x = load.0 3
-	#y = call x
-
-	y = call.1 3
-
-	ret.4 y
-}
