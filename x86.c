@@ -968,7 +968,16 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 	}
 	else
 	{
-		assert(0 && "TODO: [zs]ext non-register");
+		val short_reg, long_reg;
+
+		x86_make_reg(&short_reg, SCRATCH_REG, val_type(from));
+		x86_make_reg(&long_reg,  SCRATCH_REG, val_type(to));
+
+		x86_mov(from, &short_reg, octx);
+
+		x86_ext_reg(&short_reg, &long_reg, octx, sign, sz_from, sz_to);
+
+		x86_mov(&long_reg, to, octx);
 	}
 }
 
