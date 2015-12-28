@@ -615,6 +615,8 @@ static void parse_ident(parse *p, char *spel)
 			val *vres;
 			type *ty_to;
 			void (*isn_make)(block *blk, val *from, val *to);
+			unsigned sz_from, sz_to;
+			int extend = 1;
 
 			ty_to = parse_type(p);
 
@@ -633,6 +635,9 @@ static void parse_ident(parse *p, char *spel)
 
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
 
+			sz_from = type_size(val_type(from));
+			sz_to = type_size(ty_to);
+
 			switch(tok){
 				case tok_sext:
 					isn_make = isn_sext;
@@ -642,9 +647,14 @@ static void parse_ident(parse *p, char *spel)
 					break;
 				case tok_trunc:
 					isn_make = isn_trunc;
+					extend = 0;
 					break;
 				default:
 					assert(0 && "unreachable");
+			}
+
+			if(!(extend ? sz_from < sz_to : sz_from > sz_to)){
+				sema_error(p, "ext/trunc has incorrect operand sizes");
 			}
 
 			isn_make(p->entry, from, vres);
