@@ -878,6 +878,19 @@ static void x86_op(
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
 
+static void x86_trunc(val *from, val *to, x86_octx *octx)
+{
+	/* temporarily mutate from - note this only works for little endian */
+	type *const from_type = from->ty;
+
+	from->ty = to->ty;
+
+	x86_comment(octx, "trunc:");
+	x86_mov(from, to, octx);
+
+	from->ty = from_type;
+}
+
 static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
@@ -885,6 +898,11 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 	char buf[4] = { 0 };
 	struct name_loc *from_loc = val_location(from);
 	struct name_loc *to_loc = val_location(to);
+
+	if(sz_from > sz_to){
+		/* trunc */
+		return x86_trunc(from, to, octx);
+	}
 
 	/* zext requires something in a reg */
 	assert(from_loc && from_loc->where == NAME_IN_REG
@@ -1160,7 +1178,7 @@ static void x86_out_block1(block *blk, void *vctx)
 						octx);
 				break;
 
-			case ISN_EXT:
+			case ISN_EXT_TRUNC:
 				x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
 				break;
 

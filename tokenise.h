@@ -38,6 +38,7 @@
 	KW(ptrcast)         \
 	KW(ret)             \
 	KW(zext) KW(sext)   \
+	KW(trunc)           \
 	KW(br)              \
 	KW(jmp)             \
 	KW(call)            \

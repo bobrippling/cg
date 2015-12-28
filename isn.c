@@ -63,7 +63,7 @@ static void isn_free_1(isn *isn)
 			val_release(isn->u.copy.from);
 			val_release(isn->u.copy.to);
 			break;
-		case ISN_EXT:
+		case ISN_EXT_TRUNC:
 			val_release(isn->u.ext.from);
 			val_release(isn->u.ext.to);
 			break;
@@ -122,7 +122,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_OP:     return "op";
 		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
-		case ISN_EXT:    return "ext";
+		case ISN_EXT_TRUNC: return "zext/sext/trunc";
 		case ISN_RET:    return "ret";
 		case ISN_BR:     return "br";
 		case ISN_JMP:    return "jmp";
@@ -242,7 +242,7 @@ static void isn_ext(block *blk, val *from, val *to, bool sign)
 		return;
 	}
 
-	isn = isn_new(ISN_EXT, blk);
+	isn = isn_new(ISN_EXT_TRUNC, blk);
 	isn->u.ext.from = from;
 	isn->u.ext.to = to;
 	isn->u.ext.sign = sign;
@@ -256,6 +256,11 @@ void isn_zext(block *blk, val *from, val *to)
 void isn_sext(block *blk, val *from, val *to)
 {
 	isn_ext(blk, from, to, true);
+}
+
+void isn_trunc(block *blk, val *from, val *to)
+{
+	isn_ext(blk, from, to, /*doesn't matter*/false);
 }
 
 static void isn_i2p_p2i(
@@ -499,7 +504,7 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 		case ISN_OP:
 		case ISN_CMP:
 		case ISN_COPY:
-		case ISN_EXT:
+		case ISN_EXT_TRUNC:
 		case ISN_RET:
 		case ISN_JMP:
 		case ISN_BR:
@@ -575,7 +580,7 @@ static void isn_on_vals(
 			fn(current->u.copy.from, current, ctx);
 			break;
 
-		case ISN_EXT:
+		case ISN_EXT_TRUNC:
 			fn(current->u.ext.to, current, ctx);
 			fn(current->u.ext.from, current, ctx);
 			break;
@@ -703,11 +708,19 @@ static void isn_dump1(isn *i)
 			break;
 		}
 
-		case ISN_EXT:
+		case ISN_EXT_TRUNC:
 		{
-			printf("\t%s = %cext %s, %s\n",
+			const char *ext_kind;
+
+			if(val_size(i->u.ext.to) > val_size(i->u.ext.from)){
+				ext_kind = (i->u.ext.sign ? "sext" : "zext");
+			}else{
+				ext_kind = "trunc";
+			}
+
+			printf("\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.ext.to),
-					i->u.ext.sign ? 's' : 'z',
+					ext_kind,
 					type_to_str(val_type(i->u.ext.to)),
 					val_str_rn(1, i->u.ext.from));
 			break;

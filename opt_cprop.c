@@ -77,7 +77,7 @@ void opt_cprop(block *entry)
 				break;
 			}
 
-			case ISN_EXT:
+			case ISN_EXT_TRUNC:
 			{
 				break;
 			}

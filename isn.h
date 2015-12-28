@@ -22,6 +22,7 @@ void isn_cmp(block *, enum op_cmp, struct val *lhs, struct val *rhs, struct val 
 
 void isn_zext(block *, struct val *from, struct val *to);
 void isn_sext(block *, struct val *from, struct val *to);
+void isn_trunc(block *, struct val *from, struct val *to);
 
 void isn_ptr2int(block *, struct val *from, struct val *to);
 void isn_int2ptr(block *, struct val *from, struct val *to);

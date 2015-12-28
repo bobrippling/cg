@@ -609,29 +609,36 @@ static void parse_ident(parse *p, char *spel)
 
 		case tok_zext:
 		case tok_sext:
+		case tok_trunc:
 		{
 			val *from;
 			val *vres;
 			type *ty_to;
+			void (*isn_make)(block *blk, val *from, val *to);
 
 			ty_to = parse_type(p);
 
 			if(!type_is_int(ty_to)){
-				sema_error(p, "ext requires integer type");
+				sema_error(p, "ext/trunc requires integer type");
 				ty_to = type_get_primitive(unit_uniqtypes(p->unit), iMAX);
 			}
 
-			eat(p, "ext", tok_comma);
+			eat(p, "ext/trunc", tok_comma);
 
 			from = parse_val(p);
 
 			if(!type_is_int(val_type(from))){
-				sema_error(p, "ext argument requires integer type");
+				sema_error(p, "ext/trunc argument requires integer type");
 			}
 
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
 
-			(tok == tok_sext ? isn_sext : isn_zext)(p->entry, from, vres);
+			isn_make = (
+					tok == tok_sext ? isn_sext
+					: tok == tok_zext ? isn_zext
+					: isn_trunc);
+
+			isn_make(p->entry, from, vres);
 			break;
 		}
 
