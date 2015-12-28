@@ -633,10 +633,19 @@ static void parse_ident(parse *p, char *spel)
 
 			vres = uniq_val(p, spel, ty_to, VAL_CREATE);
 
-			isn_make = (
-					tok == tok_sext ? isn_sext
-					: tok == tok_zext ? isn_zext
-					: isn_trunc);
+			switch(tok){
+				case tok_sext:
+					isn_make = isn_sext;
+					break;
+				case tok_zext:
+					isn_make = isn_zext;
+					break;
+				case tok_trunc:
+					isn_make = isn_trunc;
+					break;
+				default:
+					assert(0 && "unreachable");
+			}
 
 			isn_make(p->entry, from, vres);
 			break;
