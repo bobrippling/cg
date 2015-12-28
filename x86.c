@@ -819,7 +819,7 @@ loc:
 	}
 
 	/* worst case - emit an add */
-	fprintf(octx->fout, "\t; worst case lea\n");
+	x86_comment(octx, "worst case lea:");
 	emit_ptradd(lval, i->u.elem.index, i->u.elem.res, octx);
 }
 
