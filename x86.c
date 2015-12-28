@@ -958,7 +958,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 
 		switch(rhs->kind){
 			case LITERAL:
-				/* fine */
+				need_temp_reg = true;
 				break;
 			case GLOBAL:
 				need_temp_reg = true;
