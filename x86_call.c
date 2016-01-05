@@ -358,6 +358,7 @@ static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 
 		arg = dynarray_ent(args, i);
 
+		(void)arg;
 		assert(0 && "TODO: stack args");
 	}
 
