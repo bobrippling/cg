@@ -1,0 +1,9 @@
+$x=i1()
+{
+	$a = alloca i4
+	$b = alloca i4
+
+	$c = eq $a, $b
+
+	ret $c
+}

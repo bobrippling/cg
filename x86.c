@@ -31,7 +31,7 @@
 #include "x86_isns.h"
 
 #define OPERAND_SHOW_TYPE 0
-#define TEMPORARY_SHOW_MOVES 0
+#define TEMPORARY_SHOW_MOVES 1
 #define USER_LABEL_FORMAT "%s_%s"
 
 static const char *const regs[][4] = {
@@ -185,7 +185,10 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 {
 	if(got == DEREFERENCE_ANY)
 		return;
-	assert(got == expected && "wrong deref");
+	/*assert(got == expected && "wrong deref");*/
+	if(got != expected){
+		fprintf(stderr, "\x1b[1;31massert_deref() failed\x1b[m\n");
+	}
 }
 
 static const char *x86_type_suffix(type *t)
@@ -491,6 +494,16 @@ static void ready_input(
 			*deref_val,
 			octx);
 
+	/* if we're handling a non-lvalue (i.e. array, struct [alloca])
+	 * we actually want its address*/
+	if(!*deref_val && must_lea_val(orig_val)){
+	}
+	if(TEMPORARY_SHOW_MOVES){
+		x86_comment(octx, "XXX: next mov should be lea? deref=%d must_lea()=%d",
+				*deref_val, must_lea_val(orig_val)
+				);
+	}
+
 	/* orig_val needs to be loaded before the instruction
 	 * no dereference of temporary_store here - move into the temporary */
 	x86_mov_deref(orig_val, temporary_store, octx, *deref_val, false);
@@ -567,12 +580,19 @@ static bool emit_isn_try(
 		emit_vals[j] = operands[j].val;
 		orig_dereference[j] = operands[j].dereference;
 
+		if(op_categories[j] == OPERAND_MEM){
+			if(TEMPORARY_SHOW_MOVES){
+				x86_comment(octx, "operand [%zu] is memory - deref %d -> %d",
+						j,
+						operands[j].dereference,
+						true);
+			}
+			operands[j].dereference = true;
+		}
+
 		op_categories[j] = operands[j].dereference
 			? OPERAND_MEM
 			: val_category(operands[j].val);
-
-		if(op_categories[j] == OPERAND_MEM)
-			operands[j].dereference = true;
 	}
 
 	operands_target = find_isn_bestmatch(
@@ -726,7 +746,7 @@ static void mov_deref_force(
 
 	/* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
 	 * we actually want its address*/
-	if(!deref_from && must_lea_val(from)){
+	if(0 && !deref_from && must_lea_val(from)){
 		chosen_isn = &x86_isn_lea;
 	}
 
@@ -1100,10 +1120,12 @@ static void x86_cmp(
 	val *zero;
 	emit_isn_operand set_operand;
 
+	x86_comment(octx, "PRE-BINARY CMP");
 	emit_isn_binary(&x86_isn_cmp, octx,
 			lhs, false,
 			rhs, false,
 			NULL);
+	x86_comment(octx, "POST-BINARY CMP");
 
 	zero = val_retain(val_new_i(0, res->ty));
 
