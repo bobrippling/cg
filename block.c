@@ -114,7 +114,7 @@ static void blocks_traverse_r(
 	if(markers){
 		if(dynmap_get(block *, int, markers, blk))
 			return;
-		dynmap_set(block *, int, markers, blk, 1);
+		(void)dynmap_set(block *, int, markers, blk, 1);
 	}else{
 		if(*flag)
 			return;
@@ -139,7 +139,7 @@ static void blocks_traverse_r(
 	}
 
 	if(markers)
-		dynmap_rm(block *, int, markers, blk);
+		(void)dynmap_rm(block *, int, markers, blk);
 	else
 		*flag = false;
 }
