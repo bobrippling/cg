@@ -33,7 +33,7 @@ check: ir
 
 tags: ${SRC}
 	@echo ctags
-	$Qctags ${SRC} *.h
+	$Q-ctags ${SRC} *.h
 
 clean:
 	make -C test clean
