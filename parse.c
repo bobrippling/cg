@@ -390,6 +390,9 @@ static val *parse_val(parse *p)
 		return val_new_i(i, ty);
 	}
 
+	if(token_accept(p->tok, tok_undef))
+		return val_new_undef(ty);
+
 	parse_error(p, "value operand expected, got %s",
 			token_to_str(token_peek(p->tok)));
 

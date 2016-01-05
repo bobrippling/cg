@@ -47,6 +47,7 @@
 	KW(f4) KW(f8)       \
 	KW(flarge)          \
 	KW(void)            \
+	KW(undef)           \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \
