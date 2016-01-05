@@ -59,6 +59,8 @@ try_cflag -Wextra
 try_cflag -Wmissing-prototypes
 try_cflag -Wmissing-declarations
 
+try_cflag -Werror=incompatible-pointer-types
+
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-missing-braces
 try_cflag -Wno-pointer-to-int-cast
