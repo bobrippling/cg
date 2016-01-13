@@ -929,10 +929,11 @@ static void parse_function(
 static struct init *parse_init(parse *p, type *ty)
 {
 	struct init *init;
+	type *subty;
 
 	init = xmalloc(sizeof *init);
 
-	if(type_array_element(ty)){
+	if((subty = type_array_element(ty))){
 		const bool is_string = token_accept(p->tok, tok_string);
 
 		if(!is_string)
@@ -951,10 +952,19 @@ static struct init *parse_init(parse *p, type *ty)
 			init->type = init_str;
 			init->u.str = str;
 		}else{
-			eat(p, "init closing brace", tok_rbrace);
+			init->type = init_array;
+			dynarray_init(&init->u.elem_inits);
 
-			fprintf(stderr, "TODO: array init\n");
-			exit(3);
+			while(!token_accept(p->tok, tok_eof)){
+				struct init *elem = parse_init(p, subty);
+
+				dynarray_add(&init->u.elem_inits, elem);
+
+				if(token_accept(p->tok, tok_rbrace))
+					break;
+
+				eat(p, "init comma", tok_comma);
+			}
 		}
 
 	}else if(type_is_struct(ty)){

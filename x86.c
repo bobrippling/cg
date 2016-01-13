@@ -1400,6 +1400,19 @@ static void x86_out_init(struct init *init, type *ty)
 			break;
 		}
 
+		case init_array:
+		{
+			size_t i;
+			type *elemty = type_array_element(ty);
+
+			dynarray_iter(&init->u.elem_inits, i){
+				struct init *elem = dynarray_ent(&init->u.elem_inits, i);
+
+				x86_out_init(elem, elemty);
+			}
+			break;
+		}
+
 		default:
 			assert(0 && "TODO: missing init");
 	}

@@ -16,6 +16,23 @@ static void init_dump_r(struct init *init)
 			putchar('\"');
 			break;
 
+		case init_array:
+		{
+			size_t i;
+			const char *comma = "";
+
+			printf("{ ");
+
+			dynarray_iter(&init->u.elem_inits, i){
+				printf("%s", comma);
+				init_dump_r(dynarray_ent(&init->u.elem_inits, i));
+				comma = ", ";
+			}
+			printf(" }");
+
+			break;
+		}
+
 		default:
 			assert(0 && "todo: init_dump type");
 	}
