@@ -6,12 +6,12 @@ variable *variable_global_var(variable_global *g)
 	return &g->var;
 }
 
-void variable_global_init_set(variable_global *g, struct init *init)
+void variable_global_init_set(variable_global *g, struct init_toplvl *init)
 {
 	g->init = init;
 }
 
-struct init *variable_global_init(variable_global *g)
+struct init_toplvl *variable_global_init(variable_global *g)
 {
 	return g->init;
 }

@@ -928,13 +928,47 @@ static void parse_function(
 
 static void parse_variable(parse *p, char *name, type *ty)
 {
-	variable_global *v;
-	bool is_string = false;
-	struct init *init = NULL;
+	variable_global *v = unit_variable_new(p->unit, name, ty);
+	struct init_toplvl *init_top = NULL;
+	struct {
+		bool internal, constant, weak;
+	} properties = { 0 };
 
-	if(token_accept(p->tok, tok_lbrace) || (is_string = token_accept(p->tok, tok_string))){
-		/* init */
-		init = xmalloc(sizeof *init);
+	if(token_accept(p->tok, tok_global)
+	|| (properties.internal = token_accept(p->tok, tok_internal)))
+	{
+		/* accept either "global" or "internal" for linkage and init */
+	}
+	else
+	{
+		return;
+	}
+
+	/* optional additions */
+	while(token_accept(p->tok, tok_bareword)){
+		char *bareword = token_last_bareword(p->tok);
+
+		/**/if(!strcmp(bareword, "const"))
+			properties.constant = true;
+		else if(!strcmp(bareword, "weak"))
+			properties.weak = true;
+		else
+			parse_error(p, "unknown variable modifier '%s'", bareword);
+
+		free(bareword);
+	}
+
+	/* parse init */
+	init_top = xmalloc(sizeof *init_top);
+	init_top->internal = properties.internal;
+	init_top->constant = properties.constant;
+	init_top->weak = properties.weak;
+
+	if(type_array_element(ty)){
+		const bool is_string = token_accept(p->tok, tok_string);
+
+		if(!is_string)
+			eat(p, "array init open brace", tok_lbrace);
 
 		if(is_string){
 			struct string str;
@@ -946,36 +980,33 @@ static void parse_variable(parse *p, char *name, type *ty)
 				sema_error(p, "\"%s\" init not an i1 array", name);
 			}
 
-			init->type = init_str;
-			init->u.str = str;
+			init_top->init.type = init_str;
+			init_top->init.u.str = str;
+		}else{
+			eat(p, "init closing brace", tok_rbrace);
 
-		}else if(type_array_element(ty)){
 			fprintf(stderr, "TODO: array init\n");
 			exit(3);
-
-		}else if(type_is_struct(ty)){
-			fprintf(stderr, "TODO: struct init\n");
-			exit(3);
-
-		}else if(type_deref(ty)){
-			fprintf(stderr, "TODO: pointer init\n");
-			exit(3);
-
-		}else{
-			/* number */
-			eat(p, "int initialiser", tok_int);
-
-			init->type = init_int;
-			init->u.i = token_last_int(p->tok);
 		}
 
-		if(!is_string)
-			eat(p, "init closing brace", tok_rbrace);
+	}else if(type_is_struct(ty)){
+		fprintf(stderr, "TODO: struct init\n");
+		exit(3);
+
+	}else if(type_deref(ty)){
+		fprintf(stderr, "TODO: pointer init\n");
+		exit(3);
+
+	}else{
+		/* number */
+		eat(p, "int initialiser", tok_int);
+
+		init_top->init.type = init_int;
+		init_top->init.u.i = token_last_int(p->tok);
 	}
 
-	v = unit_variable_new(p->unit, name, ty);
-	if(init)
-		variable_global_init_set(v, init);
+	if(init_top)
+		variable_global_init_set(v, init_top);
 }
 
 static void parse_global(parse *p)

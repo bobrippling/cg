@@ -1383,36 +1383,42 @@ static void x86_out_fn(unit *unit, function *func)
 	dynmap_free(markers);
 }
 
+static void x86_out_init(struct init *init, type *ty)
+{
+	switch(init->type){
+		case init_int:
+			printf(".%s %#llx\n",
+					x86_size_name(type_size(ty)),
+					init->u.i);
+			break;
+
+		case init_str:
+		{
+			printf(".ascii \"");
+			dump_escaped_string(&init->u.str);
+			printf("\"\n");
+			break;
+		}
+
+		default:
+			assert(0 && "TODO: missing init");
+	}
+}
+
 static void x86_out_var(variable_global *var)
 {
 	variable *inner = variable_global_var(var);
 	const char *name = variable_name(inner);
-	struct init *init = variable_global_init(var);
+	struct init_toplvl *init_top = variable_global_init(var);
 
 	/* TODO: use .bss for zero-init */
 	printf(".data\n");
-	printf(".globl %s\n", name);
+	if(init_top && !init_top->internal)
+		printf(".globl %s\n", name);
 	printf("%s:\n", name);
 
-	if(init){
-		switch(init->type){
-			case init_int:
-				printf(".%s %#llx\n",
-						x86_size_name(variable_size(inner)),
-						init->u.i);
-				break;
-
-			case init_str:
-			{
-				printf(".ascii \"");
-				dump_escaped_string(&init->u.str);
-				printf("\"\n");
-				break;
-			}
-
-			default:
-				assert(0 && "TODO: missing init");
-		}
+	if(init_top){
+		x86_out_init(&init_top->init, variable_type(inner));
 	}else{
 		printf(".space %u\n", variable_size(inner));
 	}

@@ -48,6 +48,8 @@
 	KW(flarge)          \
 	KW(void)            \
 	KW(undef)           \
+	KW(global)          \
+	KW(internal)        \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \

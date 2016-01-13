@@ -28,7 +28,7 @@ void global_dump(struct unit *unit, global *glob)
 	if(glob->is_fn){
 		function_dump_args_and_block(glob->u.fn);
 	}else{
-		struct init *init = variable_global_init(glob->u.var);
+		struct init_toplvl *init = variable_global_init(glob->u.var);
 
 		if(init){
 			putchar(' ');

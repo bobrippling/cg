@@ -13,7 +13,7 @@ struct variable
 struct variable_global
 {
 	struct variable var;
-	struct init *init;
+	struct init_toplvl *init;
 };
 
 #endif

@@ -24,6 +24,12 @@ struct init
 	} u;
 };
 
-void init_dump(struct init *);
+struct init_toplvl
+{
+	struct init init;
+	bool internal, constant, weak;
+};
+
+void init_dump(struct init_toplvl *);
 
 #endif
