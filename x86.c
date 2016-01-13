@@ -1418,7 +1418,7 @@ static void x86_out_var(variable_global *var)
 	printf("%s:\n", name);
 
 	if(init_top){
-		x86_out_init(&init_top->init, variable_type(inner));
+		x86_out_init(init_top->init, variable_type(inner));
 	}else{
 		printf(".space %u\n", variable_size(inner));
 	}

@@ -30,5 +30,5 @@ void init_dump(struct init_toplvl *init)
 	if(init->weak)
 		printf("weak ");
 
-	init_dump_r(&init->init);
+	init_dump_r(init->init);
 }

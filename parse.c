@@ -926,6 +926,56 @@ static void parse_function(
 	function_finalize(fn);
 }
 
+static struct init *parse_init(parse *p, type *ty)
+{
+	struct init *init;
+
+	init = xmalloc(sizeof *init);
+
+	if(type_array_element(ty)){
+		const bool is_string = token_accept(p->tok, tok_string);
+
+		if(!is_string)
+			eat(p, "array init open brace", tok_lbrace);
+
+		if(is_string){
+			struct string str;
+			type *elem = type_array_element(ty);
+
+			token_last_string(p->tok, &str);
+
+			if(!elem || !type_is_primitive(elem, i1)){
+				sema_error(p, "init not an i1 array");
+			}
+
+			init->type = init_str;
+			init->u.str = str;
+		}else{
+			eat(p, "init closing brace", tok_rbrace);
+
+			fprintf(stderr, "TODO: array init\n");
+			exit(3);
+		}
+
+	}else if(type_is_struct(ty)){
+		fprintf(stderr, "TODO: struct init\n");
+		exit(3);
+
+	}else if(type_deref(ty)){
+		fprintf(stderr, "TODO: pointer init\n");
+		exit(3);
+
+	}else{
+		/* number */
+		eat(p, "int initialiser", tok_int);
+
+		init->type = init_int;
+		init->u.i = token_last_int(p->tok);
+	}
+
+	return init;
+}
+
 static void parse_variable(parse *p, char *name, type *ty)
 {
 	variable_global *v = unit_variable_new(p->unit, name, ty);
@@ -958,52 +1008,12 @@ static void parse_variable(parse *p, char *name, type *ty)
 		free(bareword);
 	}
 
-	/* parse init */
 	init_top = xmalloc(sizeof *init_top);
+	init_top->init = parse_init(p, ty);
+
 	init_top->internal = properties.internal;
 	init_top->constant = properties.constant;
 	init_top->weak = properties.weak;
-
-	if(type_array_element(ty)){
-		const bool is_string = token_accept(p->tok, tok_string);
-
-		if(!is_string)
-			eat(p, "array init open brace", tok_lbrace);
-
-		if(is_string){
-			struct string str;
-			type *elem = type_array_element(ty);
-
-			token_last_string(p->tok, &str);
-
-			if(!elem || !type_is_primitive(elem, i1)){
-				sema_error(p, "\"%s\" init not an i1 array", name);
-			}
-
-			init_top->init.type = init_str;
-			init_top->init.u.str = str;
-		}else{
-			eat(p, "init closing brace", tok_rbrace);
-
-			fprintf(stderr, "TODO: array init\n");
-			exit(3);
-		}
-
-	}else if(type_is_struct(ty)){
-		fprintf(stderr, "TODO: struct init\n");
-		exit(3);
-
-	}else if(type_deref(ty)){
-		fprintf(stderr, "TODO: pointer init\n");
-		exit(3);
-
-	}else{
-		/* number */
-		eat(p, "int initialiser", tok_int);
-
-		init_top->init.type = init_int;
-		init_top->init.u.i = token_last_int(p->tok);
-	}
 
 	if(init_top)
 		variable_global_init_set(v, init_top);

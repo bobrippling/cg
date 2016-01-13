@@ -26,7 +26,7 @@ struct init
 
 struct init_toplvl
 {
-	struct init init;
+	struct init *init;
 	bool internal, constant, weak;
 };
 
