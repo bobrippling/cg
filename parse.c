@@ -952,6 +952,8 @@ static struct init *parse_init(parse *p, type *ty)
 			init->type = init_str;
 			init->u.str = str;
 		}else{
+			size_t array_count;
+
 			init->type = init_array;
 			dynarray_init(&init->u.elem_inits);
 
@@ -964,6 +966,13 @@ static struct init *parse_init(parse *p, type *ty)
 					break;
 
 				eat(p, "init comma", tok_comma);
+			}
+
+			/* zero-sized arrays aren't specially handled here */
+			array_count = type_array_count(ty);
+			if(array_count != dynarray_count(&init->u.elem_inits)){
+				sema_error(p, "init count mismatch: %ld vs %ld",
+						(long)array_count, (long)dynarray_count(&init->u.elem_inits));
 			}
 		}
 

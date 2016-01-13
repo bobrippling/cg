@@ -418,6 +418,13 @@ type *type_struct_element(type *t, size_t i)
 	return dynarray_ent(&t->u.struct_.membs, i);
 }
 
+size_t type_array_count(type *t)
+{
+	assert(t && t->kind == ARRAY);
+
+	return t->u.array.n;
+}
+
 void type_size_align(type *ty, unsigned *sz, unsigned *align)
 {
 	switch(ty->kind){
