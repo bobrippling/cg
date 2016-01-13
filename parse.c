@@ -966,6 +966,10 @@ static struct init *parse_init(parse *p, type *ty)
 					break;
 
 				eat(p, "init comma", tok_comma);
+
+				/* trailing comma: */
+				if(token_accept(p->tok, tok_rbrace))
+					break;
 			}
 
 			/* zero-sized arrays aren't specially handled here */
@@ -1000,6 +1004,10 @@ static struct init *parse_init(parse *p, type *ty)
 				break;
 
 			eat(p, "init comma", tok_comma);
+
+			/* trailing comma: */
+			if(token_accept(p->tok, tok_rbrace))
+				break;
 		}
 
 		if(type_struct_element(ty, i + 1))
