@@ -977,8 +977,33 @@ static struct init *parse_init(parse *p, type *ty)
 		}
 
 	}else if(type_is_struct(ty)){
-		fprintf(stderr, "TODO: struct init\n");
-		exit(3);
+		size_t i = 0;
+
+		init->type = init_struct;
+		dynarray_init(&init->u.elem_inits);
+
+		eat(p, "init open brace", tok_lbrace);
+
+		for(; !token_accept(p->tok, tok_eof); i++){
+			struct init *elem;
+
+			subty = type_struct_element(ty, i);
+			if(!subty){
+				parse_error(p, "excess struct init");
+				break;
+			}
+			elem = parse_init(p, subty);
+
+			dynarray_add(&init->u.elem_inits, elem);
+
+			if(token_accept(p->tok, tok_rbrace))
+				break;
+
+			eat(p, "init comma", tok_comma);
+		}
+
+		if(type_struct_element(ty, i + 1))
+			parse_error(p, "too few members for struct init");
 
 	}else if(type_deref(ty)){
 		fprintf(stderr, "TODO: pointer init\n");

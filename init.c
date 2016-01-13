@@ -17,6 +17,7 @@ static void init_dump_r(struct init *init)
 			break;
 
 		case init_array:
+		case init_struct:
 		{
 			size_t i;
 			const char *comma = "";
