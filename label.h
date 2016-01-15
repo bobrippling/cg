@@ -3,8 +3,8 @@
 
 struct label_off
 {
-	char *spel;
-	size_t offset;
+	char *ident;
+	long offset;
 };
 
 #endif

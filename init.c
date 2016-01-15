@@ -34,8 +34,16 @@ static void init_dump_r(struct init *init)
 			break;
 		}
 
-		default:
-			assert(0 && "todo: init_dump type");
+		case init_ptr:
+		{
+			long off = init->u.ptr.offset;
+
+			printf("$%s %s %ld",
+					init->u.ptr.ident,
+					off > 0 ? "add" : "sub",
+					off > 0 ? off : -off);
+			break;
+		}
 	}
 }
 

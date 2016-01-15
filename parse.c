@@ -1014,8 +1014,39 @@ static struct init *parse_init(parse *p, type *ty)
 			parse_error(p, "too few members for struct init");
 
 	}else if(type_deref(ty)){
-		fprintf(stderr, "TODO: pointer init\n");
-		exit(3);
+		/* $ident [+/- value] */
+		char *ident;
+		enum op op;
+		long offset = 0;
+
+		eat(p, "pointer initialiser", tok_ident);
+		ident = token_last_ident(p->tok);
+
+		if(token_is_op(token_peek(p->tok), &op)){
+			switch(op){
+				case op_add: offset =  1; break;
+				case op_sub: offset = -1; break;
+				default:
+					parse_error(
+							p,
+							"invalid pointer initialiser extra: %s",
+							op_to_str(op));
+			}
+
+			if(offset){
+				/* accept add/sub: */
+				token_next(p->tok);
+
+				eat(p, "int offset", tok_int);
+				offset *= token_last_int(p->tok);
+			}
+		}
+
+		/* TODO: TYPE CHECK? */
+
+		init->type = init_ptr;
+		init->u.ptr.ident = ident;
+		init->u.ptr.offset = offset;
 
 	}else{
 		/* number */

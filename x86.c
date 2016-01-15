@@ -1425,8 +1425,18 @@ static void x86_out_init(struct init *init, type *ty)
 			break;
 		}
 
-		default:
-			assert(0 && "TODO: missing init");
+		case init_ptr:
+		{
+			long off = init->u.ptr.offset;
+
+			printf(".%s %s %s %ld\n",
+					x86_size_name(type_size(ty)),
+					init->u.ptr.ident,
+					off > 0 ? "+" : "-",
+					off > 0 ? off : -off);
+
+			break;
+		}
 	}
 }
 
