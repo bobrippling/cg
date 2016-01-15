@@ -1033,6 +1033,7 @@ static struct init *parse_init(parse *p, type *ty)
 		enum op op;
 		long offset = 0;
 		type *ident_ty;
+		int anyptr = 0;
 
 		eat(p, "pointer initialiser", tok_ident);
 		ident = token_last_ident(p->tok);
@@ -1059,7 +1060,18 @@ static struct init *parse_init(parse *p, type *ty)
 			}
 		}
 
-		if(ty != ident_ty){
+		if(token_accept(p->tok, tok_bareword)){
+			char *bareword = token_last_bareword(p->tok);
+
+			if(!strcmp(bareword, "anyptr"))
+				anyptr = 1;
+			else
+				parse_error(p, "unexpected \"%s\"", bareword);
+
+			free(bareword);
+		}
+
+		if(!anyptr && ty != ident_ty){
 			char buf[128];
 
 			sema_error(p,
@@ -1069,8 +1081,9 @@ static struct init *parse_init(parse *p, type *ty)
 		}
 
 		init->type = init_ptr;
-		init->u.ptr.ident = ident;
-		init->u.ptr.offset = offset;
+		init->u.ptr.label.ident = ident;
+		init->u.ptr.label.offset = offset;
+		init->u.ptr.is_anyptr = anyptr;
 
 	}else{
 		/* number */

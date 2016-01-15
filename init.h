@@ -19,7 +19,11 @@ struct init
 	{
 		struct string str;
 		dynarray elem_inits; /* array and struct */
-		struct label_off ptr;
+		struct
+		{
+			struct label_off label;
+			int is_anyptr;
+		} ptr;
 		unsigned long long i;
 	} u;
 };

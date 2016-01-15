@@ -36,12 +36,13 @@ static void init_dump_r(struct init *init)
 
 		case init_ptr:
 		{
-			long off = init->u.ptr.offset;
+			long off = init->u.ptr.label.offset;
 
-			printf("$%s %s %ld",
-					init->u.ptr.ident,
+			printf("$%s %s %ld%s",
+					init->u.ptr.label.ident,
 					off > 0 ? "add" : "sub",
-					off > 0 ? off : -off);
+					off > 0 ? off : -off,
+					init->u.ptr.is_anyptr ? " anyptr" : "");
 			break;
 		}
 	}
