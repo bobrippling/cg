@@ -159,6 +159,20 @@ found:
 	return map_val(p, name, v);
 }
 
+static void sema_error_if_no_global_ident(parse *p, const char *ident, type **const tout)
+{
+	global *glob = unit_global_find(p->unit, ident);
+
+	*tout = NULL;
+
+	if(glob){
+		*tout = global_type_as_ptr(unit_uniqtypes(p->unit), glob);
+	}else{
+		sema_error(p, "no such (global) identifier \"%s\"", ident);
+		*tout = default_type(p);
+	}
+}
+
 static void eat(parse *p, const char *desc, enum token expect)
 {
 	enum token got = token_next(p->tok);
@@ -1018,9 +1032,12 @@ static struct init *parse_init(parse *p, type *ty)
 		char *ident;
 		enum op op;
 		long offset = 0;
+		type *ident_ty;
 
 		eat(p, "pointer initialiser", tok_ident);
 		ident = token_last_ident(p->tok);
+
+		sema_error_if_no_global_ident(p, ident, &ident_ty);
 
 		if(token_is_op(token_peek(p->tok), &op)){
 			switch(op){
@@ -1042,7 +1059,14 @@ static struct init *parse_init(parse *p, type *ty)
 			}
 		}
 
-		/* TODO: TYPE CHECK? */
+		if(ty != ident_ty){
+			char buf[128];
+
+			sema_error(p,
+					"initialisation type mismatch: init %s with %s",
+					type_to_str_r(buf, sizeof(buf), ty),
+					type_to_str(ident_ty));
+		}
 
 		init->type = init_ptr;
 		init->u.ptr.ident = ident;
