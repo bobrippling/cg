@@ -38,11 +38,6 @@ static const struct
 	{ 0 }
 };
 
-enum
-{
-	INT_SIZE = 4
-};
-
 #if 0
 #define OPTS          \
 	X(cprop)            \
