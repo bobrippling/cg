@@ -27,7 +27,7 @@
 #include "opt_loadmerge.h"
 #include "x86.h"
 
-static struct
+static const struct
 {
 	const char *name;
 	global_emit_func *emit;
