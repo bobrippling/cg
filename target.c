@@ -29,8 +29,22 @@ static const struct
 	const char *name;
 	struct target_sys sys;
 } systems[] = {
-	{ "linux", { ".L", ".rodata" } },
-	{ "darwin",{  "L", ".section __TEXT,__const" } },
+	{
+		"linux",
+		{
+			".L",
+			".rodata",
+			".weak"
+		}
+	},
+	{
+		"darwin",
+		{
+			"L",
+			".section __TEXT,__const",
+			".weak_reference"
+		}
+	},
 };
 
 static bool maybe_add_arch(const char *arch, struct target *out)

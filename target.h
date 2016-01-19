@@ -27,8 +27,7 @@ struct target
 	{
 		const char *lbl_priv_prefix;
 		const char *section_rodata;
-
-		/* weak decl, etc */
+		const char *weak_directive;
 	} sys;
 
 	global_emit_func *emit;

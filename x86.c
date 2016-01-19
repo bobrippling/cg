@@ -1465,9 +1465,8 @@ static void x86_out_var(variable_global *var, const struct target *target_info)
 		if(!init_top->internal)
 			printf(".globl %s\n", name);
 
-		if(init_top->weak){
-			/* TODO: weak variable / function */
-		}
+		if(init_top->weak)
+			printf("%s %s\n", target_info->sys.weak_directive, name);
 	}
 	printf("%s:\n", name);
 
