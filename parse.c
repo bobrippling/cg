@@ -920,6 +920,21 @@ static void parse_function(
 {
 	function *fn = unit_function_new(p->unit, name, ty, toplvl_args);
 	toplvl_args = NULL; /* consumed */
+	enum function_attributes attr = 0;
+
+	/* look for weak (and other attributes) */
+	while(token_accept(p->tok, tok_bareword)){
+		char *bareword = token_last_bareword(p->tok);
+
+		if(!strcmp(bareword, "weak"))
+			attr |= function_attribute_weak;
+		else
+			parse_error(p, "unknown function modifier '%s'", bareword);
+
+		free(bareword);
+	}
+
+	function_add_attributes(fn, attr);
 
 	if(!token_accept(p->tok, tok_lbrace)){
 		/* declaration */

@@ -143,6 +143,16 @@ void function_finalize(function *f)
 		block_lifecheck(f->entry);
 }
 
+void function_add_attributes(function *f, enum function_attributes attr)
+{
+	f->attr |= attr;
+}
+
+enum function_attributes function_attributes(function *f)
+{
+	return f->attr;
+}
+
 void function_dump_args_and_block(function *f)
 {
 	dynarray *const arg_tys = type_func_args(f->fnty);

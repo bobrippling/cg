@@ -1466,7 +1466,7 @@ static void x86_out_var(variable_global *var, const struct target *target_info)
 			printf(".globl %s\n", name);
 
 		if(init_top->weak)
-			printf("%s %s\n", target_info->sys.weak_directive, name);
+			printf("%s %s\n", target_info->sys.weak_directive_var, name);
 	}
 	printf("%s:\n", name);
 
@@ -1479,10 +1479,16 @@ static void x86_out_var(variable_global *var, const struct target *target_info)
 
 void x86_out(unit *unit, global *glob)
 {
+	const struct target *target = unit_target_info(unit);
+
 	if(global_is_forward_decl(glob)){
 		x86_octx octx = { 0 };
 		octx.fout = stdout;
 		x86_comment(&octx, "forward decl %s", global_name(glob));
+
+		if(glob->is_fn && function_attributes(glob->u.fn) & function_attribute_weak){
+			printf("%s %s\n", target->sys.weak_directive_func, global_name(glob));
+		}
 		return;
 	}
 
@@ -1494,8 +1500,6 @@ void x86_out(unit *unit, global *glob)
 		x86_out_fn(unit, fn);
 
 	}else{
-		const struct target *target = unit_target_info(unit);
-
 		x86_out_var(glob->u.var, target);
 	}
 }

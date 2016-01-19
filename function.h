@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "block.h"
 #include "variable.h"
+#include "function_attributes.h"
 
 typedef struct function function;
 struct unit;
@@ -15,6 +16,9 @@ struct type *function_type(function *);
 void function_dump_args_and_block(function *);
 
 void function_finalize(function *);
+
+void function_add_attributes(function *, enum function_attributes);
+enum function_attributes function_attributes(function *);
 
 void function_onblocks(function *, void (block *));
 

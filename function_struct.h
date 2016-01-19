@@ -5,6 +5,7 @@
 
 #include "val.h"
 #include "val_struct.h"
+#include "function_attributes.h"
 
 struct function
 {
@@ -19,6 +20,8 @@ struct function
 	type *fnty;
 	dynarray arg_names;
 	dynarray arg_locns;
+
+	enum function_attributes attr;
 };
 
 #endif
