@@ -26,7 +26,6 @@ struct greedy_ctx
 	int nregs;
 	unsigned isn_num;
 	unsigned *spill_space;
-	unsigned ptrsz;
 };
 
 struct regalloc_ctx
@@ -265,7 +264,6 @@ static void regalloc_greedy(
 	alloc_ctx.in_use = xcalloc(backend->nregs, 1);
 	alloc_ctx.nregs = backend->nregs;
 	alloc_ctx.blk = blk;
-	alloc_ctx.ptrsz = backend->ptrsz;
 	alloc_ctx.spill_space = spill_space;
 
 	/* mark scratch as in use */

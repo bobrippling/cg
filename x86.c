@@ -1320,7 +1320,6 @@ static void x86_init_regalloc_info(
 {
 	info->backend.nregs = countof(regs);
 	info->backend.scratch_reg = SCRATCH_REG;
-	info->backend.ptrsz = PTR_SZ;
 	info->backend.callee_save = callee_saves;
 	info->backend.callee_save_cnt = countof(callee_saves);
 	info->backend.arg_regs = x86_arg_regs;
