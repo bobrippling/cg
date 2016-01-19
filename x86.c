@@ -48,8 +48,6 @@ static const char *const regs[][4] = {
 	{ "sil", "si", "esi", "rsi" },
 };
 
-#define PTR_TY i8
-
 static const int callee_saves[] = {
 	1 /* ebx */
 };
@@ -994,12 +992,21 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	const unsigned ptrsz = type_size(val_type(lhs));
 	const unsigned step = type_size(type_deref(val_type(lhs)));
 	type *rhs_ty = val_type(rhs);
-	type *intptr_ty = type_get_primitive(
-			unit_uniqtypes(octx->unit),
-			PTR_TY);
-
+	type *intptr_ty;
+	enum type_primitive intptr_target;
 	val ext_rhs;
 	val reg;
+
+	switch(unit_target_info(octx->unit)->arch.ptr.size){
+		case 4: intptr_target = i4; break;
+		case 8: intptr_target = i8; break;
+		default:
+			assert(0 && "invalid pointer size for x86 backend");
+	}
+
+	intptr_ty = type_get_primitive(
+			unit_uniqtypes(octx->unit),
+			intptr_target);
 
 	if(type_size(rhs_ty) != ptrsz){
 		bool need_temp_reg = false;
