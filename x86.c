@@ -1428,14 +1428,19 @@ static void x86_out_init(struct init *init, type *ty)
 
 		case init_ptr:
 		{
-			long off = init->u.ptr.label.offset;
+			printf(".%s ", x86_size_name(type_size(ty)));
 
-			printf(".%s %s %s %ld\n",
-					x86_size_name(type_size(ty)),
-					init->u.ptr.label.ident,
-					off > 0 ? "+" : "-",
-					off > 0 ? off : -off);
+			if(init->u.ptr.is_label){
+				long off = init->u.ptr.u.ident.label.offset;
 
+				printf("%s %s %ld",
+						init->u.ptr.u.ident.label.ident,
+						off > 0 ? "+" : "-",
+						off > 0 ? off : -off);
+			}else{
+				printf("%lu", init->u.ptr.u.integral);
+			}
+			putchar('\n');
 			break;
 		}
 	}

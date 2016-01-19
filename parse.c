@@ -942,62 +942,82 @@ static void parse_function(
 
 static void parse_init_ptr(parse *p, type *ty, struct init *init)
 {
-	/* $ident [+/- value] */
-	char *ident;
-	enum op op;
-	long offset = 0;
-	type *ident_ty;
-	int anyptr = 0;
-
-	eat(p, "pointer initialiser", tok_ident);
-	ident = token_last_ident(p->tok);
-
-	sema_error_if_no_global_ident(p, ident, &ident_ty);
-
-	if(token_is_op(token_peek(p->tok), &op)){
-		switch(op){
-			case op_add: offset =  1; break;
-			case op_sub: offset = -1; break;
-			default:
-				parse_error(
-						p,
-						"invalid pointer initialiser extra: %s",
-						op_to_str(op));
-		}
-
-		if(offset){
-			/* accept add/sub: */
-			token_next(p->tok);
-
-			eat(p, "int offset", tok_int);
-			offset *= token_last_int(p->tok);
-		}
-	}
-
-	if(token_accept(p->tok, tok_bareword)){
-		char *bareword = token_last_bareword(p->tok);
-
-		if(!strcmp(bareword, "anyptr"))
-			anyptr = 1;
-		else
-			parse_error(p, "unexpected \"%s\"", bareword);
-
-		free(bareword);
-	}
-
-	if(!anyptr && ty != ident_ty){
-		char buf[128];
-
-		sema_error(p,
-				"initialisation type mismatch: init %s with %s",
-				type_to_str_r(buf, sizeof(buf), ty),
-				type_to_str(ident_ty));
-	}
-
+	/* $ident [+/- value]
+	 * integer literal */
 	init->type = init_ptr;
-	init->u.ptr.label.ident = ident;
-	init->u.ptr.label.offset = offset;
-	init->u.ptr.is_anyptr = anyptr;
+
+	switch(token_peek(p->tok)){
+		case tok_ident:
+		{
+			char *ident;
+			enum op op;
+			long offset = 0;
+			type *ident_ty;
+			int anyptr = 0;
+
+			eat(p, "pointer initialiser", tok_ident);
+			ident = token_last_ident(p->tok);
+
+			sema_error_if_no_global_ident(p, ident, &ident_ty);
+
+			if(token_is_op(token_peek(p->tok), &op)){
+				switch(op){
+					case op_add: offset =  1; break;
+					case op_sub: offset = -1; break;
+					default:
+						parse_error(
+								p,
+								"invalid pointer initialiser extra: %s",
+								op_to_str(op));
+				}
+
+				if(offset){
+					/* accept add/sub: */
+					token_next(p->tok);
+
+					eat(p, "int offset", tok_int);
+					offset *= token_last_int(p->tok);
+				}
+			}
+
+			if(token_accept(p->tok, tok_bareword)){
+				char *bareword = token_last_bareword(p->tok);
+
+				if(!strcmp(bareword, "anyptr"))
+					anyptr = 1;
+				else
+					parse_error(p, "unexpected \"%s\"", bareword);
+
+				free(bareword);
+			}
+
+			if(!anyptr && ty != ident_ty){
+				char buf[128];
+
+				sema_error(p,
+						"initialisation type mismatch: init %s with %s",
+						type_to_str_r(buf, sizeof(buf), ty),
+						type_to_str(ident_ty));
+			}
+
+			init->u.ptr.is_label = true;
+			init->u.ptr.u.ident.label.ident = ident;
+			init->u.ptr.u.ident.label.offset = offset;
+			init->u.ptr.u.ident.is_anyptr = anyptr;
+			break;
+		}
+
+		case tok_int:
+			init->u.ptr.is_label = false;
+			init->u.ptr.u.integral = token_last_int(p->tok);
+			token_next(p->tok);
+			break;
+
+		default:
+			parse_error(p, "pointer initialiser expected");
+			memset(&init->u.ptr, 0, sizeof init->u.ptr);
+			return;
+	}
 }
 
 static struct init *parse_init(parse *p, type *ty)

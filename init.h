@@ -21,8 +21,16 @@ struct init
 		dynarray elem_inits; /* array and struct */
 		struct
 		{
-			struct label_off label;
-			int is_anyptr;
+			bool is_label;
+			union
+			{
+				struct
+				{
+					struct label_off label;
+					bool is_anyptr;
+				} ident;
+				unsigned long integral;
+			} u;
 		} ptr;
 		unsigned long long i;
 	} u;
