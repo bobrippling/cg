@@ -48,7 +48,6 @@ static const char *const regs[][4] = {
 	{ "sil", "si", "esi", "rsi" },
 };
 
-#define PTR_SZ 8
 #define PTR_TY i8
 
 static const int callee_saves[] = {
@@ -211,7 +210,7 @@ static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
 		enum deref_type dereference_ty,
-		type *ty)
+		type *ty, unsigned ptr_sz)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
@@ -220,7 +219,7 @@ static const char *x86_name_str(
 			int val_sz;
 
 			if(deref){
-				val_sz = PTR_SZ;
+				val_sz = ptr_sz;
 			}else{
 				val_sz = type_size(ty);
 			}
@@ -288,11 +287,16 @@ static const char *x86_val_str(
 		case FROM_ISN: loc = &val->u.local.loc; goto loc;
 		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
 loc:
+		{
+			unsigned ptr_sz = unit_target_info(octx->unit)->arch.ptr.size;
+
 			return x86_name_str(
 					loc,
 					buf, sizeof bufs[0],
 					dereference,
-					operand_output_ty);
+					operand_output_ty,
+					ptr_sz);
+		}
 	}
 
 	return buf;
