@@ -232,6 +232,7 @@ static const char *x86_name_str(
 		case NAME_SPILT:
 			assert_deref(dereference_ty, DEREFERENCE_TRUE);
 
+#warning 64-bit
 			snprintf(buf, bufsz, "-%u(%%rbp)", loc->u.off);
 			break;
 	}
@@ -270,6 +271,7 @@ static const char *x86_val_str(
 		{
 			bool indir = (dereference == DEREFERENCE_TRUE);
 
+#warning 64-bit, pic, pie etc
 			snprintf(buf, sizeof bufs[0],
 					"%s%s(%%rip)",
 					indir ? "" : "$",
@@ -816,6 +818,7 @@ loc:
 					val_type(i->u.elem.res),
 					DEREFERENCE_FALSE);
 
+#warning 64-bit, pic, pie etc
 			fprintf(octx->fout, "\tlea %s+%ld(%%rip), %s\n",
 					global_name(lval->u.global),
 					offset,
@@ -1313,6 +1316,7 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 	printf(".globl %s\n", fname);
 	printf("%s:\n", fname);
 
+#warning 64-bit
 	printf("\tpush %%rbp\n"
 			"\tmov %%rsp, %%rbp\n");
 
@@ -1321,6 +1325,7 @@ static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
 	}
 
 	if(alloca_total)
+#warning 64-bit
 		printf("\tsub $%ld, %%rsp\n", alloca_total);
 }
 
