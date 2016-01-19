@@ -6,8 +6,6 @@
 #include <assert.h>
 #include <errno.h>
 
-#include <sys/utsname.h>
-
 #include "die.h"
 #include "str.h"
 #include "dynarray.h"
@@ -15,28 +13,15 @@
 #include "backend.h"
 #include "isn.h"
 #include "unit.h"
+#include "target.h"
 
 #include "tokenise.h"
 #include "parse.h"
-
-#include "isn_internal.h" /* isn_dump() */
 
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
 #include "opt_dse.h"
 #include "opt_loadmerge.h"
-#include "x86.h"
-
-static const struct
-{
-	const char *name;
-	global_emit_func *emit;
-} backends[] = {
-	{ "ir", global_dump },
-	{ "x86_64", x86_out },
-	{ "amd64",  x86_out },
-	{ 0 }
-};
 
 #if 0
 #define OPTS          \
@@ -61,7 +46,8 @@ static const struct
 static const char *argv0;
 
 static unit *read_and_parse(
-		const char *fname, bool dump_tok, int *const err)
+		const char *fname, bool dump_tok,
+		const struct target *target, int *const err)
 {
 	FILE *f;
 	tokeniser *tok;
@@ -87,7 +73,7 @@ static unit *read_and_parse(
 			printf("token %s\n", token_to_str(ct));
 		}
 	}else{
-		unit = parse_code(tok, err);
+		unit = parse_code(tok, err, target);
 	}
 
 	token_fin(tok, &ferr);
@@ -102,20 +88,14 @@ static unit *read_and_parse(
 
 static void usage(const char *arg0)
 {
-	size_t i;
-
 	fprintf(stderr,
 			"Usage: %s [options] [file | --eg[-jmp]]\n"
 			"Options:\n"
 			"  -O: optimise\n"
 			"  --dump-tokens: token dump\n"
 			"  --emit=<backend>: emit via backend:\n"
+			"  -O<optimisation>: enable optimisation\n"
 			, arg0);
-
-	for(i = 0; backends[i].name; i++)
-		fprintf(stderr, "    %s\n", backends[i].name);
-
-	fprintf(stderr, "  -O<optimisation>: enable optimisation\n");
 
 #if 0
 	for(i = 0; i < countof(optimisations); i++)
@@ -123,32 +103,6 @@ static void usage(const char *arg0)
 #endif
 
 	exit(1);
-}
-
-static global_emit_func *find_machine(const char *machine)
-{
-	int i;
-
-	for(i = 0; backends[i].name; i++)
-		if(!strcmp(machine, backends[i].name))
-			return backends[i].emit;
-
-	return NULL;
-}
-
-static global_emit_func *default_backend(void)
-{
-	struct utsname unam;
-	global_emit_func *fn;
-
-	if(uname(&unam))
-		die("uname:");
-
-	fn = find_machine(unam.machine);
-	if(!fn)
-		die("unknown machine '%s'", unam.machine);
-
-	return fn;
 }
 
 static void run_opts(function *fn, void *vctx)
@@ -185,12 +139,13 @@ int main(int argc, char *argv[])
 {
 	dynarray passes = DYNARRAY_INIT;
 	bool dump_tok = false;
-	global_emit_func *emit_fn = NULL;
 	unit *unit = NULL;
 	const char *fname = NULL;
 	const char *output = NULL;
 	int i;
 	int parse_err = 0;
+	struct target target = { 0 };
+	const char *emit_arg = NULL;
 
 	argv0 = argv[0];
 
@@ -229,14 +184,12 @@ int main(int argc, char *argv[])
 		}else if(str_beginswith(argv[i], "--emit=")){
 			const char *backend = argv[i] + 7;
 
-			if(emit_fn){
+			if(emit_arg){
 				fprintf(stderr, "already given a --emit option\n");
 				usage(*argv);
 			}
 
-			emit_fn = find_machine(backend);
-			if(!emit_fn)
-				die("emit: unknown machine '%s'", backend);
+			emit_arg = backend;
 
 		}else if(!strcmp(argv[i], "--help")){
 			usage(*argv);
@@ -267,8 +220,13 @@ int main(int argc, char *argv[])
 	if(fname && !strcmp(fname, "-"))
 		fname = NULL;
 
+	if(emit_arg)
+		target_parse(emit_arg, &target);
+	else
+		target_default(&target);
+
 	if(!unit){
-		unit = read_and_parse(fname, dump_tok, &parse_err);
+		unit = read_and_parse(fname, dump_tok, &target, &parse_err);
 		if(dump_tok){
 			assert(!unit);
 			return 0;
@@ -286,9 +244,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if(!emit_fn)
-		emit_fn = default_backend();
-	unit_on_globals(unit, emit_fn);
+	unit_on_globals(unit, target.emit);
 
 	unit_free(unit);
 

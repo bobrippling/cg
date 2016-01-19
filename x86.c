@@ -12,6 +12,7 @@
 
 #include "x86.h"
 #include "x86_internal.h"
+#include "target.h"
 
 #include "isn_internal.h"
 #include "isn_struct.h"
@@ -1440,16 +1441,29 @@ static void x86_out_init(struct init *init, type *ty)
 	}
 }
 
-static void x86_out_var(variable_global *var)
+static void x86_out_var(variable_global *var, const struct target *target_info)
 {
 	variable *inner = variable_global_var(var);
 	const char *name = variable_name(inner);
 	struct init_toplvl *init_top = variable_global_init(var);
 
 	/* TODO: use .bss for zero-init */
-	printf(".data\n");
-	if(init_top && !init_top->internal)
-		printf(".globl %s\n", name);
+
+	if(init_top && init_top->constant){
+		printf("%s\n", target_info->sys.section_rodata);
+
+	}else{
+		printf(".data\n");
+	}
+
+	if(init_top){
+		if(!init_top->internal)
+			printf(".globl %s\n", name);
+
+		if(init_top->weak){
+			/* TODO: weak variable / function */
+		}
+	}
 	printf("%s:\n", name);
 
 	if(init_top){
@@ -1476,6 +1490,8 @@ void x86_out(unit *unit, global *glob)
 		x86_out_fn(unit, fn);
 
 	}else{
-		x86_out_var(glob->u.var);
+		const struct target *target = unit_target_info(unit);
+
+		x86_out_var(glob->u.var, target);
 	}
 }

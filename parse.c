@@ -1168,13 +1168,12 @@ static void parse_global(parse *p)
 	}
 }
 
-unit *parse_code(tokeniser *tok, int *const err)
+unit *parse_code(tokeniser *tok, int *const err, const struct target *target)
 {
 	parse state = { 0 };
 
 	state.tok = tok;
-	/* FIXME: hardcoded pointer and asm info */
-	state.unit = unit_new(8, 8, "L");
+	state.unit = unit_new(target);
 
 	while(!parse_finished(tok)){
 		parse_global(&state);

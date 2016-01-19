@@ -3,6 +3,6 @@
 
 #include "unit.h"
 
-unit *parse_code(tokeniser *tok, int *const err);
+unit *parse_code(tokeniser *tok, int *const err, const struct target *target);
 
 #endif

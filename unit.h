@@ -6,12 +6,13 @@
 struct type;
 struct uniq_type_list;
 struct dynarray;
+struct target;
 
 typedef struct unit unit;
 
 typedef void global_emit_func(unit *, global *);
 
-unit *unit_new(unsigned ptrsz, unsigned ptralign, const char *lbl_priv_prefix);
+unit *unit_new(const struct target *);
 void unit_free(unit *);
 
 void unit_on_functions(unit *, void (function *, void *), void *);
@@ -28,5 +29,6 @@ variable_global *unit_variable_new(
 global *unit_global_find(unit *, const char *);
 
 struct uniq_type_list *unit_uniqtypes(unit *);
+const struct target *unit_target_info(unit *);
 
 #endif
