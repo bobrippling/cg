@@ -22,6 +22,7 @@ static const struct
 } arches[] = {
 	{ "ir",     { 8, 8 }, global_dump },
 	{ "x86_64", { 8, 8 }, x86_out },
+	{ "i386",   { 4, 4 }, x86_out },
 };
 
 static const struct
