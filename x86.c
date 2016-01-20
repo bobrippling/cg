@@ -62,6 +62,22 @@ enum deref_type
 
 static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx);
 
+static int x86_target_switch(const struct target *target, int b32, int b64)
+{
+	switch(target->arch.ptr.size){
+		case 4: return b32;
+		case 8: return b64;
+		default:
+			assert(0 && "invalid pointer size for x86 backend");
+	}
+	return -1;
+}
+
+static char x86_target_regch(const struct target *target)
+{
+	return x86_target_switch(target, 'e', 'r');
+}
+
 static operand_category val_category(val *v)
 {
 	if(val_is_mem(v))
@@ -208,7 +224,7 @@ static const char *x86_name_str(
 		const struct name_loc *loc,
 		char *buf, size_t bufsz,
 		enum deref_type dereference_ty,
-		type *ty, unsigned ptr_sz)
+		type *ty, const struct target *target)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
@@ -217,7 +233,7 @@ static const char *x86_name_str(
 			int val_sz;
 
 			if(deref){
-				val_sz = ptr_sz;
+				val_sz = target->arch.ptr.size;
 			}else{
 				val_sz = type_size(ty);
 			}
@@ -230,11 +246,14 @@ static const char *x86_name_str(
 		}
 
 		case NAME_SPILT:
+		{
+			char regch = x86_target_regch(target);
+
 			assert_deref(dereference_ty, DEREFERENCE_TRUE);
 
-#warning 64-bit
-			snprintf(buf, bufsz, "-%u(%%rbp)", loc->u.off);
+			snprintf(buf, bufsz, "-%u(%%%cbp)", loc->u.off, regch);
 			break;
+		}
 	}
 
 	return buf;
@@ -288,14 +307,12 @@ static const char *x86_val_str(
 		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
 loc:
 		{
-			unsigned ptr_sz = unit_target_info(octx->unit)->arch.ptr.size;
-
 			return x86_name_str(
 					loc,
 					buf, sizeof bufs[0],
 					dereference,
 					operand_output_ty,
-					ptr_sz);
+					unit_target_info(octx->unit));
 		}
 	}
 
@@ -995,21 +1012,11 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	const unsigned ptrsz = type_size(val_type(lhs));
 	const unsigned step = type_size(type_deref(val_type(lhs)));
 	type *rhs_ty = val_type(rhs);
-	type *intptr_ty;
-	enum type_primitive intptr_target;
+	type *intptr_ty = type_get_primitive(
+			unit_uniqtypes(octx->unit),
+			x86_target_switch(unit_target_info(octx->unit), i4, i8));
 	val ext_rhs;
 	val reg;
-
-	switch(unit_target_info(octx->unit)->arch.ptr.size){
-		case 4: intptr_target = i4; break;
-		case 8: intptr_target = i8; break;
-		default:
-			assert(0 && "invalid pointer size for x86 backend");
-	}
-
-	intptr_ty = type_get_primitive(
-			unit_uniqtypes(octx->unit),
-			intptr_target);
 
 	if(type_size(rhs_ty) != ptrsz){
 		bool need_temp_reg = false;
@@ -1307,26 +1314,30 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 	fprintf(octx->fout, "\tleave\n" "\tret\n");
 }
 
-static void x86_emit_prologue(function *func, long alloca_total, unsigned align)
+static void x86_emit_prologue(
+		function *func,
+		long alloca_total,
+		unsigned align,
+		const struct target *target)
 {
 	const char *fname;
+	char regch = x86_target_regch(target);
 
 	printf(".text\n");
 	fname = function_name(func);
 	printf(".globl %s\n", fname);
 	printf("%s:\n", fname);
 
-#warning 64-bit
-	printf("\tpush %%rbp\n"
-			"\tmov %%rsp, %%rbp\n");
+	printf("\tpush %%%cbp\n"
+			"\tmov %%%csp, %%%cbp\n",
+			regch, regch, regch);
 
 	if(align){
 		alloca_total = (alloca_total + align) & ~(align - 1);
 	}
 
 	if(alloca_total)
-#warning 64-bit
-		printf("\tsub $%ld, %%rsp\n", alloca_total);
+		printf("\tsub $%ld, %%%csp\n", alloca_total, regch);
 }
 
 static void x86_init_regalloc_info(
@@ -1389,7 +1400,8 @@ static void x86_out_fn(unit *unit, function *func)
 	x86_emit_prologue(
 			func,
 			x86_alloca_total(&out_ctx),
-			out_ctx.max_align);
+			out_ctx.max_align,
+			unit_target_info(unit));
 
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
