@@ -295,6 +295,7 @@ static const char *x86_val_str(
 			/* x64 is just PIC at the moment
 			 * x86 is not PIC
 			 */
+			/* TODO: pic */
 			snprintf(buf, sizeof bufs[0],
 					"%s%s%s",
 					indir ? "" : "$",
@@ -843,6 +844,7 @@ loc:
 					val_type(i->u.elem.res),
 					DEREFERENCE_FALSE);
 
+			/* TODO: pic */
 			fprintf(octx->fout, "\tlea %s+%ld%s, %s\n",
 					global_name(lval->u.global),
 					offset,
