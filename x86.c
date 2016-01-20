@@ -289,12 +289,17 @@ static const char *x86_val_str(
 		case GLOBAL:
 		{
 			bool indir = (dereference == DEREFERENCE_TRUE);
+			const struct target *target = unit_target_info(octx->unit);
+			const int x64 = x86_target_switch(target, 0, 1);
 
-#warning 64-bit, pic, pie etc
+			/* x64 is just PIC at the moment
+			 * x86 is not PIC
+			 */
 			snprintf(buf, sizeof bufs[0],
-					"%s%s(%%rip)",
+					"%s%s%s",
 					indir ? "" : "$",
-					global_name(val->u.global));
+					global_name(val->u.global),
+					x64 ? "(%rip)" : "");
 			break;
 		}
 
@@ -826,19 +831,22 @@ loc:
 		{
 			const char *result_str;
 			long offset;
+			int x64;
 
 			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset))
 				break;
+
+			x64 = x86_target_switch(unit_target_info(octx->unit), 0, 1);
 
 			result_str = x86_val_str(
 					i->u.elem.res, 1, octx,
 					val_type(i->u.elem.res),
 					DEREFERENCE_FALSE);
 
-#warning 64-bit, pic, pie etc
-			fprintf(octx->fout, "\tlea %s+%ld(%%rip), %s\n",
+			fprintf(octx->fout, "\tlea %s+%ld%s, %s\n",
 					global_name(lval->u.global),
 					offset,
+					x64 ? "(%rip)" : "",
 					result_str);
 			return;
 		}
