@@ -33,6 +33,12 @@ const int x86_arg_regs[] = {
 
 const unsigned x86_arg_reg_count = countof(x86_arg_regs);
 
+typedef struct dep
+{
+	int target, current; /* register indexes */
+	int next, prev; /* order in chain, which should be done first */
+	bool done;
+} dep;
 
 struct x86_spill_ctx
 {
@@ -219,6 +225,53 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	dynmap_free(regs);
 }
 
+static void topographical_reg_init(dynarray *args, size_t n_reg_args, dep *deps)
+{
+	size_t i;
+
+	for(i = 0; i < n_reg_args; i++){
+		val *varg = dynarray_ent(args, i);
+		struct name_loc *loc = val_location(varg);
+
+		deps[i].next = -1;
+		deps[i].prev = -1;
+		deps[i].done = false;
+
+		assert(i < countof(x86_arg_regs));
+		deps[i].target = x86_arg_regs[i];
+
+		if(loc && loc->where == NAME_IN_REG){
+			deps[i].current = loc->u.reg;
+		}else{
+			deps[i].current = -1;
+		}
+	}
+}
+
+static void topographical_reg_depend(size_t n_reg_args, dep *deps)
+{
+	size_t i;
+
+	for(i = 0; i < n_reg_args; i++){
+		size_t j;
+
+		for(j = 0; j < n_reg_args; j++){
+			if(i == j)
+				continue;
+
+			if(deps[i].current == deps[j].target){
+				assert(deps[i].next == -1
+						&& deps[j].prev == -1
+						&& "mixup resolving register args");
+
+				deps[i].next = j;
+				deps[j].prev = i;
+				/* continue for mixup checks */
+			}
+		}
+	}
+}
+
 static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 {
 	/*
@@ -244,58 +297,11 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 	 */
 	const size_t n_reg_args = MIN(
 			dynarray_count(args), countof(x86_arg_regs));
-	typedef struct dep
-	{
-		int needs, needed; /* register indexes */
-		int next, prev;
-		bool done;
-	} dep;
 	dep *deps = xmalloc(n_reg_args * sizeof *deps);
 	size_t i;
+	topographical_reg_init(args, n_reg_args, deps);
 
-	/* initialise */
-	for(i = 0; i < n_reg_args; i++){
-		val *varg = dynarray_ent(args, i);
-		struct name_loc *loc = val_location(varg);
-
-		deps[i].next = -1;
-		deps[i].prev = -1;
-		deps[i].done = false;
-
-		assert(i < countof(x86_arg_regs));
-		deps[i].needs = x86_arg_regs[i];
-
-		if(loc && loc->where == NAME_IN_REG){
-			deps[i].needed = loc->u.reg;
-		}else{
-			deps[i].needed = -1;
-		}
-	}
-
-	/* dependency generation */
-	for(i = 0; i < n_reg_args; i++){
-		size_t j;
-
-		if(deps[i].done)
-			continue;
-
-		for(j = 0; j < n_reg_args; j++){
-			if(i == j)
-				continue;
-			if(deps[j].done)
-				continue;
-
-			if(deps[i].needed == deps[j].needs){
-				assert(deps[i].next == -1
-						&& deps[j].prev == -1
-						&& "cyclic reference resolving register args");
-
-				deps[i].next = j;
-				deps[j].prev = i;
-				/* continue for cyclic reference check */
-			}
-		}
-	}
+	topographical_reg_depend(n_reg_args, deps);
 
 	/* need to do all the deps with -1 as their prev,
 	 * as they have no registers they need to rely on.
@@ -319,18 +325,17 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			val reg;
 
 			if(loc && loc->where == NAME_IN_REG){
-				assert(deps[j].needed == loc->u.reg);
+				assert(deps[j].current == loc->u.reg);
 			}else{
-				assert(deps[j].needed == -1);
+				assert(deps[j].current == -1);
 			}
 
-			x86_make_reg(&reg, deps[j].needs, arg->ty);
+			x86_make_reg(&reg, deps[j].target, arg->ty);
 
 			x86_mov(arg, &reg, octx);
 
 			deps[j].done = true;
-
-			if(deps[j].needs /* reg index */ == SCRATCH_REG){
+			if(deps[j].target /* reg index */ == SCRATCH_REG){
 				octx->scratch_reg_reserved = true;
 			}
 		}
