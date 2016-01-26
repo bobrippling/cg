@@ -3,7 +3,6 @@
 
 typedef struct x86_octx
 {
-	dynmap *alloca2stack;
 	block *exitblk;
 	function *func;
 	struct unit *unit;

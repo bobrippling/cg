@@ -36,7 +36,6 @@ const unsigned x86_arg_reg_count = countof(x86_arg_regs);
 
 struct x86_spill_ctx
 {
-	dynmap *alloca2stack;
 	dynmap *dontspill;
 	dynmap *spill;
 	block *blk;
@@ -182,7 +181,6 @@ static dynmap *x86_spillregs(
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
-	spillctx.alloca2stack = octx->alloca2stack;
 	spillctx.call_isn_idx = call_isn_idx;
 	spillctx.blk = blk;
 

@@ -36,7 +36,6 @@
 
 struct x86_alloca_ctx
 {
-	dynmap *alloca2stack;
 	long alloca;
 };
 
@@ -100,15 +99,6 @@ static operand_category val_category(val *v)
 	}
 	assert(0);
 }
-
-#if 0
-static int alloca_offset(dynmap *alloca2stack, val *val)
-{
-	intptr_t off = dynmap_get(struct val *, intptr_t, alloca2stack, val);
-	assert(off);
-	return off;
-}
-#endif
 
 static const char *x86_size_name(unsigned sz)
 {
@@ -1306,10 +1296,6 @@ static void x86_sum_alloca(block *blk, void *vctx)
 
 				ctx->alloca += type_size(sz_ty);
 
-				(void)dynmap_set(val *, intptr_t,
-						ctx->alloca2stack,
-						i->u.alloca.out, -ctx->alloca);
-
 				break;
 			}
 
@@ -1386,8 +1372,6 @@ static void x86_out_fn(unit *unit, function *func)
 	if(!out_ctx.fout)
 		die("tmpfile():");
 
-	alloca_ctx.alloca2stack = dynmap_new(val *, /*ref*/NULL, val_hash);
-
 	/* regalloc */
 	x86_init_regalloc_info(&regalloc, func, unit_uniqtypes(unit));
 	func_regalloc(func, &regalloc);
@@ -1395,7 +1379,6 @@ static void x86_out_fn(unit *unit, function *func)
 	/* gather allocas - must be after regalloc */
 	blocks_traverse(entry, x86_sum_alloca, &alloca_ctx, markers);
 
-	out_ctx.alloca2stack = alloca_ctx.alloca2stack;
 	out_ctx.exitblk = exit;
 	out_ctx.func = func;
 
@@ -1404,8 +1387,6 @@ static void x86_out_fn(unit *unit, function *func)
 
 	blocks_traverse(entry, x86_out_block1, &out_ctx, markers);
 	x86_emit_epilogue(&out_ctx, exit);
-
-	dynmap_free(alloca_ctx.alloca2stack);
 
 	/* now we spit out the prologue first */
 	x86_emit_prologue(
