@@ -9,6 +9,7 @@
 #include "io.h"
 #include "mem.h"
 #include "dynmap.h"
+#include "imath.h"
 
 #include "x86.h"
 #include "x86_internal.h"
@@ -1517,11 +1518,20 @@ static void x86_out_init(struct init *init, type *ty)
 	}
 }
 
+static void x86_out_align(unsigned align, const struct target *target)
+{
+	if(target->sys.align_is_pow2)
+		align = log2i(align);
+
+	printf(".align %u\n", align);
+}
+
 static void x86_out_var(variable_global *var, const struct target *target_info)
 {
 	variable *inner = variable_global_var(var);
 	const char *name = variable_name(inner);
 	struct init_toplvl *init_top = variable_global_init(var);
+	type *var_ty = variable_type(inner);
 
 	/* TODO: use .bss for zero-init */
 
@@ -1539,10 +1549,13 @@ static void x86_out_var(variable_global *var, const struct target *target_info)
 		if(init_top->weak)
 			printf("%s %s\n", target_info->sys.weak_directive_var, name);
 	}
+
+	x86_out_align(type_align(var_ty), target_info);
+
 	printf("%s:\n", name);
 
 	if(init_top){
-		x86_out_init(init_top->init, variable_type(inner));
+		x86_out_init(init_top->init, var_ty);
 	}else{
 		printf(".space %u\n", variable_size(inner));
 	}

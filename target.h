@@ -29,6 +29,7 @@ struct target
 		const char *section_rodata;
 		const char *weak_directive_var;
 		const char *weak_directive_func;
+		bool align_is_pow2;
 	} sys;
 
 	global_emit_func *emit;

@@ -36,7 +36,8 @@ static const struct
 			".L",
 			".rodata",
 			".weak",
-			".weak"
+			".weak",
+			false /* align_is_pow2 */
 		}
 	},
 	{
@@ -45,7 +46,8 @@ static const struct
 			"L",
 			".section __TEXT,__const",
 			".weak_reference",
-			".weak_definition"
+			".weak_definition",
+			true /* align_is_pow2 */
 		}
 	},
 };

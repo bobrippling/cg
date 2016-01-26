@@ -1,5 +1,5 @@
 OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
-      dynmap.o string.o \
+      dynmap.o string.o imath.o \
       isn.o regalloc.o \
       function.o variable.o global.o variable_global.o block.o unit.o \
       die.o io.o str.o lbl.o \
