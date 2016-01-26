@@ -272,6 +272,28 @@ static void topographical_reg_depend(size_t n_reg_args, dep *deps)
 	}
 }
 
+static bool topographical_reg_check_loop(size_t n_reg_args, dep *deps)
+{
+	size_t i;
+
+	for(i = 0; i < n_reg_args; i++){
+		/* pick an entry that isn't done, and follow down its chain.
+		 * if the chain count is greater than n_reg_args, we've got a loop
+		 */
+		size_t count = 0;
+		int j;
+
+		for(j = deps[i].next; j != -1; j = deps[j].next){
+			count++;
+
+			if(count > n_reg_args)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 {
 	/*
@@ -299,9 +321,41 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			dynarray_count(args), countof(x86_arg_regs));
 	dep *deps = xmalloc(n_reg_args * sizeof *deps);
 	size_t i;
+	bool chain_loop = false;
+
 	topographical_reg_init(args, n_reg_args, deps);
 
 	topographical_reg_depend(n_reg_args, deps);
+
+	/* check we don't have an infinite dependency chain */
+	chain_loop = topographical_reg_check_loop(n_reg_args, deps);
+
+	if(chain_loop){
+		/* cyclic dependency, need to start off with a free register */
+		val reg;
+		val *varg;
+
+		/* if we have a chain-loop then none of the args should be a starting
+		 * point, because we have a chain all the way through them
+		 *
+		 * i.e. deps[0..<n_reg_args].prev != -1
+		 */
+
+		assert(deps[0].prev != -1);
+		varg = dynarray_ent(args, deps[0].prev);
+
+		x86_comment(octx, "cyclic dependency between arg regs - using scratch");
+
+		/* break dependency chain */
+		deps[deps[0].prev].next = -1;
+		deps[0].prev = -1;
+
+		octx->scratch_reg_reserved = true;
+		x86_make_reg(&reg, SCRATCH_REG, varg->ty);
+
+		/* save argument in scratch for now */
+		x86_mov(varg, &reg, octx);
+	}
 
 	/* need to do all the deps with -1 as their prev,
 	 * as they have no registers they need to rely on.
@@ -322,7 +376,8 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 		for(j = i; j != -1; j = deps[j].next){
 			val *arg = dynarray_ent(args, j);
 			struct name_loc *loc = val_location(arg);
-			val reg;
+			val reg, scratch_fix;
+			val *arg_to_use = arg;
 
 			if(loc && loc->where == NAME_IN_REG){
 				assert(deps[j].current == loc->u.reg);
@@ -330,10 +385,19 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 				assert(deps[j].current == -1);
 			}
 
+			/* perform the mov */
+			if(chain_loop && deps[j].next == -1){
+				/* final entry in the chain - fix this using SCRATCH_REG */
+				arg_to_use = &scratch_fix;
+				x86_make_reg(&scratch_fix, SCRATCH_REG, arg->ty);
+				x86_comment(octx, "restoring final register from scratch");
+			}
+
 			x86_make_reg(&reg, deps[j].target, arg->ty);
 
-			x86_mov(arg, &reg, octx);
+			x86_mov(arg_to_use, &reg, octx);
 
+			/* finish book-keeping */
 			deps[j].done = true;
 			if(deps[j].target /* reg index */ == SCRATCH_REG){
 				octx->scratch_reg_reserved = true;
