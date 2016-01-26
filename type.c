@@ -488,3 +488,10 @@ unsigned type_size(type *t)
 	type_size_align(t, &sz, &align);
 	return sz;
 }
+
+unsigned type_align(type *t)
+{
+	unsigned sz, align;
+	type_size_align(t, &sz, &align);
+	return align;
+}

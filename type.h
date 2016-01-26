@@ -56,5 +56,6 @@ size_t type_array_count(type *);
 /* --- sizing --- */
 void type_size_align(type *, unsigned *sz, unsigned *align);
 unsigned type_size(type *);
+unsigned type_align(type *);
 
 #endif
