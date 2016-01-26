@@ -1421,6 +1421,25 @@ static void x86_out_fn(unit *unit, function *func)
 	dynmap_free(markers);
 }
 
+static void x86_out_padding(size_t *const bytes, unsigned align)
+{
+	unsigned gap;
+
+	if(*bytes == 0)
+		return;
+
+	/* pad to alignment */
+	if(*bytes < align)
+		gap = align - *bytes;
+	else
+		gap = *bytes % align;
+
+	if(gap){
+		printf(".space %u\n", gap);
+		*bytes += gap;
+	}
+}
+
 static void x86_out_init(struct init *init, type *ty)
 {
 	switch(init->type){
@@ -1454,12 +1473,27 @@ static void x86_out_init(struct init *init, type *ty)
 		case init_struct:
 		{
 			size_t i;
+			size_t bytes = 0;
+
 			dynarray_iter(&init->u.elem_inits, i){
 				struct init *elem = dynarray_ent(&init->u.elem_inits, i);
 				type *elemty = type_struct_element(ty, i);
+				struct
+				{
+					unsigned size;
+					unsigned align;
+				} attr;
+
+				type_size_align(elemty, &attr.size, &attr.align);
+
+				x86_out_padding(&bytes, attr.align);
 
 				x86_out_init(elem, elemty);
+
+				bytes += attr.size;
 			}
+
+			x86_out_padding(&bytes, type_align(ty));
 			break;
 		}
 
