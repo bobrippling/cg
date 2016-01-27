@@ -814,7 +814,20 @@ loc:
 				}
 
 				case NAME_SPILT:
-					break;
+				{
+					char regch = x86_target_regch(unit_target_info(octx->unit));
+
+					fprintf(octx->fout, "\tlea %ld(%%%cbp), %s\n",
+							-(long)loc->u.off + offset,
+							regch,
+							x86_val_str(
+								i->u.elem.res,
+								0,
+								octx,
+								val_type(i->u.elem.res),
+								DEREFERENCE_FALSE));
+					return;
+				}
 			}
 			break;
 		}
