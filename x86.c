@@ -1398,7 +1398,8 @@ static void x86_out_fn(unit *unit, function *func)
 	if(cat_file(out_ctx.fout, stdout) != 0)
 		die("cat file:");
 
-	fclose(out_ctx.fout);
+	if(fclose(out_ctx.fout))
+		die("close:");
 
 	dynmap_free(markers);
 }
