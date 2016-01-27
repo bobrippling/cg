@@ -7,6 +7,7 @@
 
 #include "mem.h"
 #include "macros.h"
+#include "imath.h"
 
 #include "type.h"
 #include "type_uniq_struct.h"
@@ -457,11 +458,15 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 
 			dynarray_iter(&ty->u.struct_.membs, i){
 				unsigned elemsz, elemalign;
+				unsigned gap;
 				type *ent = dynarray_ent(&ty->u.struct_.membs, i);
 
 				type_size_align(ent, &elemsz, &elemalign);
 
-				*sz += elemsz;
+				gap = gap_for_alignment(*sz, elemalign);
+
+				*sz += gap + elemsz;
+
 				if(elemalign > *align)
 					*align = elemalign;
 			}
