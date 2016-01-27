@@ -1406,21 +1406,13 @@ static void x86_out_fn(unit *unit, function *func)
 
 static void x86_out_padding(size_t *const bytes, unsigned align)
 {
-	unsigned gap;
+	unsigned gap = gap_for_alignment(*bytes, align);
 
-	if(*bytes == 0)
+	if(gap == 0)
 		return;
 
-	/* pad to alignment */
-	if(*bytes < align)
-		gap = align - *bytes;
-	else
-		gap = *bytes % align;
-
-	if(gap){
-		printf(".space %u\n", gap);
-		*bytes += gap;
-	}
+	printf(".space %u\n", gap);
+	*bytes += gap;
 }
 
 static void x86_out_init(struct init *init, type *ty)
