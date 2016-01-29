@@ -1190,7 +1190,8 @@ static void x86_out_block1(block *blk, void *vctx)
 		if(i->skip)
 			continue;
 
-		fprintf(octx->fout, "\n");
+		if(i->type != ISN_ALLOCA)
+			fprintf(octx->fout, "\n");
 
 		switch(i->type){
 			case ISN_ALLOCA:
