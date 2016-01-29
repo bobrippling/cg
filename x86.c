@@ -418,17 +418,20 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 		const struct x86_isn *isn,
 		const operand_category arg_cats[],
 		const size_t nargs,
-		bool *const is_exactmatch)
+		unsigned *const out_conversions_required)
 {
 	const int max = countof(isn->constraints);
 	int i, bestmatch_i = -1;
+	unsigned bestmatch_conversions = ~0u;
 
 	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
 		bool matches[MAX_OPERANDS];
 		unsigned nmatches = 0;
 		unsigned conversions_required;
+		unsigned conversions_left;
 		unsigned j;
 
+		/* how many conversions for this constrant-set? */
 		for(j = 0; j < nargs; j++){
 			if(j == isn->arg_count)
 				break;
@@ -442,20 +445,14 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 		conversions_required = (nargs - nmatches);
 
 		if(conversions_required == 0){
-			*is_exactmatch = true;
-			return &isn->constraints[i];
-		}
-
-		if(bestmatch_i != -1)
-			continue;
-
-		if(conversions_required > 1){
-			/* don't attempt, for now */
-			continue;
+			bestmatch_conversions = conversions_required;
+			bestmatch_i = i;
+			break;
 		}
 
 		/* we can only have the best match if the non-matched operand
 		 * is convertible to the required operand type */
+		conversions_left = conversions_required;
 		for(j = 0; j < nargs; j++){
 			if(matches[j])
 				continue;
@@ -463,13 +460,20 @@ static const struct x86_isn_constraint *find_isn_bestmatch(
 			if(operand_type_convertible(
 						arg_cats[j], isn->constraints[i].category[j]))
 			{
-				bestmatch_i = i;
-				break;
+				conversions_left--;
 			}
+		}
+
+		/* if we can convert all operands, we may have a new best match */
+		if(conversions_left == 0 /* feasible */
+		&& conversions_required < bestmatch_conversions /* best */)
+		{
+			bestmatch_conversions = conversions_required;
+			bestmatch_i = i;
 		}
 	}
 
-	*is_exactmatch = false;
+	*out_conversions_required = bestmatch_conversions;
 
 	if(bestmatch_i != -1)
 		return &isn->constraints[bestmatch_i];
@@ -566,7 +570,7 @@ static bool emit_isn_try(
 		val val;
 		variable var;
 	} temporaries[MAX_OPERANDS];
-	bool is_exactmatch;
+	unsigned conversions_required, conversions_left;
 	const struct x86_isn_constraint *operands_target = NULL;
 	unsigned j;
 
@@ -581,58 +585,58 @@ static bool emit_isn_try(
 	}
 
 	operands_target = find_isn_bestmatch(
-			isn, op_categories, operand_count, &is_exactmatch);
+			isn, op_categories, operand_count, &conversions_required);
 
 	if(!operands_target)
 		return false;
 
-	if(!is_exactmatch){
-		/* not satisfied - convert an operand to REG or MEM */
-		if(TEMPORARY_SHOW_MOVES)
-			x86_comment(octx, "temp(s) needed for %s", isn->mnemonic);
+	/* not satisfied - convert an operand to REG or MEM */
+	if(conversions_required && TEMPORARY_SHOW_MOVES)
+		x86_comment(octx, "temp(s) needed for %s (%u conversions)",
+				isn->mnemonic, conversions_required);
 
-		for(j = 0; j < operand_count; j++){
-			/* ready the operands if they're inputs */
-			if(isn->arg_ios[j] & OPERAND_INPUT
-			&& op_categories[j] != operands_target->category[j])
-			{
-				ready_input(
-						operands[j].val, &temporaries[j].val,
-						op_categories[j], operands_target->category[j],
-						&operands[j].dereference, octx);
+	conversions_left = conversions_required;
+	for(j = 0; j < operand_count; j++){
+		/* ready the operands if they're inputs */
+		if(isn->arg_ios[j] & OPERAND_INPUT
+		&& op_categories[j] != operands_target->category[j])
+		{
+			ready_input(
+					operands[j].val, &temporaries[j].val,
+					op_categories[j], operands_target->category[j],
+					&operands[j].dereference, octx);
 
-				emit_vals[j] = &temporaries[j].val;
+			emit_vals[j] = &temporaries[j].val;
 
-				if(TEMPORARY_SHOW_MOVES){
-					x86_comment(octx, "^ temporary for [%zu] input: %s -> %s type %s",
-							j,
-							x86_val_str_debug(operands[j].val, 0, octx),
-							x86_val_str_debug(emit_vals[j], 1, octx),
-							type_to_str(val_type(operands[j].val)));
-				}
+			if(TEMPORARY_SHOW_MOVES){
+				x86_comment(octx, "^ temporary for [%zu] input: %s -> %s type %s",
+						j,
+						x86_val_str_debug(operands[j].val, 0, octx),
+						x86_val_str_debug(emit_vals[j], 1, octx),
+						type_to_str(val_type(operands[j].val)));
 			}
-
-			/* ready the output operands */
-			if(op_categories[j] != operands_target->category[j]
-			&& isn->arg_ios[j] & OPERAND_OUTPUT)
-			{
-				ready_output(
-						operands[j].val, &temporaries[j].val,
-						op_categories[j], operands_target->category[j],
-						&operands[j].dereference, octx);
-
-				emit_vals[j] = &temporaries[j].val;
-
-				if(TEMPORARY_SHOW_MOVES){
-					x86_comment(octx, "temporary for [%zu] output: %s -> %s",
-							j,
-							x86_val_str_debug(operands[j].val, 0, octx),
-							x86_val_str_debug(emit_vals[j], 1, octx));
-				}
-			}
+			conversions_left--;
 		}
-	}else{
-		/* satisfied */
+
+		/* ready the output operands */
+		if(op_categories[j] != operands_target->category[j]
+		&& isn->arg_ios[j] & OPERAND_OUTPUT)
+		{
+			ready_output(
+					operands[j].val, &temporaries[j].val,
+					op_categories[j], operands_target->category[j],
+					&operands[j].dereference, octx);
+
+			emit_vals[j] = &temporaries[j].val;
+
+			if(TEMPORARY_SHOW_MOVES){
+				x86_comment(octx, "temporary for [%zu] output: %s -> %s",
+						j,
+						x86_val_str_debug(operands[j].val, 0, octx),
+						x86_val_str_debug(emit_vals[j], 1, octx));
+			}
+			conversions_left--;
+		}
 	}
 
 	if(!x86_isn_suffix && isn->may_suffix)
@@ -672,9 +676,12 @@ static bool emit_isn_try(
 					emit_vals[j], operands[j].val,
 					octx,
 					false, orig_dereference[j]);
+
+			conversions_left--;
 		}
 	}
 
+	assert(conversions_left == 0 && "should have converted all operands");
 	return true;
 }
 
