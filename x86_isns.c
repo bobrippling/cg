@@ -1,5 +1,10 @@
 #include "x86_isns.h"
 
+/* semantically, OPERAND_MEM_CONTENTS and OPERAND_MEM_PTR are mostly the same
+ * here, we use MEM_PTR for the lea operand, even though it takes syntactically
+ * the same as a mov. The difference comes into play in the setup / isel code.
+ */
+
 const struct x86_isn x86_isn_mov = {
 	"mov",
 	2,
@@ -10,12 +15,12 @@ const struct x86_isn x86_isn_mov = {
 		0
 	},
 	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_INT },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM }
+		{ OPERAND_REG,          OPERAND_REG },
+		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
+		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
+		{ OPERAND_REG,          OPERAND_INT },
+		{ OPERAND_INT,          OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_MEM_CONTENTS }
 	}
 };
 
@@ -29,7 +34,7 @@ const struct x86_isn x86_isn_lea = {
 		0
 	},
 	{
-		{ OPERAND_MEM, OPERAND_REG },
+		{ OPERAND_MEM_PTR, OPERAND_REG },
 	}
 };
 
@@ -44,7 +49,7 @@ const struct x86_isn x86_isn_movzx = {
 	},
 	{
 		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
+		{ OPERAND_REG, OPERAND_MEM_CONTENTS },
 	}
 };
 
@@ -58,11 +63,11 @@ const struct x86_isn x86_isn_add = {
 		0
 	},
 	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM }
+		{ OPERAND_REG,          OPERAND_REG },
+		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
+		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_MEM_CONTENTS }
 	}
 };
 
@@ -77,8 +82,8 @@ const struct x86_isn x86_isn_imul = {
 	},
 	{
 		/* imul{bwl} imm[16|32], r/m[16|32], reg[16|32] */
-		{ OPERAND_INT, OPERAND_REG, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM, OPERAND_REG }
+		{ OPERAND_INT, OPERAND_REG,          OPERAND_REG },
+		{ OPERAND_INT, OPERAND_MEM_CONTENTS, OPERAND_REG }
 	}
 };
 
@@ -92,11 +97,11 @@ const struct x86_isn x86_isn_cmp = {
 		0
 	},
 	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM },
+		{ OPERAND_REG,          OPERAND_REG },
+		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
+		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_MEM_CONTENTS },
 	}
 };
 
@@ -110,11 +115,11 @@ const struct x86_isn x86_isn_test = {
 		0
 	},
 	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM },
-		{ OPERAND_MEM, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_REG },
-		{ OPERAND_INT, OPERAND_MEM },
+		{ OPERAND_REG,          OPERAND_REG },
+		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
+		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_REG },
+		{ OPERAND_INT,          OPERAND_MEM_CONTENTS },
 	}
 };
 
@@ -129,7 +134,7 @@ const struct x86_isn x86_isn_call = {
 	},
 	{
 		{ OPERAND_REG },
-		{ OPERAND_MEM },
+		{ OPERAND_MEM_CONTENTS },
 	}
 };
 
@@ -144,6 +149,6 @@ const struct x86_isn x86_isn_set = {
 	},
 	{
 		{ OPERAND_REG },
-		{ OPERAND_MEM }, /* 1-byte */
+		{ OPERAND_MEM_CONTENTS }, /* 1-byte */
 	}
 };

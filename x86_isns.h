@@ -6,9 +6,10 @@
 typedef enum operand_category
 {
 	/* 0 means no entry / end of entries */
-	OPERAND_REG = 1,
-	OPERAND_MEM,
-	OPERAND_INT
+	OPERAND_REG = 1, /* %rax */
+	OPERAND_MEM_PTR, /* %rsp +/- ... */
+	OPERAND_MEM_CONTENTS, /* +/-...(%rbp), _label, 5 */
+	OPERAND_INT /* $5 */
 } operand_category;
 
 #define MAX_OPERANDS 3

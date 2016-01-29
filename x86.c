@@ -73,23 +73,19 @@ static char x86_target_regch(const struct target *target)
 	return x86_target_switch(target, 'e', 'r');
 }
 
-static operand_category val_category(val *v)
+static operand_category val_category(val *v, bool dereference)
 {
-	if(val_is_mem(v))
-		return OPERAND_MEM;
-
 	switch(v->kind){
 		case LITERAL:
-			return OPERAND_INT;
+			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_INT;
 
 		case GLOBAL:
 		case ALLOCA:
-			assert(0);
+			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
 
 		case BACKEND_TEMP:
 		case ARGUMENT:
 		case FROM_ISN:
-			/* not mem from val_is_mem() */
 			return OPERAND_REG;
 	}
 	assert(0);
@@ -397,7 +393,8 @@ static void make_val_temporary_store(
 		assert(!octx->scratch_reg_reserved);
 
 	}else{
-		assert(to_cat == OPERAND_MEM);
+		assert(to_cat == OPERAND_MEM_CONTENTS || to_cat == OPERAND_MEM_PTR);
+		/* need to handle both of ^ */
 
 		write_to->u.local.loc.where = NAME_SPILT;
 		write_to->u.local.loc.u.off = 133; /* TODO */
@@ -580,19 +577,7 @@ static bool emit_isn_try(
 		emit_vals[j] = operands[j].val;
 		orig_dereference[j] = operands[j].dereference;
 
-		if(op_categories[j] == OPERAND_MEM){
-			if(TEMPORARY_SHOW_MOVES){
-				x86_comment(octx, "operand [%zu] is memory - deref %d -> %d",
-						j,
-						operands[j].dereference,
-						true);
-			}
-			operands[j].dereference = true;
-		}
-
-		op_categories[j] = operands[j].dereference
-			? OPERAND_MEM
-			: val_category(operands[j].val);
+		op_categories[j] = val_category(operands[j].val, operands[j].dereference);
 	}
 
 	operands_target = find_isn_bestmatch(
