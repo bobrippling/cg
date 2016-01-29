@@ -399,7 +399,7 @@ static void make_val_temporary_store(
 		write_to->u.local.loc.where = NAME_SPILT;
 		write_to->u.local.loc.u.off = 133; /* TODO */
 
-		fprintf(stderr, "WARNING: to memory temporary - incomplete\n");
+		assert(0 && "WARNING: to memory temporary - incomplete");
 	}
 
 	assert(val_size(write_to) == type_size(temporary_ty));
