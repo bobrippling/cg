@@ -731,7 +731,7 @@ static void mov_deref_force(
 
 	/* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
 	 * we actually want its address*/
-	if(0 && !deref_from && must_lea_val(from)){
+	if(!deref_from && must_lea_val(from)){
 		chosen_isn = &x86_isn_lea;
 	}
 
