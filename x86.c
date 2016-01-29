@@ -95,6 +95,19 @@ static operand_category val_category(val *v)
 	assert(0);
 }
 
+static bool must_lea_val(val *v)
+{
+	/* this assumes we haven't been told to dereference */
+
+	if(v->kind == ALLOCA)
+		return true;
+
+	if(v->kind == GLOBAL)
+		return true;
+
+	return false;
+}
+
 static const char *x86_size_name(unsigned sz)
 {
 	switch(sz){
@@ -686,19 +699,6 @@ static void emit_isn_binary(
 	operands[1].dereference = deref_rhs;
 
 	x86_emit_isn(isn, octx, operands, 2, x86_isn_suffix);
-}
-
-static bool must_lea_val(val *v)
-{
-	/* this assumes we haven't been told to dereference */
-
-	if(v->kind == ALLOCA)
-		return true;
-
-	if(v->kind == GLOBAL)
-		return true;
-
-	return false;
 }
 
 static void mov_deref_force(
