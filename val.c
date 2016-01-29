@@ -398,6 +398,11 @@ struct type *val_type(val *v)
 	return v->ty;
 }
 
+void val_size_align(val *v, unsigned *const s, unsigned *const a)
+{
+	type_size_align(val_type(v), s, a);
+}
+
 unsigned val_size(val *v)
 {
 	return type_size(val_type(v));

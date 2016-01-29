@@ -256,13 +256,16 @@ static void assign_argument_registers(
 	}
 }
 
-void func_regalloc(function *f, struct regalloc_info *info)
+void func_regalloc(
+		function *f,
+		struct regalloc_info *info,
+		unsigned *const alloca)
 {
 	block *const entry = function_entry_block(f, false);
 
 	assign_argument_registers(f, &info->backend);
 
-	regalloc(entry, info);
+	regalloc(entry, info, alloca);
 }
 
 bool function_is_forward_decl(function *f)

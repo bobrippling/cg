@@ -4,6 +4,7 @@
 
 #include "mem.h"
 #include "dynmap.h"
+#include "imath.h"
 
 #include "regalloc.h"
 
@@ -36,15 +37,16 @@ struct regalloc_ctx
 
 static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 {
-	unsigned size;
+	unsigned slot;
+	unsigned size, align;
 	struct name_loc *loc;
 
 	switch(v->kind){
 		case FROM_ISN:
-			size = val_size(v);
+			val_size_align(v, &size, &align);
 			break;
 		case ALLOCA:
-			size = type_size(type_deref(val_type(v)));
+			type_size_align(type_deref(val_type(v)), &size, &align);
 			break;
 		default:
 			assert(0 && "trying to spill val that can't be spilt");
@@ -61,22 +63,15 @@ static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 
 	assert(size && "unsized name val in regalloc");
 
-	*ctx->spill_space += size;
+	*ctx->spill_space += (gap_for_alignment(*ctx->spill_space, align) + size);
 
-	switch(v->kind){
-		case FROM_ISN:
-			v->u.local.loc.u.off = *ctx->spill_space;
-			break;
-		case ALLOCA:
-			v->u.alloca.loc.u.off = *ctx->spill_space;
-			break;
-		default:
-			assert(0 && "unreachable");
-	}
+	slot = *ctx->spill_space;
+
+	loc->u.off = slot;
 
 	if(SHOW_STACKALLOC){
-		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u\n",
-				val_str(v), type_to_str(val_type(v)), size, *ctx->spill_space);
+		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u - %u\n",
+				val_str(v), type_to_str(val_type(v)), size, slot - size, slot);
 	}
 }
 
@@ -255,7 +250,6 @@ static void mark_callee_save_as_used(
 static void regalloc_greedy(
 		block *blk, function *func, isn *const head,
 		unsigned *const spill_space,
-		uniq_type_list *uniq_type_list,
 		const struct backend_traits *backend)
 {
 	struct greedy_ctx alloc_ctx = { 0 };
@@ -283,32 +277,18 @@ static void regalloc_greedy(
 		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
 
 	free(alloc_ctx.in_use);
-
-	/* any leftovers become elems in the regspill alloca block */
-	if(*alloc_ctx.spill_space){
-		type *spill_array_ty = type_get_ptr(
-				uniq_type_list,
-				type_get_array(
-					uniq_type_list,
-					type_get_primitive(uniq_type_list, i1),
-					*alloc_ctx.spill_space));
-
-		val *spill_array_val = val_new_temporary(spill_array_ty);
-
-		isn_alloca(blk, spill_array_val);
-	}
 }
 
 static void simple_regalloc(block *blk, struct regalloc_ctx *ctx)
 {
 	isn *head = block_first_isn(blk);
 
+	/* ctx doesn't get passed any further down */
 	regalloc_greedy(
 			blk,
 			ctx->info->func,
 			head,
 			&ctx->spill_space,
-			ctx->info->uniq_type_list,
 			&ctx->info->backend);
 }
 
@@ -319,7 +299,7 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	simple_regalloc(blk, ctx);
 }
 
-void regalloc(block *blk, struct regalloc_info *info)
+void regalloc(block *blk, struct regalloc_info *info, unsigned *const alloca)
 {
 	struct regalloc_ctx ctx = { 0 };
 	dynmap *alloc_markers = BLOCK_DYNMAP_NEW();
@@ -327,6 +307,8 @@ void regalloc(block *blk, struct regalloc_info *info)
 	ctx.info = info;
 
 	blocks_traverse(blk, blk_regalloc_pass, &ctx, alloc_markers);
+
+	*alloca = ctx.spill_space;
 
 	dynmap_free(alloc_markers);
 }

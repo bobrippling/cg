@@ -34,11 +34,6 @@
 #define TEMPORARY_SHOW_MOVES 0
 #define USER_LABEL_FORMAT "%s_%s"
 
-struct x86_alloca_ctx
-{
-	long alloca;
-};
-
 static const char *const regs[][4] = {
 	{  "al", "ax", "eax", "rax" },
 	{  "bl", "bx", "ebx", "rbx" },
@@ -1292,32 +1287,6 @@ static void x86_out_block1(block *blk, void *vctx)
 	}
 }
 
-static void x86_sum_alloca(block *blk, void *vctx)
-{
-	struct x86_alloca_ctx *const ctx = vctx;
-	isn *const head = block_first_isn(blk);
-	isn *i;
-
-	for(i = head; i; i = i->next){
-		if(i->skip)
-			continue;
-
-		switch(i->type){
-			case ISN_ALLOCA:
-			{
-				type *sz_ty = type_deref(i->u.alloca.out->ty);
-
-				ctx->alloca += type_size(sz_ty);
-
-				break;
-			}
-
-			default:
-				break;
-		}
-	}
-}
-
 static void x86_emit_epilogue(x86_octx *octx, block *exit)
 {
 	x86_block_enter(octx, exit);
@@ -1350,10 +1319,7 @@ static void x86_emit_prologue(
 		printf("\tsub $%ld, %%%csp\n", alloca_total, regch);
 }
 
-static void x86_init_regalloc_info(
-		struct regalloc_info *info,
-		function *func,
-		uniq_type_list *uniq_type_list)
+static void x86_init_regalloc_info(struct regalloc_info *info, function *func)
 {
 	info->backend.nregs = countof(regs);
 	info->backend.scratch_reg = SCRATCH_REG;
@@ -1362,7 +1328,6 @@ static void x86_init_regalloc_info(
 	info->backend.arg_regs = x86_arg_regs;
 	info->backend.arg_regs_cnt = x86_arg_reg_count;
 	info->func = func;
-	info->uniq_type_list = uniq_type_list;
 }
 
 static long x86_alloca_total(x86_octx *octx)
@@ -1372,7 +1337,7 @@ static long x86_alloca_total(x86_octx *octx)
 
 static void x86_out_fn(unit *unit, function *func)
 {
-	struct x86_alloca_ctx alloca_ctx = { 0 };
+	unsigned alloca_sum = 0;
 	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func, unit);
@@ -1386,17 +1351,14 @@ static void x86_out_fn(unit *unit, function *func)
 		die("tmpfile():");
 
 	/* regalloc */
-	x86_init_regalloc_info(&regalloc, func, unit_uniqtypes(unit));
-	func_regalloc(func, &regalloc);
-
-	/* gather allocas - must be after regalloc */
-	blocks_traverse(entry, x86_sum_alloca, &alloca_ctx, markers);
+	x86_init_regalloc_info(&regalloc, func);
+	func_regalloc(func, &regalloc, &alloca_sum);
 
 	out_ctx.exitblk = exit;
 	out_ctx.func = func;
 
 	/* start at the bottom of allocas */
-	out_ctx.alloca_bottom = alloca_ctx.alloca;
+	out_ctx.alloca_bottom = alloca_sum;
 
 	blocks_traverse(entry, x86_out_block1, &out_ctx, markers);
 	x86_emit_epilogue(&out_ctx, exit);

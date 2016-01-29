@@ -33,6 +33,7 @@ val *val_new_temporary(struct type *);
 void val_temporary_init(val *, struct type *);
 
 unsigned val_size(val *);
+void val_size_align(val *, unsigned *, unsigned *);
 struct type *val_type(val *);
 
 /* --- util */

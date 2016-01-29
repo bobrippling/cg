@@ -42,7 +42,7 @@ struct name_loc *function_arg_loc(function *, size_t idx);
 size_t function_arg_count(function *);
 
 struct regalloc_info;
-void func_regalloc(function *f, struct regalloc_info *);
+void func_regalloc(function *f, struct regalloc_info *, unsigned *alloca);
 
 bool function_is_forward_decl(function *);
 

@@ -8,10 +8,9 @@ struct block;
 struct regalloc_info
 {
 	struct backend_traits backend;
-	struct uniq_type_list *uniq_type_list;
 	struct function *func;
 };
 
-void regalloc(struct block *, struct regalloc_info *);
+void regalloc(struct block *, struct regalloc_info *, unsigned *alloca);
 
 #endif
