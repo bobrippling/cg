@@ -441,7 +441,7 @@ static void parse_call(parse *p, char *ident_or_null)
 		into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
 		if(type_is_void(retty)){
 			sema_error(p, "using void result of call");
-			retty = type_get_primitive(unit_uniqtypes(p->unit), i4);
+			retty = default_type(p);
 		}
 	}else{
 		into = NULL;
@@ -575,7 +575,7 @@ static void parse_ident(parse *p, char *spel)
 
 				array_ty = type_get_array(
 						uniqtypes,
-						type_get_primitive(uniqtypes, i4),
+						default_type(p),
 						1);
 			}
 
@@ -590,7 +590,7 @@ static void parse_ident(parse *p, char *spel)
 
 			if(!element_ty){
 				sema_error(p, "elem requires (pointer to) array/struct type");
-				element_ty = type_get_primitive(uniqtypes, i4);
+				element_ty = default_type(p);
 			}
 
 			resolved_ty = type_get_ptr(uniqtypes, element_ty);
