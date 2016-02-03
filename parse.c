@@ -585,6 +585,11 @@ static void parse_ident(parse *p, char *spel)
 				size_t i;
 				if(val_is_int(idx, &i)){
 					element_ty = type_struct_element(array_ty, i);
+
+					if(!element_ty){
+						sema_error(p, "elem index out of struct bounds");
+						element_ty = default_type(p);
+					}
 				}
 			}
 
