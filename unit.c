@@ -131,11 +131,7 @@ global *unit_global_find(unit *u, const char *spel)
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++){
-		const char *sp;
-		if(u->globals[i]->is_fn)
-			sp = function_name(u->globals[i]->u.fn);
-		else
-			sp = variable_name(variable_global_var(u->globals[i]->u.var));
+		const char *sp = global_name(u->globals[i]);
 
 		if(!strcmp(sp, spel))
 			return u->globals[i];
