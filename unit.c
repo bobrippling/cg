@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
+#include "dynmap.h"
 
 #include "mem.h"
 #include "unit.h"
@@ -18,6 +21,8 @@ struct unit
 
 	global **globals;
 	size_t nglobals;
+
+	dynmap *names2types;
 
 	unsigned uniq_counter;
 };
@@ -63,11 +68,16 @@ static void unit_function_free(function *f, void *ctx)
 void unit_free(unit *unit)
 {
 	size_t i;
+	char *str;
 
 	unit_on_functions(unit, unit_function_free, NULL);
 
 	for(i = 0; i < unit->nglobals; i++)
 		free(unit->globals[i]);
+
+	for(i = 0; (str = dynmap_key(char *, unit->names2types, i)); i++)
+		free(str);
+	dynmap_free(unit->names2types);
 
 	free(unit);
 }
@@ -77,7 +87,7 @@ void unit_on_functions(unit *u, void fn(function *, void *), void *ctx)
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
-		if(u->globals[i]->is_fn)
+		if(u->globals[i]->kind == GLOBAL_FUNC)
 			fn(u->globals[i]->u.fn, ctx);
 }
 
@@ -89,7 +99,7 @@ void unit_on_globals(unit *u, global_emit_func *fn)
 		fn(u, u->globals[i]);
 }
 
-static void unit_add_global(unit *u, void *global, int is_fn)
+static void unit_add_global(unit *u, void *global, enum global_kind kind)
 {
 	struct global *g;
 
@@ -99,11 +109,18 @@ static void unit_add_global(unit *u, void *global, int is_fn)
 	g = xmalloc(sizeof *g);
 	u->globals[u->nglobals - 1] = g;
 
-	g->is_fn = is_fn;
-	if(is_fn)
-		g->u.fn = global;
-	else
-		g->u.var = global;
+	g->kind = kind;
+	switch(kind){
+		case GLOBAL_FUNC:
+			g->u.fn = global;
+			break;
+		case GLOBAL_VAR:
+			g->u.var = global;
+			break;
+		case GLOBAL_TYPE:
+			g->u.ty = global;
+			break;
+	}
 }
 
 function *unit_function_new(
@@ -112,7 +129,7 @@ function *unit_function_new(
 {
 	function *fn = function_new(lbl, fnty, toplvl_args, &u->uniq_counter);
 
-	unit_add_global(u, fn, 1);
+	unit_add_global(u, fn, GLOBAL_FUNC);
 
 	return fn;
 }
@@ -121,9 +138,14 @@ variable_global *unit_variable_new(unit *u, const char *lbl, struct type *ty)
 {
 	variable_global *var = variable_global_new(lbl, ty);
 
-	unit_add_global(u, var, 0);
+	unit_add_global(u, var, GLOBAL_VAR);
 
 	return var;
+}
+
+void unit_type_new(unit *u, type *alias)
+{
+	unit_add_global(u, alias, GLOBAL_TYPE);
 }
 
 global *unit_global_find(unit *u, const char *spel)

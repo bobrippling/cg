@@ -5,6 +5,8 @@
 
 #include <strbuf_fixed.h>
 
+#include "dynmap.h"
+
 #include "mem.h"
 #include "macros.h"
 #include "imath.h"
@@ -46,31 +48,47 @@ struct type
 		{
 			dynarray membs;
 		} struct_;
+		struct
+		{
+			char *name;
+			type *actual;
+		} alias;
 	} u;
 
 	enum type_kind
 	{
-		PRIMITIVE, PTR, ARRAY, STRUCT, FUNC, VOID
+		PRIMITIVE, PTR, ARRAY, STRUCT, FUNC, VOID, ALIAS
 	} kind;
 };
 
+static type *type_resolve(type *t)
+{
+	while(t && t->kind == ALIAS)
+		t = t->u.alias.actual;
+	return t;
+}
+
 bool type_is_fn(type *t)
 {
+	t = type_resolve(t);
 	return t && t->kind == FUNC;
 }
 
 bool type_is_fn_variadic(type *t)
 {
+	t = type_resolve(t);
 	return type_is_fn(t) && t->u.func.variadic;
 }
 
 bool type_is_struct(type *t)
 {
+	t = type_resolve(t);
 	return t && t->kind == STRUCT;
 }
 
 bool type_is_primitive(type *t, enum type_primitive prim)
 {
+	t = type_resolve(t);
 	if(!t)
 		return false;
 
@@ -81,6 +99,7 @@ bool type_is_primitive(type *t, enum type_primitive prim)
 
 bool type_is_int(type *t)
 {
+	t = type_resolve(t);
 	if(!t)
 		return false;
 
@@ -96,6 +115,7 @@ bool type_is_int(type *t)
 
 bool type_is_void(type *t)
 {
+	t = type_resolve(t);
 	if(!t)
 		return false;
 
@@ -127,6 +147,9 @@ static void type_primitive_size_align(
 static bool type_to_strbuf(strbuf_fixed *const buf, type *t)
 {
 	switch(t->kind){
+		case ALIAS:
+			return strbuf_fixed_printf(buf, "$%s", t->u.alias.name);
+
 		case VOID:
 			return strbuf_fixed_printf(buf, "void");
 
@@ -350,6 +373,7 @@ type *type_get_struct(uniq_type_list *us, dynarray *membs)
 
 type *type_deref(type *t)
 {
+	t = type_resolve(t);
 	if(!t)
 		return NULL;
 
@@ -361,6 +385,7 @@ type *type_deref(type *t)
 
 type *type_func_call(type *t, dynarray **const args, bool *const variadic)
 {
+	t = type_resolve(t);
 	if(variadic)
 		*variadic = false;
 
@@ -383,6 +408,7 @@ type *type_func_call(type *t, dynarray **const args, bool *const variadic)
 dynarray *type_func_args(type *t)
 {
 	dynarray *args;
+	t = type_resolve(t);
 	if(!t)
 		return NULL;
 
@@ -392,6 +418,7 @@ dynarray *type_func_args(type *t)
 
 type *type_array_element(type *t)
 {
+	t = type_resolve(t);
 	if(!t)
 		return NULL;
 
@@ -405,6 +432,7 @@ type *type_struct_element(type *t, size_t i)
 {
 	size_t n;
 
+	t = type_resolve(t);
 	if(!t)
 		return NULL;
 
@@ -421,9 +449,53 @@ type *type_struct_element(type *t, size_t i)
 
 size_t type_array_count(type *t)
 {
+	t = type_resolve(t);
 	assert(t && t->kind == ARRAY);
 
 	return t->u.array.n;
+}
+
+struct typealias *type_alias_add(uniq_type_list *us, char *name /* consumed */)
+{
+	type *t = tnew(ALIAS);
+	type *old;
+
+	t->u.alias.name = name;
+	t->u.alias.actual = NULL;
+
+	if(!us->aliases)
+		us->aliases = dynmap_new(const char *, strcmp, dynmap_strhash);
+
+	old = dynmap_set(char *, type *, us->aliases, name, t);
+
+	assert(!old && "already have type");
+
+	/* struct typealias is never completed - API safety only */
+	return (struct typealias *)t;
+}
+
+type *type_alias_complete(struct typealias *talias, type *actual)
+{
+	type *alias = (type *)talias;
+	alias->u.alias.actual = actual;
+	return alias;
+}
+
+type *type_alias_find(uniq_type_list *us, const char *name)
+{
+	return dynmap_get(const char *, type *, us->aliases, name);
+}
+
+const char *type_alias_name(type *t)
+{
+	assert(t->kind == ALIAS);
+	return t->u.alias.name;
+}
+
+type *type_alias_resolve(type *t)
+{
+	assert(t->kind == ALIAS);
+	return t->u.alias.actual;
 }
 
 void type_size_align(type *ty, unsigned *sz, unsigned *align)
@@ -431,6 +503,10 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 	switch(ty->kind){
 		case PRIMITIVE:
 			type_primitive_size_align(ty->u.prim, sz, align);
+			break;
+
+		case ALIAS:
+			type_size_align(ty->u.alias.actual, sz, align);
 			break;
 
 		case PTR:

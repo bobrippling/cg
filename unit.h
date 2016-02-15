@@ -26,6 +26,9 @@ variable_global *unit_variable_new(
 		unit *u, const char *lbl,
 		struct type *ty);
 
+void unit_type_new(unit *u, struct type *alias);
+
+
 global *unit_global_find(unit *, const char *);
 
 struct uniq_type_list *unit_uniqtypes(unit *);

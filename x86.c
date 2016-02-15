@@ -1534,20 +1534,31 @@ void x86_out(unit *unit, global *glob)
 		octx.fout = stdout;
 		x86_comment(&octx, "forward decl %s", global_name(glob));
 
-		if(glob->is_fn && function_attributes(glob->u.fn) & function_attribute_weak){
+		if(glob->kind == GLOBAL_FUNC
+		&& function_attributes(glob->u.fn) & function_attribute_weak)
+		{
 			printf("%s %s\n", target->sys.weak_directive_func, global_name(glob));
 		}
 		return;
 	}
 
-	if(glob->is_fn){
-		function *fn = glob->u.fn;
+	switch(glob->kind){
+		case GLOBAL_FUNC:
+		{
+			function *fn = glob->u.fn;
 
-		/* should have entry block, otherwise it's a forward decl */
-		assert(function_entry_block(fn, false));
-		x86_out_fn(unit, fn);
+			/* should have entry block, otherwise it's a forward decl */
+			assert(function_entry_block(fn, false));
+			x86_out_fn(unit, fn);
 
-	}else{
-		x86_out_var(glob->u.var, target);
+			break;
+		}
+
+		case GLOBAL_VAR:
+			x86_out_var(glob->u.var, target);
+			break;
+
+		case GLOBAL_TYPE:
+			break;
 	}
 }

@@ -44,6 +44,12 @@ type *type_get_array(uniq_type_list *, type *, unsigned long);
 type *type_get_func(uniq_type_list *, type *, /*consumed*/dynarray *, bool variadic);
 type *type_get_struct(uniq_type_list *, dynarray *);
 
+/* --- aliases --- */
+struct typealias *type_alias_add(uniq_type_list *, char * /* consumed */);
+type *type_alias_complete(struct typealias *, type *);
+type *type_alias_find(uniq_type_list *, const char *);
+const char *type_alias_name(type *);
+type *type_alias_resolve(type *);
 
 /* --- walkers --- */
 type *type_deref(type *);

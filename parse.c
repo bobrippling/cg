@@ -263,6 +263,7 @@ static type *parse_type_maybe_func_nochk(parse *p, dynarray *toplvl_args)
 	 * [ i2 x 7 ]
 	 * i8 *
 	 * f4 (i2)
+	 * $typename
 	 */
 	type *t = NULL;
 	enum token tok;
@@ -271,9 +272,19 @@ static type *parse_type_maybe_func_nochk(parse *p, dynarray *toplvl_args)
 			enum type_primitive prim;
 
 		case tok_ident:
-			/* TODO: type alias lookup */
-			parse_error(p, "TODO: type alias");
-			return default_type(p);
+		{
+			char *spel = token_last_ident(p->tok);
+
+			t = type_alias_find(unit_uniqtypes(p->unit), spel);
+
+			if(!t){
+				parse_error(p, "no such type '%s'", spel);
+				t = default_type(p);
+			}
+
+			free(spel);
+			break;
+		}
 
 		case tok_i1: prim = i1; goto prim;
 		case tok_i2: prim = i2; goto prim;
@@ -1190,6 +1201,11 @@ static void parse_global(parse *p)
 	char *name;
 	dynarray toplvl_args = DYNARRAY_INIT;
 	global *already;
+	int is_type;
+	struct typealias *alias;
+
+	/* type $ident = type */
+	is_type = token_accept(p->tok, tok_type);
 
 	eat(p, "decl name", tok_ident);
 	name = token_last_ident(p->tok);
@@ -1201,12 +1217,23 @@ static void parse_global(parse *p)
 	{
 		sema_error(p, "global '%s' already defined", name);
 	}
+	else
+	{
+		/* all good - add placeholder type */
+		if(is_type)
+			alias = type_alias_add(unit_uniqtypes(p->unit), name);
+	}
 
 	eat(p, "global assign", tok_equal);
 
 	ty = parse_type_maybe_func(p, &toplvl_args);
 
-	if(type_is_fn(ty)){
+	if(is_type){
+		/* name consumed above */
+		type *completed = type_alias_complete(alias, ty);
+		unit_type_new(p->unit, completed);
+
+	}else if(type_is_fn(ty)){
 		parse_function(p, name, ty, &toplvl_args);
 	}else{
 		parse_variable(p, name, ty);

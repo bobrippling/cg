@@ -9,6 +9,7 @@ struct uniq_type_list
 	type *tvoid;
 
 	dynarray structs;
+	struct dynmap *aliases; /* char* => struct typealias* */
 
 	unsigned ptrsz, ptralign;
 };

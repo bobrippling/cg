@@ -50,6 +50,7 @@
 	KW(undef)           \
 	KW(global)          \
 	KW(internal)        \
+	KW(type)            \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \

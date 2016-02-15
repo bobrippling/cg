@@ -13,44 +13,80 @@ void global_dump(struct unit *unit, global *glob)
 
 	(void)unit;
 
-	if(glob->is_fn){
-		name = function_name(glob->u.fn);
-		ty = type_func_call(function_type(glob->u.fn), NULL, NULL);
-	}else{
-		variable *v = variable_global_var(glob->u.var);
+	switch(glob->kind){
+		case GLOBAL_FUNC:
+			name = function_name(glob->u.fn);
+			ty = type_func_call(function_type(glob->u.fn), NULL, NULL);
+			break;
 
-		name = variable_name(v);
-		ty = variable_type(v);
+		case GLOBAL_VAR:
+		{
+			variable *v = variable_global_var(glob->u.var);
+
+			name = variable_name(v);
+			ty = variable_type(v);
+
+			break;
+		}
+
+		case GLOBAL_TYPE:
+			printf("type ");
+			name = type_alias_name(glob->u.ty);
+			ty = type_alias_resolve(glob->u.ty);
 	}
 
 	printf("$%s = %s", name, type_to_str(ty));
 
-	if(glob->is_fn){
-		function_dump_args_and_block(glob->u.fn);
-	}else{
-		struct init_toplvl *init = variable_global_init(glob->u.var);
+	switch(glob->kind){
+		case GLOBAL_FUNC:
+			function_dump_args_and_block(glob->u.fn);
+			break;
 
-		if(init){
-			putchar(' ');
-			init_dump(init);
+		case GLOBAL_VAR:
+		{
+			struct init_toplvl *init = variable_global_init(glob->u.var);
+
+			if(init){
+				putchar(' ');
+				init_dump(init);
+			}
+
+			printf("\n");
+			break;
 		}
 
-		printf("\n");
+		case GLOBAL_TYPE:
+			printf("\n");
+			break;
 	}
 }
 
 const char *global_name(global *g)
 {
-	return g->is_fn
-		? function_name(g->u.fn)
-		: variable_name(variable_global_var(g->u.var));
+	switch(g->kind){
+		case GLOBAL_FUNC:
+			return function_name(g->u.fn);
+
+		case GLOBAL_VAR:
+			return variable_name(variable_global_var(g->u.var));
+
+		case GLOBAL_TYPE:
+			return type_alias_name(g->u.ty);
+	}
 }
 
 struct type *global_type_noptr(global *g)
 {
-	return g->is_fn
-		? function_type(g->u.fn)
-		: variable_type(variable_global_var(g->u.var));
+	switch(g->kind){
+		case GLOBAL_FUNC:
+			return function_type(g->u.fn);
+
+		case GLOBAL_VAR:
+			return variable_type(variable_global_var(g->u.var));
+
+		case GLOBAL_TYPE:
+			return g->u.ty;
+	}
 }
 
 struct type *global_type_as_ptr(struct uniq_type_list *us, global *g)
@@ -60,7 +96,14 @@ struct type *global_type_as_ptr(struct uniq_type_list *us, global *g)
 
 bool global_is_forward_decl(global *g)
 {
-	if(g->is_fn)
-		return function_is_forward_decl(g->u.fn);
-	return variable_global_is_forward_decl(g->u.var);
+	switch(g->kind){
+		case GLOBAL_FUNC:
+			return function_is_forward_decl(g->u.fn);
+
+		case GLOBAL_VAR:
+			return variable_global_is_forward_decl(g->u.var);
+
+		case GLOBAL_TYPE:
+			return true;
+	}
 }

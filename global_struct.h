@@ -3,11 +3,18 @@
 
 struct global
 {
-	int is_fn;
+	enum global_kind
+	{
+		GLOBAL_FUNC,
+		GLOBAL_VAR,
+		GLOBAL_TYPE
+	} kind;
+
 	union
 	{
 		function *fn;
 		variable_global *var;
+		struct type *ty;
 	} u;
 };
 
