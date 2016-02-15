@@ -1,0 +1,13 @@
+# test=irdiff
+type $x = {$x*, i4}
+
+$store = $x global { 0, 3 }
+
+$f = i4($x* $n)
+{
+	$deref_1 = elem $n, i4 0
+	$pnext = load $deref_1
+	$pi = elem $pnext, i4 1
+	$i = load $pi
+	ret $i
+}
