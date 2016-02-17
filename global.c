@@ -16,7 +16,7 @@ void global_dump(struct unit *unit, global *glob)
 	switch(glob->kind){
 		case GLOBAL_FUNC:
 			name = function_name(glob->u.fn);
-			ty = type_func_call(function_type(glob->u.fn), NULL, NULL);
+			ty = NULL; /* let the function itself print this */
 			break;
 
 		case GLOBAL_VAR:
@@ -35,7 +35,7 @@ void global_dump(struct unit *unit, global *glob)
 			ty = type_alias_resolve(glob->u.ty);
 	}
 
-	printf("$%s = %s", name, type_to_str(ty));
+	printf("$%s = %s", name, ty ? type_to_str(ty) : "");
 
 	switch(glob->kind){
 		case GLOBAL_FUNC:

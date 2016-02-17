@@ -153,9 +153,8 @@ enum function_attributes function_attributes(function *f)
 	return f->attr;
 }
 
-void function_dump_args_and_block(function *f)
+static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool variadic)
 {
-	dynarray *const arg_tys = type_func_args(f->fnty);
 	const size_t nargs = dynarray_count(arg_tys);
 	size_t i;
 
@@ -166,10 +165,10 @@ void function_dump_args_and_block(function *f)
 
 		tmpvar.ty = dynarray_ent(arg_tys, i);
 
-		if(dynarray_is_empty(&f->arg_names))
+		if(dynarray_is_empty(arg_names))
 			tmpvar.name = "";
 		else
-			tmpvar.name = dynarray_ent(&f->arg_names, i);
+			tmpvar.name = dynarray_ent(arg_names, i);
 
 		printf("%s%s%s%s",
 				type_to_str(tmpvar.ty),
@@ -178,11 +177,26 @@ void function_dump_args_and_block(function *f)
 				i == nargs - 1 ? "" : ", ");
 	}
 
-	if(type_is_fn_variadic(f->fnty)){
+	if(variadic){
 		printf("%s...", i > 0 ? ", " : "");
 	}
 
 	printf(")");
+}
+
+void function_dump_args_and_block(function *f)
+{
+	/* we are in charge of printing the full type attempt to print the normal
+	 * type if possible (i.e. no "custom" arguments) */
+
+	if(dynarray_is_empty(&f->arg_names)){
+		printf("%s", type_to_str(f->fnty));
+	}else{
+		print_func_and_args(
+				type_func_args(f->fnty),
+				&f->arg_names,
+				type_is_fn_variadic(f->fnty));
+	}
 
 	if(f->entry){
 		printf("\n{\n");
