@@ -11,3 +11,11 @@ $f = i4($x* $n)
 	$i = load $pi
 	ret $i
 }
+
+type $int = i4
+type $intfunc = $x(i2)
+
+$main = $intfunc
+{
+	ret $int 3
+}

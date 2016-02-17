@@ -99,6 +99,7 @@ bool token_accept(tokeniser *, enum token);
 
 int token_last_int(tokeniser *);
 char *token_last_ident(tokeniser *);
+const char *token_last_ident_peek(tokeniser *);
 char *token_last_bareword(tokeniser *);
 void token_last_string(tokeniser *, struct string *);
 

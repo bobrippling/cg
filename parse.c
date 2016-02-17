@@ -388,12 +388,17 @@ static val *parse_val(parse *p)
 	type *ty;
 
 	if(token_peek(p->tok) == tok_ident){
-		char *ident = token_last_ident(p->tok);
-		val *v = uniq_val(p, ident, NULL, 0);
+		const char *peek_ident = token_last_ident_peek(p->tok);
 
-		eat(p, "ident", tok_ident);
+		if(type_alias_find(unit_uniqtypes(p->unit), peek_ident)){
+			/* we're at the beginning of a type, not an identifier */
+		}else{
+			val *v = uniq_val(p, token_last_ident(p->tok), NULL, 0);
 
-		return v;
+			eat(p, "ident", tok_ident);
+
+			return v;
+		}
 	}
 
 	/* need a type and a literal, e.g. i32 5 */

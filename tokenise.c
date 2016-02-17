@@ -394,6 +394,11 @@ char *token_last_ident(tokeniser *t)
 	return token_last_(&t->lastident);
 }
 
+const char *token_last_ident_peek(tokeniser *t)
+{
+	return t->lastident;
+}
+
 char *token_last_bareword(tokeniser *t)
 {
 	return token_last_(&t->lastbareword);
