@@ -1397,7 +1397,8 @@ static void x86_out_fn(unit *unit, function *func)
 
 static void x86_emit_space(unsigned space)
 {
-	printf(".space %u\n", space);
+	if(space)
+		printf(".space %u\n", space);
 }
 
 static void x86_out_padding(size_t *const bytes, unsigned align)
