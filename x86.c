@@ -33,6 +33,7 @@
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 1
 #define USER_LABEL_FORMAT "%s_%s"
+#define X86_COMMENT_STR "#"
 
 static const char *const regs[][4] = {
 	{  "al", "ax", "eax", "rax" },
@@ -168,7 +169,7 @@ void x86_comment(x86_octx *octx, const char *fmt, ...)
 {
 	va_list l;
 
-	fprintf(octx->fout, "\t# ");
+	fprintf(octx->fout, "\t" X86_COMMENT_STR " ");
 
 	va_start(l, fmt);
 	vfprintf(octx->fout, fmt, l);
@@ -1394,6 +1395,11 @@ static void x86_out_fn(unit *unit, function *func)
 	dynmap_free(markers);
 }
 
+static void x86_emit_space(unsigned space)
+{
+	printf(".space %u\n", space);
+}
+
 static void x86_out_padding(size_t *const bytes, unsigned align)
 {
 	unsigned gap = gap_for_alignment(*bytes, align);
@@ -1401,7 +1407,7 @@ static void x86_out_padding(size_t *const bytes, unsigned align)
 	if(gap == 0)
 		return;
 
-	printf(".space %u\n", gap);
+	x86_emit_space(gap);
 	*bytes += gap;
 }
 
@@ -1413,6 +1419,24 @@ static void x86_out_init(struct init *init, type *ty)
 					x86_size_name(type_size(ty)),
 					init->u.i);
 			break;
+
+		case init_alias:
+		{
+			const unsigned tsize = type_size(ty);
+			const unsigned as_size = type_size(init->u.alias.as);
+			char buf[256];
+
+			assert(as_size <= tsize);
+
+			printf(X86_COMMENT_STR " alias init %s as %s:\n",
+					type_to_str_r(buf, sizeof(buf), ty),
+					type_to_str(init->u.alias.as));
+
+			x86_out_init(init->u.alias.init, init->u.alias.as);
+
+			x86_emit_space(tsize - as_size);
+			break;
+		}
 
 		case init_str:
 		{

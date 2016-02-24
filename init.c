@@ -2,12 +2,18 @@
 #include <assert.h>
 
 #include "init.h"
+#include "type.h"
 
 static void init_dump_r(struct init *init)
 {
 	switch(init->type){
 		case init_int:
 			printf("%#llx", init->u.i);
+			break;
+
+		case init_alias:
+			printf("aliasinit %s ", type_to_str(init->u.alias.as));
+			init_dump_r(init->u.alias.init);
 			break;
 
 		case init_str:

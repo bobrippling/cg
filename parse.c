@@ -1063,6 +1063,19 @@ static struct init *parse_init(parse *p, type *ty)
 
 	init = xmalloc(sizeof *init);
 
+	if(token_accept(p->tok, tok_aliasinit)){
+		/* aliasinit <type> <init> */
+		init->type = init_alias;
+		init->u.alias.as = parse_type(p);
+
+		if(type_size(init->u.alias.as) > type_size(ty))
+			sema_error(p, "aliasinit type size > actual type size");
+
+		init->u.alias.init = parse_init(p, init->u.alias.as);
+
+		return init;
+	}
+
 	if((subty = type_array_element(ty))){
 		const bool is_string = token_accept(p->tok, tok_string);
 

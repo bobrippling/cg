@@ -12,7 +12,8 @@ struct init
 		init_array,
 		init_struct,
 		init_ptr,
-		init_int
+		init_int,
+		init_alias
 	} type;
 
 	union
@@ -33,6 +34,11 @@ struct init
 			} u;
 		} ptr;
 		unsigned long long i;
+		struct
+		{
+			struct type *as;
+			struct init *init;
+		} alias;
 	} u;
 };
 
