@@ -184,7 +184,7 @@ static void assert_deref(enum deref_type got, enum deref_type expected)
 		return;
 	/*assert(got == expected && "wrong deref");*/
 	if(got != expected){
-		fprintf(stderr, "\x1b[1;31massert_deref() failed\x1b[m\n");
+		fprintf(stderr, "/* \x1b[1;31massert_deref() failed\x1b[m */\n");
 	}
 }
 
