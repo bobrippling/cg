@@ -146,9 +146,9 @@ static const char *x86_cmp_str(enum op_cmp cmp)
 	switch(cmp){
 		case cmp_eq: return "e";
 		case cmp_ne: return "ne";
-		case cmp_gt: return "gt";
+		case cmp_gt: return "g";
 		case cmp_ge: return "ge";
-		case cmp_lt: return "lt";
+		case cmp_lt: return "l";
 		case cmp_le: return "le";
 	}
 	assert(0);
