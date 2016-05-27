@@ -638,6 +638,9 @@ static void parse_ident(parse *p, char *spel)
 			if(!type_is_int(val_type(vrhs))){
 				sema_error(p, "ptradd requires integer type (rhs)");
 			}
+			if(type_is_void(type_deref(val_type(vlhs)))){
+				sema_error(p, "can't increment void*");
+			}
 
 			vout = uniq_val(p, spel, val_type(vlhs), VAL_CREATE);
 
