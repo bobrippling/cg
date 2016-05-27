@@ -1115,8 +1115,9 @@ static void x86_cmp(
 
 	x86_comment(octx, "PRE-BINARY CMP");
 	emit_isn_binary(&x86_isn_cmp, octx,
-			lhs, false,
+			/* x86 cmp operands are reversed */
 			rhs, false,
+			lhs, false,
 			NULL);
 	x86_comment(octx, "POST-BINARY CMP");
 
