@@ -307,11 +307,10 @@ static void val_free(val *v)
 
 void val_mirror(val *dest, val *src)
 {
-	const unsigned dest_retains = dest->retains;
-
-	*dest = *src;
-
-	dest->retains = dest_retains;
+	/* don't change retains, type, or pass_data */
+	dest->u = src->u;
+	dest->live_across_blocks = src->live_across_blocks;
+	dest->kind = src->kind;
 }
 
 void val_release(val *v)

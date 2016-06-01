@@ -1,0 +1,30 @@
+type $struct1_A = {i4, i4, i4}
+
+$_f = i4(...)
+{
+	$l_x_0 = alloca $struct1_A
+	$0 = alloca i8
+	store $0, i8 0xc
+	$5 = alloca void*
+	$4 = ptrcast void*, $l_x_0
+	store $5, $4
+
+$0:
+	$6 = load $5
+	$10 = ptrcast i8*, $6
+	store $10, i8 0x0
+	$2 = load $0
+	$1 = sub $2, i8 0x8
+	store $0, $1
+	$7 = ptrcast i8*, $6
+	$8 = ptradd $7, i4 1
+	$9 = ptrcast void*, $8
+	store $5, $9
+	$3 = gt $1, i8 0x8
+	br $3, $0, $1
+
+$1:
+	$11 = ptrcast i4*, $6
+	store $11, i4 0x0
+	ret i4 undef
+}
