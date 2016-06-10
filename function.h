@@ -42,8 +42,10 @@ struct dynarray *function_arg_names(function *);
 struct name_loc *function_arg_loc(function *, size_t idx);
 size_t function_arg_count(function *);
 
+#if 0
 struct regalloc_info;
 void func_regalloc(function *f, struct regalloc_info *, unsigned *alloca);
+#endif
 
 bool function_is_forward_decl(function *);
 

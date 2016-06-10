@@ -12,7 +12,9 @@
 #include "variable_struct.h"
 #include "function_struct.h"
 #include "isn_struct.h"
+#if 0
 #include "regalloc.h"
+#endif
 #include "unit_internal.h"
 
 static void function_add_block(function *, block *);
@@ -247,6 +249,7 @@ bool function_arg_find(
 	return false;
 }
 
+#if 0
 static struct name_loc *locate_arg_reg(
 		size_t idx,
 		const struct backend_traits *backend)
@@ -287,6 +290,7 @@ void func_regalloc(
 
 	regalloc(entry, info, alloca);
 }
+#endif
 
 bool function_is_forward_decl(function *f)
 {
