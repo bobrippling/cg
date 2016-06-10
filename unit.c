@@ -170,3 +170,13 @@ global *unit_global_find(unit *u, const char *spel)
 
 	return NULL;
 }
+
+void unit_dump(unit *u)
+{
+	size_t i;
+	for(i = 0; i < u->nglobals; i++){
+		global *g = u->globals[i];
+
+		global_dump(u, g);
+	}
+}

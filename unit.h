@@ -32,4 +32,6 @@ global *unit_global_find(unit *, const char *);
 struct uniq_type_list *unit_uniqtypes(unit *);
 const struct target *unit_target_info(unit *);
 
+void unit_dump(unit *);
+
 #endif
