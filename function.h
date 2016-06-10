@@ -1,6 +1,7 @@
 #ifndef FUNCTION_H
 #define FUNCTION_H
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include "block.h"
 #include "variable.h"
