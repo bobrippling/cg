@@ -1,0 +1,44 @@
+type $struct = { i4, i8 }
+
+$f = i8($struct $in) #, i8* $arg2)
+{
+	$in.spill = alloca $struct
+	store $in.spill, $in
+
+	$p = elem $in.spill, i4 1
+	$v = load $p
+
+	ret $v
+}
+
+## handle implicit $struct* in %rdi
+#$f = $struct()
+#{
+#	$a = alloca $struct
+#
+#	$p1 = elem $a, i4 0
+#	store $p1, i4 1
+#
+#	$p2 = elem $a, i4 1
+#	store $p1, i4 2
+#
+#	$st = load $a
+#	ret $st
+#}
+
+$caller = i8()
+{
+	$st_p = alloca $struct
+
+#$i8_p = alloca i8
+#$p0 = elem $st_p, i4 0
+#store $p0, i4 1
+#$p1 = elem $st_p, i4 1
+#store $p1, i8 2
+#store $i8_p, i8 3
+
+	$st = load $st_p
+	$x = call $f($st) #, $i8_p)
+
+	ret $x
+}
