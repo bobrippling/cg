@@ -65,6 +65,11 @@ int val_size(val *v, unsigned ptrsz)
 }
 #endif
 
+unsigned name_loc_hash(struct name_loc const *loc)
+{
+	return loc->where ^ (loc->u.reg << 3);
+}
+
 bool val_is_mem(val *v)
 {
 	struct name_loc *loc = val_location(v);
@@ -126,6 +131,11 @@ unsigned val_hash(val *v)
 
 		case BACKEND_TEMP:
 			break;
+
+		case ABI_TEMP:
+			/* safe to use here - set on init */
+			h ^= name_loc_hash(&v->u.abi);
+			break;
 	}
 
 	if(spel)
@@ -147,6 +157,9 @@ struct name_loc *val_location(val *v)
 
 		case BACKEND_TEMP:
 			return &v->u.temp_loc;
+
+		case ABI_TEMP:
+			return &v->u.abi;
 
 		case GLOBAL:
 		case LITERAL:
@@ -249,6 +262,10 @@ char *val_str_r(char buf[32], val *v)
 			break;
 		case BACKEND_TEMP:
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
+			break;
+		case ABI_TEMP:
+			assert(v->u.abi.where == NAME_IN_REG);
+			snprintf(buf, VAL_STR_SZ, "<reg %d>", v->u.abi.u.reg);
 			break;
 	}
 	return buf;
@@ -400,6 +417,14 @@ void val_temporary_init(val *vtmp, type *ty)
 	vtmp->ty = ty;
 	vtmp->retains = 1;
 	name_loc_init_reg(&vtmp->u.temp_loc);
+}
+
+val *val_new_abi_reg(int rno, type *ty)
+{
+	val *p = val_new(ABI_TEMP, ty);
+	p->u.abi.where = NAME_IN_REG;
+	p->u.abi.u.reg = rno;
+	return p;
 }
 
 struct type *val_type(val *v)

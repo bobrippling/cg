@@ -809,6 +809,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 		case LITERAL:
 		case GLOBAL:
 		case BACKEND_TEMP:
+		case ABI_TEMP:
 			return;
 		case ALLOCA:
 		case ARGUMENT:

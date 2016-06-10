@@ -13,10 +13,11 @@ struct name_loc
 	union
 	{
 		int reg;
-		unsigned off;
+		int off;
 	} u;
 };
 #define name_loc_init_reg(nl) ((nl)->where = NAME_IN_REG, (nl)->u.reg = -1)
+unsigned name_loc_hash(struct name_loc const *);
 
 struct val
 {
@@ -39,6 +40,7 @@ struct val
 			unsigned idx;
 		} argument;
 		struct name_loc temp_loc;
+		struct name_loc abi;
 	} u;
 
 	void *pass_data;
@@ -53,7 +55,8 @@ struct val
 		ARGUMENT, /* $x from arg */
 		FROM_ISN, /* $y = load i4* 1 */
 		ALLOCA,   /* $z = alloca i4 */
-		BACKEND_TEMP /* mov $3, %eax ; ret */
+		BACKEND_TEMP, /* mov $3, %eax ; ret */
+		ABI_TEMP /* an actual register or stack slot */
 	} kind;
 };
 
