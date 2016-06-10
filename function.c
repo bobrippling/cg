@@ -209,6 +209,12 @@ void function_dump_args_and_block(function *f)
 	printf("\n");
 }
 
+void function_dump(function *f)
+{
+	printf("$%s = ", function_name(f));
+	function_dump_args_and_block(f);
+}
+
 const char *function_name(function *f)
 {
 	return f->name;
