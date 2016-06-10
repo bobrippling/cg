@@ -402,13 +402,6 @@ void val_temporary_init(val *vtmp, type *ty)
 	name_loc_init_reg(&vtmp->u.temp_loc);
 }
 
-val *val_new_temporary(struct type *ty)
-{
-	val *v = val_new(BACKEND_TEMP, ty);
-	val_temporary_init(v, ty);
-	return v;
-}
-
 struct type *val_type(val *v)
 {
 	return v->ty;
