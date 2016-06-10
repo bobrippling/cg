@@ -35,6 +35,9 @@ function *function_new(
 
 	dynarray_init(&fn->arg_locns);
 
+	fn->arg_vals = xcalloc(
+			dynarray_count(&fn->arg_names), sizeof(*fn->arg_vals));
+
 	return fn;
 }
 
@@ -47,6 +50,8 @@ void function_free(function *f)
 
 	dynarray_foreach(&f->arg_locns, free);
 	dynarray_reset(&f->arg_locns);
+
+	free(f->arg_vals);
 
 	free(f->blocks);
 	free(f->name);
@@ -247,6 +252,16 @@ bool function_arg_find(
 	}
 
 	return false;
+}
+
+void function_register_arg_val(function *f, unsigned arg_idx, val *v)
+{
+	f->arg_vals[arg_idx] = v;
+}
+
+val *function_arg_val(function *f, unsigned arg_idx)
+{
+	return f->arg_vals[arg_idx];
 }
 
 #if 0

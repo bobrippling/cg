@@ -135,6 +135,8 @@ found:
 	if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
 		v = val_new_argument(name, arg_idx, arg_ty, p->func);
 
+		function_register_arg_val(p->func, arg_idx, v);
+
 		map_val(p, name, v);
 
 		name = NULL;

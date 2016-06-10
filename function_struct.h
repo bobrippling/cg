@@ -20,6 +20,7 @@ struct function
 	type *fnty;
 	dynarray arg_names;
 	dynarray arg_locns;
+	val **arg_vals;
 
 	enum function_attributes attr;
 };
