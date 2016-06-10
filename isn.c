@@ -15,13 +15,17 @@
 #include "block.h"
 #include "type.h"
 
-static isn *isn_new(enum isn_type t, block *blk)
+isn *isn_new(enum isn_type t)
 {
 	isn *isn = xcalloc(1, sizeof *isn);
-
-	block_add_isn(blk, isn);
-
 	isn->type = t;
+	return isn;
+}
+
+static isn *isn_new_append(enum isn_type t, block *blk)
+{
+	isn *isn = isn_new(t);
+	block_add_isn(blk, isn);
 	return isn;
 }
 
@@ -150,7 +154,7 @@ void isn_load(block *blk, val *to, val *lval)
 		return;
 	}
 
-	isn = isn_new(ISN_LOAD, blk);
+	isn = isn_new_append(ISN_LOAD, blk);
 
 	isn->u.load.lval = lval;
 	isn->u.load.to = to;
@@ -171,7 +175,7 @@ void isn_store(block *blk, val *from, val *lval)
 		return;
 	}
 
-	isn = isn_new(ISN_STORE, blk);
+	isn = isn_new_append(ISN_STORE, blk);
 
 	isn->u.store.from = from;
 	isn->u.store.lval = lval;
@@ -195,7 +199,7 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 		return;
 	}
 
-	isn = isn_new(ISN_OP, blk);
+	isn = isn_new_append(ISN_OP, blk);
 	isn->u.op.op = op;
 	isn->u.op.lhs = lhs;
 	isn->u.op.rhs = rhs;
@@ -220,7 +224,7 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 		return;
 	}
 
-	isn = isn_new(ISN_CMP, blk);
+	isn = isn_new_append(ISN_CMP, blk);
 	isn->u.cmp.cmp = cmp;
 	isn->u.cmp.lhs = lhs;
 	isn->u.cmp.rhs = rhs;
@@ -243,7 +247,7 @@ static void isn_ext(block *blk, val *from, val *to, bool sign)
 		return;
 	}
 
-	isn = isn_new(ISN_EXT_TRUNC, blk);
+	isn = isn_new_append(ISN_EXT_TRUNC, blk);
 	isn->u.ext.from = from;
 	isn->u.ext.to = to;
 	isn->u.ext.sign = sign;
@@ -280,7 +284,7 @@ static void isn_i2p_p2i(
 		return;
 	}
 
-	isn = isn_new(kind, blk);
+	isn = isn_new_append(kind, blk);
 	isn->u.ptr2int.from = from;
 	isn->u.ptr2int.to = to;
 }
@@ -324,7 +328,7 @@ void isn_elem(block *blk, val *lval, val *index, val *res)
 		return;
 	}
 
-	isn = isn_new(ISN_ELEM, blk);
+	isn = isn_new_append(ISN_ELEM, blk);
 	isn->u.elem.lval = lval;
 	isn->u.elem.index = index;
 	isn->u.elem.res = res;
@@ -345,7 +349,7 @@ void isn_ptradd(block *blk, val *lhs, val *rhs, val *out)
 		return;
 	}
 
-	isn = isn_new(ISN_PTRADD, blk);
+	isn = isn_new_append(ISN_PTRADD, blk);
 	isn->u.ptradd.lhs = lhs;
 	isn->u.ptradd.rhs = rhs;
 	isn->u.ptradd.out = out;
@@ -364,7 +368,7 @@ void isn_copy(block *blk, val *lval, val *rval)
 		return;
 	}
 
-	isn = isn_new(ISN_COPY, blk);
+	isn = isn_new_append(ISN_COPY, blk);
 	isn->u.copy.from = rval;
 	isn->u.copy.to = lval;
 }
@@ -383,7 +387,7 @@ void isn_alloca(block *blk, val *v)
 		return;
 	}
 
-	isn = isn_new(ISN_ALLOCA, blk);
+	isn = isn_new_append(ISN_ALLOCA, blk);
 	isn->u.alloca.out = v;
 }
 
@@ -398,7 +402,7 @@ void isn_ret(block *blk, val *r)
 		return;
 	}
 
-	isn = isn_new(ISN_RET, blk);
+	isn = isn_new_append(ISN_RET, blk);
 	isn->u.ret = r;
 	block_set_type(blk, BLK_EXIT);
 }
@@ -443,7 +447,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 		return;
 	}
 
-	isn = isn_new(ISN_CALL, blk);
+	isn = isn_new_append(ISN_CALL, blk);
 	isn->u.call.fn = fn;
 	isn->u.call.into_or_null = into;
 	dynarray_move(&isn->u.call.args, args);
@@ -462,7 +466,7 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 		return;
 	}
 
-	isn = isn_new(ISN_BR, current);
+	isn = isn_new_append(ISN_BR, current);
 	isn->u.branch.cond = cond;
 	isn->u.branch.t = btrue;
 	isn->u.branch.f = bfalse;
@@ -484,7 +488,7 @@ void isn_jmp(block *current, block *new)
 	if(!current)
 		return;
 
-	isn = isn_new(ISN_JMP, current);
+	isn = isn_new_append(ISN_JMP, current);
 	isn->u.jmp.target = new;
 
 	block_set_type(current, BLK_JMP);

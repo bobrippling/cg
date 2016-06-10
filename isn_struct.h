@@ -103,5 +103,6 @@ struct isn
 };
 
 const char *isn_type_to_str(enum isn_type);
+struct isn *isn_new(enum isn_type t);
 
 #endif
