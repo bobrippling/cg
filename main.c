@@ -18,6 +18,10 @@
 #include "tokenise.h"
 #include "parse.h"
 
+#include "pass_abi.h"
+#include "pass_isel.h"
+#include "pass_regalloc.h"
+
 #include "opt_cprop.h"
 #include "opt_storeprop.h"
 #include "opt_dse.h"
@@ -36,14 +40,23 @@
 static const struct
 {
 	const char *spel;
-	void (*fn)(block *);
-} optimisations[] = {
+	void (*fn)(function *, const struct target *);
+} passes[] = {
+	{ "_abi", pass_abi },
+	{ "_isel", pass_isel },
+	{ "_regalloc", pass_regalloc },
 #define X(n) { #n, opt_ ## n },
 	OPTS
 #undef X
 };
 
 static const char *argv0;
+
+struct passes_and_target
+{
+	dynarray *passes;
+	struct target *target;
+};
 
 static unit *read_and_parse(
 		const char *fname, bool dump_tok,
@@ -98,40 +111,33 @@ static void usage(const char *arg0)
 			, arg0);
 
 #if 0
-	for(i = 0; i < countof(optimisations); i++)
-		fprintf(stderr, "    %s\n", optimisations[i].spel);
+	for(i = 0; i < countof(passes); i++)
+		fprintf(stderr, "    %s\n", passes[i].spel);
 #endif
 
 	exit(1);
 }
 
-static void run_opts(function *fn, void *vctx)
+static void run_passes(function *fn, void *vctx)
 {
-	dynarray *passes = vctx;
+	const struct passes_and_target *pat = vctx;
+	dynarray *passes_to_run = pat->passes;
 	size_t i;
 
-	dynarray_iter(passes, i){
+	dynarray_iter(passes_to_run, i){
 		size_t j;
-		bool found = false;
-		const char *opt = dynarray_ent(passes, i);
+		const char *opt = dynarray_ent(passes_to_run, i);
 
-#if 0
-		for(j = 0; j < countof(optimisations); j++){
-			if(!strcmp(optimisations[j].spel, opt)){
-				found = true;
+		for(j = 0; j < countof(passes); j++)
+			if(!strcmp(passes[j].spel, opt))
 				break;
-			}
-		}
-#else
-		j = 0;
-#endif
 
-		if(!found){
-			fprintf(stderr, "optimise: unknown option '%s'\n", opt);
+		if(j == countof(passes)){
+			fprintf(stderr, "pass: unknown option '%s'\n", opt);
 			usage(argv0);
 		}
 
-		function_onblocks(fn, optimisations[j].fn);
+		passes[j].fn(fn, pat->target);
 	}
 }
 
@@ -146,6 +152,7 @@ int main(int argc, char *argv[])
 	int parse_err = 0;
 	struct target target = { 0 };
 	const char *emit_arg = NULL;
+	struct passes_and_target pat;
 
 	argv0 = argv[0];
 
@@ -234,7 +241,15 @@ int main(int argc, char *argv[])
 		assert(unit);
 	}
 
-	unit_on_functions(unit, run_opts, &passes);
+	/* ensure the final passes are: */
+	dynarray_add(&passes, "_abi");
+	dynarray_add(&passes, "_isel");
+	dynarray_add(&passes, "_regalloc");
+
+	pat.passes = &passes;
+	pat.target = &target;
+
+	unit_on_functions(unit, run_passes, &pat);
 
 	if(parse_err)
 		return 1;
