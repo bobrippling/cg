@@ -10,6 +10,7 @@
 #include "block_internal.h"
 
 #include "isn_struct.h"
+#include "isn.h"
 
 #include "val.h"
 #include "val_internal.h"
@@ -25,7 +26,6 @@ struct life_check_ctx
 block *block_new(char *lbl)
 {
 	block *b = xcalloc(1, sizeof *b);
-	b->isntail = &b->isn1;
 	b->lbl = lbl;
 
 	b->val_lifetimes = dynmap_new(val *, NULL, val_hash);
@@ -53,7 +53,7 @@ void block_free(block *b)
 
 	dynmap_free(b->val_lifetimes);
 
-	isn_free_r(b->isn1);
+	isn_free_r(b->isnhead);
 	free(b->lbl);
 	free(b);
 }
@@ -76,7 +76,7 @@ const char *block_label(block *b)
 
 isn *block_first_isn(block *b)
 {
-	return b->isn1;
+	return b->isnhead;
 }
 
 int block_tenative(block *b)
@@ -86,8 +86,22 @@ int block_tenative(block *b)
 
 void block_add_isn(block *blk, isn *isn)
 {
-	*blk->isntail = isn;
-	blk->isntail = &isn->next;
+	if(blk->isntail){
+		assert(!blk->isntail->next);
+		blk->isntail->next = isn;
+		blk->isntail = isn;
+		assert(!isn->next);
+	}else{
+		assert(!blk->isnhead);
+		blk->isnhead = blk->isntail = isn;
+	}
+}
+
+void block_insert_isn(block *blk, struct isn *isn)
+{
+	assert(!isn->next);
+	isn->next = blk->isnhead;
+	blk->isnhead = isn;
 }
 
 bool block_unknown_ending(block *blk)

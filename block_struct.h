@@ -9,7 +9,7 @@
 
 struct block
 {
-	isn *isn1, **isntail; /* isntail = &isn1 initially */
+	struct isn *isnhead, *isntail;
 	char *lbl; /* NULL if entry block */
 
 	struct dynmap *val_lifetimes; /* val => struct lifetime */
