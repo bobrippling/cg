@@ -7,6 +7,8 @@
 #include "block.h"
 #include "dynarray.h"
 
+typedef struct isn isn;
+
 void isn_load(block *, struct val *to, struct val *lval);
 void isn_store(block *, struct val *from, struct val *lval);
 
