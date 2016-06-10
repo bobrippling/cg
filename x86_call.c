@@ -23,16 +23,6 @@
 #include "x86_isns.h"
 #include "x86_call.h"
 
-const int x86_arg_regs[] = {
-	4,
-	5,
-	3,
-	2,
-	/* TODO: r8, r9 */
-};
-
-const unsigned x86_arg_reg_count = countof(x86_arg_regs);
-
 typedef struct dep
 {
 	int target, current; /* register indexes */

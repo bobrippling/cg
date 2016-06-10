@@ -32,6 +32,17 @@ struct target
 		bool align_is_pow2;
 	} sys;
 
+	struct target_abi
+	{
+		unsigned nregs;
+
+		const unsigned *callee_save;
+		unsigned callee_save_cnt;
+
+		const unsigned *arg_regs;
+		unsigned arg_regs_cnt;
+	} abi;
+
 	global_emit_func *emit;
 };
 

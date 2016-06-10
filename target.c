@@ -12,17 +12,48 @@
 
 #include "x86.h"
 
+static const unsigned callee_save_x64[] = {
+	1 /* rbx */
+};
+
+static const unsigned arg_regs_x64[] = {
+	4, /* rdi */
+	5, /* rsi */
+	3, /* rdx */
+	2, /* rcx */
+	/* TODO: r8, r9 */
+};
+
 static const struct
 {
 	const char *name;
 
 	struct target_arch arch;
+	struct target_abi abi;
 	global_emit_func *emit;
 
 } arches[] = {
-	{ "ir",     { 8, 8 }, global_dump },
-	{ "x86_64", { 8, 8 }, x86_out },
-	{ "i386",   { 4, 4 }, x86_out },
+	{
+		"ir",
+		{ 8, 8 },
+		{
+			0
+		},
+		global_dump
+	},
+	{
+		"x86_64",
+		{ 8, 8 },
+		{
+			6, /* eax-edx, di, si */
+			callee_save_x64,
+			countof(callee_save_x64),
+			arg_regs_x64,
+			countof(arg_regs_x64)
+		},
+		global_dump /* TODO: x64_dump */
+	}
+	/* TODO: i386 */
 };
 
 static const struct
@@ -58,6 +89,7 @@ static bool maybe_add_arch(const char *arch, struct target *out)
 	for(i = 0; i < countof(arches); i++){
 		if(!strcmp(arch, arches[i].name)){
 			memcpy(&out->arch, &arches[i].arch, sizeof out->arch);
+			memcpy(&out->abi, &arches[i].abi, sizeof out->abi);
 			out->emit = arches[i].emit;
 			return true;
 		}

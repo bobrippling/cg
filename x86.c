@@ -1336,17 +1336,6 @@ static void x86_emit_prologue(
 		printf("\tsub $%ld, %%%csp\n", alloca_total, regch);
 }
 
-static void x86_init_regalloc_info(struct regalloc_info *info, function *func)
-{
-	info->backend.nregs = countof(regs);
-	info->backend.scratch_reg = SCRATCH_REG;
-	info->backend.callee_save = callee_saves;
-	info->backend.callee_save_cnt = countof(callee_saves);
-	info->backend.arg_regs = x86_arg_regs;
-	info->backend.arg_regs_cnt = x86_arg_reg_count;
-	info->func = func;
-}
-
 static long x86_alloca_total(x86_octx *octx)
 {
 	return octx->alloca_bottom + octx->spill_alloca_max;
