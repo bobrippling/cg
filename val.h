@@ -30,6 +30,7 @@ val *val_new_argument(
 	attr_nonnull();
 
 val *val_new_abi_reg(int rno, struct type *);
+val *val_new_abi_stack(int stack_off, struct type *);
 
 void val_temporary_init(val *, struct type *);
 

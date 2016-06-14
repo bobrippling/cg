@@ -264,8 +264,14 @@ char *val_str_r(char buf[32], val *v)
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
 		case ABI_TEMP:
-			assert(v->u.abi.where == NAME_IN_REG);
-			snprintf(buf, VAL_STR_SZ, "<reg %d>", v->u.abi.u.reg);
+			switch(v->u.abi.where){
+				case NAME_IN_REG:
+					snprintf(buf, VAL_STR_SZ, "<reg %d>", v->u.abi.u.reg);
+					break;
+				case NAME_SPILT:
+					snprintf(buf, VAL_STR_SZ, "<stack %d>", v->u.abi.u.off);
+					break;
+			}
 			break;
 	}
 	return buf;
@@ -424,6 +430,14 @@ val *val_new_abi_reg(int rno, type *ty)
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_IN_REG;
 	p->u.abi.u.reg = rno;
+	return p;
+}
+
+val *val_new_abi_stack(int stack_off, type *ty)
+{
+	val *p = val_new(ABI_TEMP, ty);
+	p->u.abi.where = NAME_SPILT;
+	p->u.abi.u.off = stack_off;
 	return p;
 }
 
