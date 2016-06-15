@@ -67,6 +67,13 @@ struct type
 	} kind;
 };
 
+void uniq_types_init(
+		struct uniq_type_list *us, unsigned ptrsz, unsigned ptralign)
+{
+	us->ptrsz = ptrsz;
+	us->ptralign = ptralign;
+}
+
 static type *type_resolve(type *t)
 {
 	while(t && t->kind == ALIAS)
