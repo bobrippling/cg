@@ -13,6 +13,8 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
 
 SRC = ${OBJ:.o=.c}
 
+TEST_OBJ = utests.o type.o mem.o dynmap.o dynarray.o imath.o
+
 CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L -Istrbuf
 
 CFLAGS = ${CFLAGS_CONFIGURE} ${CFLAGS_DEFINE}
@@ -30,7 +32,14 @@ ir: ${OBJ} strbuf/strbuf.a
 	@echo compile $<
 	$Q${CC} -c -o $@ $< ${CFLAGS}
 
-check: ir
+utests: ${TEST_OBJ} strbuf/strbuf.a
+	@echo link $@
+	$Q${CC} -o $@ ${TEST_OBJ} strbuf/strbuf.a ${LDFLAGS}
+
+check-utests: utests
+	./utests
+
+check: ir check-utests
 	make -Ctest
 
 tags: ${SRC}

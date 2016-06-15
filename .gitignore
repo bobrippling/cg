@@ -1,6 +1,7 @@
 *.d
 Makefile.cfg
 ir
+utests
 *.o
 tags
 test/harness/harness
