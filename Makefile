@@ -4,7 +4,7 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
       function.o variable.o global.o variable_global.o block.o unit.o \
       die.o io.o str.o lbl.o \
       tokenise.o parse.o \
-      type.o uniq_type_list.o target.o \
+      type.o uniq_type_list.o type_iter.o target.o \
       pass_abi.o pass_isel.o pass_regalloc.o
       #regalloc.o
       #x86.o x86_call.o x86_isns.o
@@ -13,7 +13,8 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
 
 SRC = ${OBJ:.o=.c}
 
-TEST_OBJ = utests.o type.o uniq_type_list.o mem.o dynmap.o dynarray.o imath.o
+TEST_OBJ = utests.o type.o uniq_type_list.o type_iter.o \
+           mem.o dynmap.o dynarray.o imath.o
 
 CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L -Istrbuf
 
