@@ -13,12 +13,8 @@
 #include "imath.h"
 
 #include "type.h"
-#include "type_uniq_struct.h"
-
-static void type_free_1(type *);
-static void type_free_dynarray_1(dynarray *);
-static void type_free_r(type *);
-static void type_free_dynarray_r(dynarray *);
+#include "type_free.h"
+#include "uniq_type_list_struct.h"
 
 struct uptype
 {
@@ -66,13 +62,6 @@ struct type
 		PRIMITIVE, PTR, ARRAY, STRUCT, FUNC, VOID, ALIAS
 	} kind;
 };
-
-void uniq_types_init(
-		struct uniq_type_list *us, unsigned ptrsz, unsigned ptralign)
-{
-	us->ptrsz = ptrsz;
-	us->ptralign = ptralign;
-}
 
 static type *type_resolve(type *t)
 {
@@ -605,7 +594,7 @@ static void uptype_free(struct uptype *up)
 	type_free_dynarray_1(&up->funcs);
 }
 
-static void type_free_1(type *t)
+void type_free_1(type *t)
 {
 	if(!t)
 		return;
@@ -636,7 +625,7 @@ static void type_free_1(type *t)
 	free(t);
 }
 
-static void type_free_dynarray_1(dynarray *da)
+void type_free_dynarray_1(dynarray *da)
 {
 	size_t i;
 	dynarray_iter(da, i){
@@ -646,12 +635,12 @@ static void type_free_dynarray_1(dynarray *da)
 	dynarray_reset(da);
 }
 
-static void type_free_r(type *t)
+void type_free_r(type *t)
 {
 	uptype_free(&t->up);
 }
 
-static void type_free_dynarray_r(dynarray *ar)
+void type_free_dynarray_r(dynarray *ar)
 {
 	size_t i;
 	dynarray_iter(ar, i){
@@ -659,27 +648,4 @@ static void type_free_dynarray_r(dynarray *ar)
 		type_free_r(ent);
 	}
 	/* no reset */
-}
-
-void uniq_type_list_free(uniq_type_list *utl)
-{
-	type *t;
-	size_t i;
-
-	/* free everything but the top levels - those
-	 * in uniq_type_list */
-	for(i = 0; i < countof(utl->primitives); i++)
-		type_free_r(utl->primitives[i]);
-	type_free_r(utl->tvoid);
-	type_free_dynarray_r(&utl->structs);
-
-	for(i = 0; i < countof(utl->primitives); i++)
-		type_free_1(utl->primitives[i]);
-	type_free_1(utl->tvoid);
-	type_free_dynarray_1(&utl->structs);
-
-	for(i = 0; (t = dynmap_value(type *, utl->aliases, i)); i++)
-		type_free_1(t); /* this frees 'spel' */
-
-	dynmap_free(utl->aliases);
 }

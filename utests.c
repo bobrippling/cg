@@ -2,7 +2,8 @@
 
 #include "type.h"
 #include "type_iter.h"
-#include "type_uniq_struct.h"
+#include "uniq_type_list.h"
+#include "uniq_type_list_struct.h"
 
 static unsigned failed, passed;
 
@@ -22,13 +23,15 @@ static void test_type_uniq(void)
 {
 	uniq_type_list uts = { 0 };
 
-	uniq_types_init(&uts, 1, 1);
+	uniq_type_list_init(&uts, 1, 1);
 
 	type *tint = type_get_primitive(&uts, i4);
 	test(tint == type_get_primitive(&uts, i4));
 
 	type *tptrint = type_get_ptr(&uts, tint);
 	test(tptrint == type_get_ptr(&uts, tint));
+
+	uniq_type_list_free(&uts);
 }
 
 int main(int argc, const char *argv[])

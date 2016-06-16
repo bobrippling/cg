@@ -66,9 +66,4 @@ void type_size_align(type *, unsigned *sz, unsigned *align);
 unsigned type_size(type *);
 unsigned type_align(type *);
 
-/* --- uniq type list --- */
-void uniq_types_init(
-		struct uniq_type_list *us,
-		unsigned ptrsz, unsigned ptralign);
-
 #endif

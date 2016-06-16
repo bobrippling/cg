@@ -11,7 +11,8 @@
 
 #include "variable_internal.h"
 #include "function_internal.h"
-#include "type_uniq_struct.h"
+#include "uniq_type_list.h"
+#include "uniq_type_list_struct.h"
 #include "global_struct.h"
 
 struct unit
@@ -32,7 +33,7 @@ unit *unit_new(const struct target *target)
 	unit *u = xcalloc(1, sizeof *u);
 
 	u->target_info = target;
-	uniq_types_init(&u->types, target->arch.ptr.size, target->arch.ptr.align);
+	uniq_type_list_init(&u->types, target->arch.ptr.size, target->arch.ptr.align);
 
 	return u;
 }
