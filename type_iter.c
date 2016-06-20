@@ -25,6 +25,13 @@ static void flatten(type *ty, type **outs, size_t *const nout)
 
 			flatten(memb, outs, nout);
 		}
+	}else if(type_array_element(ty)){
+		size_t i, n = type_array_count(ty);
+		type *memb = type_array_element(ty);
+
+		for(i = 0; i < n; i++)
+			flatten(memb, outs, nout);
+
 	}else{
 		if(outs)
 			outs[*nout] = ty;
