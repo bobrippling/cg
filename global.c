@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "global.h"
 #include "global_struct.h"
@@ -15,9 +16,8 @@ void global_dump(struct unit *unit, global *glob)
 
 	switch(glob->kind){
 		case GLOBAL_FUNC:
-			name = function_name(glob->u.fn);
-			ty = NULL; /* let the function itself print this */
-			break;
+			function_dump(glob->u.fn);
+			return;
 
 		case GLOBAL_VAR:
 		{
@@ -39,8 +39,7 @@ void global_dump(struct unit *unit, global *glob)
 
 	switch(glob->kind){
 		case GLOBAL_FUNC:
-			function_dump_args_and_block(glob->u.fn);
-			break;
+			assert(0 && "unreachable");
 
 		case GLOBAL_VAR:
 		{

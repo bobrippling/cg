@@ -191,18 +191,21 @@ static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool var
 	printf(")");
 }
 
-void function_dump_args_and_block(function *f)
+void function_dump(function *f)
 {
-	/* we are in charge of printing the full type attempt to print the normal
-	 * type if possible (i.e. no "custom" arguments) */
+	printf("$%s = ", function_name(f));
 
 	if(dynarray_is_empty(&f->arg_names)){
-		printf("%s", type_to_str(f->fnty));
+		printf("%s", type_to_str(function_type(f)));
 	}else{
-		print_func_and_args(
-				type_func_args(f->fnty),
-				&f->arg_names,
-				type_is_fn_variadic(f->fnty));
+		bool variadic;
+		dynarray *args;
+		type *retty = type_func_call(function_type(f), &args, &variadic);
+
+		assert(retty);
+		printf("%s", type_to_str(retty));
+
+		print_func_and_args(args, &f->arg_names, variadic);
 	}
 
 	if(f->entry){
@@ -214,12 +217,6 @@ void function_dump_args_and_block(function *f)
 	}
 
 	printf("\n");
-}
-
-void function_dump(function *f)
-{
-	printf("$%s = ", function_name(f));
-	function_dump_args_and_block(f);
 }
 
 const char *function_name(function *f)
