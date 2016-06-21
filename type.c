@@ -88,6 +88,13 @@ bool type_is_struct(type *t)
 	return t && t->kind == STRUCT;
 }
 
+bool type_eq(type *t1, type *t2)
+{
+	t1 = type_resolve(t1);
+	t2 = type_resolve(t2);
+	return t1 == t2;
+}
+
 bool type_is_primitive(type *t, enum type_primitive prim)
 {
 	t = type_resolve(t);

@@ -36,6 +36,8 @@ bool type_is_float(type *, int include_flarge);
 bool type_is_void(type *);
 bool type_is_struct(type *);
 
+bool type_eq(type *, type *);
+
 enum type_primitive type_primitive_less_or_equal(unsigned, bool fp);
 
 const char *type_to_str(type *);

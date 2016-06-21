@@ -146,7 +146,7 @@ void isn_load(block *blk, val *to, val *lval)
 	val_retain(lval);
 	val_retain(to);
 
-	assert(type_deref(val_type(lval)) == val_type(to));
+	assert(type_eq(type_deref(val_type(lval)), val_type(to)));
 
 	if(!blk){
 		val_release(lval);
@@ -167,7 +167,7 @@ void isn_store(block *blk, val *from, val *lval)
 	val_retain(from);
 	val_retain(lval);
 
-	assert(type_deref(val_type(lval)) == val_type(from));
+	assert(type_eq(type_deref(val_type(lval)), val_type(from)));
 
 	if(!blk){
 		val_release(from);
@@ -190,7 +190,7 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 	val_retain(res);
 
 	assert(type_size(val_type(lhs)) == type_size(val_type(rhs)));
-	assert(val_type(lhs) == val_type(res) || val_type(rhs) == val_type(res));
+	assert(type_eq(val_type(lhs), val_type(res)) || type_eq(val_type(rhs), val_type(res)));
 
 	if(!blk){
 		val_release(lhs);
@@ -214,7 +214,7 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 	val_retain(rhs);
 	val_retain(res);
 
-	assert(val_type(lhs) == val_type(rhs));
+	assert(type_eq(val_type(lhs), val_type(rhs)));
 	assert(type_is_primitive(val_type(res), i1));
 
 	if(!blk){
@@ -425,7 +425,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 
 	fn_ret = type_func_call(type_deref(val_type(fn)), &argtys, &variadic);
 
-	assert(!into || val_type(into) == fn_ret);
+	assert(!into || type_eq(val_type(into), fn_ret));
 
 	if(variadic){
 		assert(dynarray_count(args) >= dynarray_count(argtys));
@@ -433,7 +433,7 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 		assert(dynarray_count(args) == dynarray_count(argtys));
 	}
 	dynarray_iter(argtys, i){
-		assert(val_type(dynarray_ent(args, i)) == dynarray_ent(argtys, i));
+		assert(type_eq(val_type(dynarray_ent(args, i)), dynarray_ent(argtys, i)));
 	}
 
 	if(!blk){
