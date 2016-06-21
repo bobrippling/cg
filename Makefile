@@ -33,6 +33,9 @@ ir: ${OBJ} strbuf/strbuf.a
 	@echo compile $<
 	$Q${CC} -c -o $@ $< ${CFLAGS}
 
+# va_list:
+mem.o: CFLAGS += -std=c99
+
 utests: ${TEST_OBJ} strbuf/strbuf.a
 	@echo link $@
 	$Q${CC} -o $@ ${TEST_OBJ} strbuf/strbuf.a ${LDFLAGS}

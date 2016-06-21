@@ -38,3 +38,34 @@ char *xstrdup(const char *s)
 	memcpy(new, s, l);
 	return new;
 }
+
+char *xvsprintf(const char *fmt, va_list l)
+{
+	char *buf = NULL;
+	size_t len = 16, ret;
+
+	do{
+		va_list lcp;
+
+		len *= 2;
+		buf = xrealloc(buf, len);
+
+		va_copy(lcp, l);
+		ret = vsnprintf(buf, len, fmt, lcp);
+		va_end(lcp);
+
+	}while(ret >= len);
+
+	return buf;
+
+}
+
+char *xsprintf(const char *fmt, ...)
+{
+	va_list l;
+	char *s;
+	va_start(l, fmt);
+	s = xvsprintf(fmt, l);
+	va_end(l);
+	return s;
+}
