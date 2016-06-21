@@ -146,6 +146,25 @@ static void type_primitive_size_align(
 	assert(0);
 }
 
+enum type_primitive type_primitive_less_or_equal(unsigned sz, bool fp)
+{
+	if(fp){
+		if(sz <= 4)
+			return f4;
+		if(sz <= 8)
+			return f8;
+		return flarge;
+	}
+
+	if(sz <= 1)
+		return i1;
+	if(sz <= 2)
+		return i2;
+	if(sz <= 4)
+		return i4;
+	return i8;
+}
+
 static bool type_to_strbuf(strbuf_fixed *const buf, type *t)
 {
 	switch(t->kind){

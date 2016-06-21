@@ -35,6 +35,8 @@ bool type_is_int(type *);
 bool type_is_void(type *);
 bool type_is_struct(type *);
 
+enum type_primitive type_primitive_less_or_equal(unsigned, bool fp);
+
 const char *type_to_str(type *);
 const char *type_to_str_r(char *buf, size_t buflen, type *t);
 
