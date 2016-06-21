@@ -15,7 +15,7 @@ typedef void global_emit_func(unit *, global *);
 unit *unit_new(const struct target *);
 void unit_free(unit *);
 
-void unit_on_functions(unit *, void (function *, void *), void *);
+void unit_on_functions(unit *, void (function *, unit *, void *), void *);
 void unit_on_globals(unit *, global_emit_func);
 
 function *unit_function_new(

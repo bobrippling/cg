@@ -40,7 +40,7 @@
 static const struct
 {
 	const char *spel;
-	void (*fn)(function *, const struct target *);
+	void (*fn)(function *, unit *, const struct target *);
 } passes[] = {
 	{ "_abi", pass_abi },
 	{ "_isel", pass_isel },
@@ -118,7 +118,7 @@ static void usage(const char *arg0)
 	exit(1);
 }
 
-static void run_passes(function *fn, void *vctx)
+static void run_passes(function *fn, unit *unit, void *vctx)
 {
 	const struct passes_and_target *pat = vctx;
 	dynarray *passes_to_run = pat->passes;
@@ -137,7 +137,7 @@ static void run_passes(function *fn, void *vctx)
 			usage(argv0);
 		}
 
-		passes[j].fn(fn, pat->target);
+		passes[j].fn(fn, unit, pat->target);
 	}
 }
 

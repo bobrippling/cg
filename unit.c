@@ -85,13 +85,13 @@ void unit_free(unit *unit)
 	free(unit);
 }
 
-void unit_on_functions(unit *u, void fn(function *, void *), void *ctx)
+void unit_on_functions(unit *u, void fn(function *, unit *, void *), void *ctx)
 {
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
 		if(u->globals[i]->kind == GLOBAL_FUNC)
-			fn(u->globals[i]->u.fn, ctx);
+			fn(u->globals[i]->u.fn, u, ctx);
 }
 
 void unit_on_globals(unit *u, global_emit_func *fn)
