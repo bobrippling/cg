@@ -340,6 +340,55 @@ static void convert_incoming_args(
 	dynarray_reset(&state.abi_copies);
 }
 
+static isn *convert_outgoing_args_isn(
+		isn *inst, const struct target *target, block *blk)
+{
+	val *const fnval = inst->u.call.fn;
+	type *const fnty = type_deref(val_type(fnval));
+	dynarray *arg_tys;
+	type *const retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
+	size_t i;
+	struct {
+		size_t i, f;
+	} regidx = { 0 };
+
+	/* first, check for stret */
+	if(type_is_struct(retty)){
+		/*create_or_use_stret_space();*/
+		regidx.i++;
+	}
+
+	for(i = 0; i < dynarray_count(arg_tys); i++){
+		type *argty = dynarray_ent(arg_tys, i);
+		val *argval = dynarray_ent(&inst->u.call.args, i);
+	}
+
+	return inst->next;
+}
+
+static void convert_outgoing_args_block(block *blk, void *const vctx)
+{
+	const struct target *const target = vctx;
+	isn *i = block_first_isn(blk);
+
+	while(i){
+		if(i->type != ISN_CALL){
+			i = i->next;
+			continue;
+		}
+
+		i = convert_outgoing_args_isn(i, target, blk);
+	}
+}
+
+static void convert_outgoing_args(
+		const struct target *target, block *const entry)
+{
+	blocks_traverse(
+			entry, convert_outgoing_args_block,
+			/*remove const*/(struct target *)target, NULL);
+}
+
 void pass_abi(function *fn, unit *unit, const struct target *target)
 {
 	/* convert incoming and outgoing arguments
@@ -352,4 +401,5 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	}
 
 	convert_incoming_args(fn, unit_uniqtypes(unit), target, entry);
+	convert_outgoing_args(target, entry);
 }
