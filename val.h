@@ -23,6 +23,9 @@ val *val_new_global(struct uniq_type_list *, struct global *) attr_nonnull();
 val *val_new_local(char * /*consumed*/, struct type *, bool is_alloca)
 	attr_nonnull((2));
 
+val *val_new_localf(struct type *, const char *fmt, ...)
+	attr_nonnull();
+
 val *val_new_argument(
 		char * /*consumed*/, int idx,
 		struct type *ty,

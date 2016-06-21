@@ -413,6 +413,19 @@ val *val_new_local(char *name, struct type *ty, bool alloca)
 	return p;
 }
 
+val *val_new_localf(struct type *ty, const char *fmt, ...)
+{
+	va_list l;
+	char *buf;
+
+	va_start(l, fmt);
+	buf = xvsprintf(fmt, l);
+	va_end(l);
+
+	return val_new_local(buf, ty, 0);
+}
+
+
 void val_temporary_init(val *vtmp, type *ty)
 {
 	assert(ty);
