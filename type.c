@@ -115,6 +115,25 @@ bool type_is_int(type *t)
 	assert(0);
 }
 
+bool type_is_float(type *t, int include_flarge)
+{
+	t = type_resolve(t);
+	if(!t)
+		return false;
+
+	if(t->kind != PRIMITIVE)
+		return false;
+	switch(t->u.prim){
+#define X(name, integral, sz, align) \
+		case name: \
+			return !integral && (include_flarge || name != flarge);
+
+		TYPE_PRIMITIVES
+#undef X
+	}
+	assert(0);
+}
+
 bool type_is_void(type *t)
 {
 	t = type_resolve(t);
