@@ -157,7 +157,7 @@ static void convert_incoming_arg_regs(
 
 		abiv = val_new_abi_reg(
 				arg_reg_array[*reg_index],
-				argty);
+				argty); /* FIXME: argty */
 
 		copy = isn_new(ISN_COPY);
 		copy->u.copy.from = val_retain(abiv);
@@ -202,7 +202,7 @@ static void convert_incoming_arg_regs(
 
 		abiv = val_new_abi_reg(
 				arg_reg_array[*reg_index],
-				argty);
+				argty); /* FIXME: argty */
 
 		abi_copy = val_new_localf(argty, "abi.%d.%d", argindex, i);
 
