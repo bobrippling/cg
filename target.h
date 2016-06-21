@@ -39,8 +39,10 @@ struct target
 		const unsigned *callee_save;
 		unsigned callee_save_cnt;
 
-		const unsigned *arg_regs;
-		unsigned arg_regs_cnt;
+		const unsigned *arg_regs_int;
+		unsigned arg_regs_cnt_int;
+		const unsigned *arg_regs_fp;
+		unsigned arg_regs_cnt_fp;
 	} abi;
 
 	global_emit_func *emit;
