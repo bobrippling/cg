@@ -15,14 +15,7 @@ struct block
 	struct dynmap *val_lifetimes; /* val => struct lifetime */
 	dynarray preds;
 
-	enum block_type
-	{
-		BLK_UNKNOWN,
-		BLK_ENTRY,
-		BLK_EXIT,
-		BLK_BRANCH,
-		BLK_JMP
-	} type;
+	enum block_type type;
 
 	bool flag_iter;
 
@@ -41,7 +34,5 @@ struct block
 
 	unsigned emitted;
 };
-
-void block_set_type(block *blk, enum block_type type);
 
 #endif

@@ -10,6 +10,15 @@ struct dynmap;
 
 typedef struct block block;
 
+enum block_type
+{
+	BLK_UNKNOWN,
+	BLK_ENTRY,
+	BLK_EXIT,
+	BLK_BRANCH,
+	BLK_JMP
+};
+
 bool block_unknown_ending(block *);
 
 void block_free(block *);
@@ -19,6 +28,13 @@ int block_tenative(block *);
 void blocks_traverse(block *, void (block *, void *), void *, struct dynmap *);
 
 struct isn *block_first_isn(block *);
+void block_add_isn(block *, struct isn *);
+void block_insert_isn(block *, struct isn *);
+
+void block_set_type(block *blk, enum block_type type);
+void block_set_branch(
+		block *current, struct val *cond, block *btrue, block *bfalse);
+void block_set_jmp(block *current, block *target);
 
 #ifdef DYNMAP_H
 dynmap *block_lifetime_map(block *);

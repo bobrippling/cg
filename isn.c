@@ -22,13 +22,6 @@ isn *isn_new(enum isn_type t)
 	return isn;
 }
 
-static isn *isn_new_append(enum isn_type t, block *blk)
-{
-	isn *isn = isn_new(t);
-	block_add_isn(blk, isn);
-	return isn;
-}
-
 static void isn_free_1(isn *isn)
 {
 	switch(isn->type){
@@ -139,7 +132,7 @@ const char *isn_type_to_str(enum isn_type t)
 	return NULL;
 }
 
-void isn_load(block *blk, val *to, val *lval)
+isn *isn_load(val *to, val *lval)
 {
 	isn *isn;
 
@@ -148,19 +141,14 @@ void isn_load(block *blk, val *to, val *lval)
 
 	assert(type_eq(type_deref(val_type(lval)), val_type(to)));
 
-	if(!blk){
-		val_release(lval);
-		val_release(to);
-		return;
-	}
-
-	isn = isn_new_append(ISN_LOAD, blk);
+	isn = isn_new(ISN_LOAD);
 
 	isn->u.load.lval = lval;
 	isn->u.load.to = to;
+	return isn;
 }
 
-void isn_store(block *blk, val *from, val *lval)
+isn *isn_store(val *from, val *lval)
 {
 	isn *isn;
 
@@ -169,19 +157,14 @@ void isn_store(block *blk, val *from, val *lval)
 
 	assert(type_eq(type_deref(val_type(lval)), val_type(from)));
 
-	if(!blk){
-		val_release(from);
-		val_release(lval);
-		return;
-	}
-
-	isn = isn_new_append(ISN_STORE, blk);
+	isn = isn_new(ISN_STORE);
 
 	isn->u.store.from = from;
 	isn->u.store.lval = lval;
+	return isn;
 }
 
-void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
+isn *isn_op(enum op op, val *lhs, val *rhs, val *res)
 {
 	isn *isn;
 
@@ -192,21 +175,15 @@ void isn_op(block *blk, enum op op, val *lhs, val *rhs, val *res)
 	assert(type_size(val_type(lhs)) == type_size(val_type(rhs)));
 	assert(type_eq(val_type(lhs), val_type(res)) || type_eq(val_type(rhs), val_type(res)));
 
-	if(!blk){
-		val_release(lhs);
-		val_release(rhs);
-		val_release(res);
-		return;
-	}
-
-	isn = isn_new_append(ISN_OP, blk);
+	isn = isn_new(ISN_OP);
 	isn->u.op.op = op;
 	isn->u.op.lhs = lhs;
 	isn->u.op.rhs = rhs;
 	isn->u.op.res = res;
+	return isn;
 }
 
-void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
+isn *isn_cmp(enum op_cmp cmp, val *lhs, val *rhs, val *res)
 {
 	isn *isn;
 
@@ -217,21 +194,15 @@ void isn_cmp(block *blk, enum op_cmp cmp, val *lhs, val *rhs, val *res)
 	assert(type_eq(val_type(lhs), val_type(rhs)));
 	assert(type_is_primitive(val_type(res), i1));
 
-	if(!blk){
-		val_release(lhs);
-		val_release(rhs);
-		val_release(res);
-		return;
-	}
-
-	isn = isn_new_append(ISN_CMP, blk);
+	isn = isn_new(ISN_CMP);
 	isn->u.cmp.cmp = cmp;
 	isn->u.cmp.lhs = lhs;
 	isn->u.cmp.rhs = rhs;
 	isn->u.cmp.res = res;
+	return isn;
 }
 
-static void isn_ext(block *blk, val *from, val *to, bool sign)
+static isn *isn_ext(val *from, val *to, bool sign)
 {
 	isn *isn;
 
@@ -241,35 +212,29 @@ static void isn_ext(block *blk, val *from, val *to, bool sign)
 	assert(type_is_int(val_type(from)));
 	assert(type_is_int(val_type(to)));
 
-	if(!blk){
-		val_release(from);
-		val_release(to);
-		return;
-	}
-
-	isn = isn_new_append(ISN_EXT_TRUNC, blk);
+	isn = isn_new(ISN_EXT_TRUNC);
 	isn->u.ext.from = from;
 	isn->u.ext.to = to;
 	isn->u.ext.sign = sign;
+	return isn;
 }
 
-void isn_zext(block *blk, val *from, val *to)
+isn *isn_zext(val *from, val *to)
 {
-	isn_ext(blk, from, to, false);
+	return isn_ext(from, to, false);
 }
 
-void isn_sext(block *blk, val *from, val *to)
+isn *isn_sext(val *from, val *to)
 {
-	isn_ext(blk, from, to, true);
+	return isn_ext(from, to, true);
 }
 
-void isn_trunc(block *blk, val *from, val *to)
+isn *isn_trunc(val *from, val *to)
 {
-	isn_ext(blk, from, to, /*doesn't matter*/false);
+	return isn_ext(from, to, /*doesn't matter*/false);
 }
 
-static void isn_i2p_p2i(
-		block *blk,
+static isn *isn_i2p_p2i(
 		struct val *from, struct val *to,
 		enum isn_type kind)
 {
@@ -278,42 +243,37 @@ static void isn_i2p_p2i(
 	val_retain(from);
 	val_retain(to);
 
-	if(!blk){
-		val_release(from);
-		val_release(to);
-		return;
-	}
-
-	isn = isn_new_append(kind, blk);
+	isn = isn_new(kind);
 	isn->u.ptr2int.from = from;
 	isn->u.ptr2int.to = to;
+	return isn;
 }
 
-void isn_ptr2int(block *blk, struct val *from, struct val *to)
+isn *isn_ptr2int(struct val *from, struct val *to)
 {
 	assert(type_deref(val_type(from)));
 	assert(type_is_int(val_type(to)));
 
-	isn_i2p_p2i(blk, from, to, ISN_PTR2INT);
+	return isn_i2p_p2i(from, to, ISN_PTR2INT);
 }
 
-void isn_int2ptr(block *blk, struct val *from, struct val *to)
+isn *isn_int2ptr(struct val *from, struct val *to)
 {
 	assert(type_is_int(val_type(from)));
 	assert(type_deref(val_type(to)));
 
-	isn_i2p_p2i(blk, from, to, ISN_INT2PTR);
+	return isn_i2p_p2i(from, to, ISN_INT2PTR);
 }
 
-void isn_ptrcast(block *blk, struct val *from, struct val *to)
+isn *isn_ptrcast(struct val *from, struct val *to)
 {
 	assert(type_deref(val_type(from)));
 	assert(type_deref(val_type(to)));
 
-	isn_i2p_p2i(blk, from, to, ISN_PTRCAST);
+	return isn_i2p_p2i(from, to, ISN_PTRCAST);
 }
 
-void isn_elem(block *blk, val *lval, val *index, val *res)
+isn *isn_elem(val *lval, val *index, val *res)
 {
 	isn *isn;
 
@@ -321,20 +281,14 @@ void isn_elem(block *blk, val *lval, val *index, val *res)
 	val_retain(index);
 	val_retain(res);
 
-	if(!blk){
-		val_release(lval);
-		val_release(index);
-		val_release(res);
-		return;
-	}
-
-	isn = isn_new_append(ISN_ELEM, blk);
+	isn = isn_new(ISN_ELEM);
 	isn->u.elem.lval = lval;
 	isn->u.elem.index = index;
 	isn->u.elem.res = res;
+	return isn;
 }
 
-void isn_ptradd(block *blk, val *lhs, val *rhs, val *out)
+isn *isn_ptradd(val *lhs, val *rhs, val *out)
 {
 	isn *isn;
 
@@ -342,38 +296,27 @@ void isn_ptradd(block *blk, val *lhs, val *rhs, val *out)
 	val_retain(rhs);
 	val_retain(out);
 
-	if(!blk){
-		val_release(lhs);
-		val_release(rhs);
-		val_release(out);
-		return;
-	}
-
-	isn = isn_new_append(ISN_PTRADD, blk);
+	isn = isn_new(ISN_PTRADD);
 	isn->u.ptradd.lhs = lhs;
 	isn->u.ptradd.rhs = rhs;
 	isn->u.ptradd.out = out;
+	return isn;
 }
 
-void isn_copy(block *blk, val *lval, val *rval)
+isn *isn_copy(val *to, val *from)
 {
 	isn *isn;
 
-	val_retain(lval);
-	val_retain(rval);
+	val_retain(to);
+	val_retain(from);
 
-	if(!blk){
-		val_release(lval);
-		val_release(rval);
-		return;
-	}
-
-	isn = isn_new_append(ISN_COPY, blk);
-	isn->u.copy.from = rval;
-	isn->u.copy.to = lval;
+	isn = isn_new(ISN_COPY);
+	isn->u.copy.from = from;
+	isn->u.copy.to = to;
+	return isn;
 }
 
-void isn_alloca(block *blk, val *v)
+isn *isn_alloca(val *v)
 {
 	isn *isn;
 
@@ -382,32 +325,23 @@ void isn_alloca(block *blk, val *v)
 
 	val_retain(v);
 
-	if(!blk){
-		val_release(v);
-		return;
-	}
-
-	isn = isn_new_append(ISN_ALLOCA, blk);
+	isn = isn_new(ISN_ALLOCA);
 	isn->u.alloca.out = v;
+	return isn;
 }
 
-void isn_ret(block *blk, val *r)
+isn *isn_ret(val *r)
 {
 	isn *isn;
 
 	val_retain(r);
 
-	if(!blk){
-		val_release(r);
-		return;
-	}
-
-	isn = isn_new_append(ISN_RET, blk);
+	isn = isn_new(ISN_RET);
 	isn->u.ret = r;
-	block_set_type(blk, BLK_EXIT);
+	return isn;
 }
 
-void isn_call(block *blk, val *into, val *fn, dynarray *args)
+isn *isn_call(val *into, val *fn, dynarray *args)
 {
 	isn *isn;
 	size_t i;
@@ -436,24 +370,14 @@ void isn_call(block *blk, val *into, val *fn, dynarray *args)
 		assert(type_eq(val_type(dynarray_ent(args, i)), dynarray_ent(argtys, i)));
 	}
 
-	if(!blk){
-		if(into)
-			val_release(into);
-		val_release(fn);
-
-		dynarray_iter(args, i){
-			val_release(dynarray_ent(args, i));
-		}
-		return;
-	}
-
-	isn = isn_new_append(ISN_CALL, blk);
+	isn = isn_new(ISN_CALL);
 	isn->u.call.fn = fn;
 	isn->u.call.into_or_null = into;
 	dynarray_move(&isn->u.call.args, args);
+	return isn;
 }
 
-void isn_br(block *current, val *cond, block *btrue, block *bfalse)
+isn *isn_br(val *cond, block *btrue, block *bfalse)
 {
 	isn *isn;
 
@@ -461,41 +385,22 @@ void isn_br(block *current, val *cond, block *btrue, block *bfalse)
 
 	assert(type_is_primitive(val_type(cond), i1));
 
-	if(!current){
-		val_release(cond);
-		return;
-	}
-
-	isn = isn_new_append(ISN_BR, current);
+	isn = isn_new(ISN_BR);
 	isn->u.branch.cond = cond;
 	isn->u.branch.t = btrue;
 	isn->u.branch.f = bfalse;
 
-	block_set_type(current, BLK_BRANCH);
-
-	block_add_pred(btrue, current);
-	block_add_pred(bfalse, current);
-
-	current->u.branch.cond = val_retain(cond);
-	current->u.branch.t = btrue;
-	current->u.branch.f = bfalse;
+	return isn;
 }
 
-void isn_jmp(block *current, block *new)
+isn *isn_jmp(block *new)
 {
 	isn *isn;
 
-	if(!current)
-		return;
-
-	isn = isn_new_append(ISN_JMP, current);
+	isn = isn_new(ISN_JMP);
 	isn->u.jmp.target = new;
 
-	block_set_type(current, BLK_JMP);
-
-	block_add_pred(new, current);
-
-	current->u.jmp.target = new; /* weak ref */
+	return isn;
 }
 
 bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)

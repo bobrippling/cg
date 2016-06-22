@@ -118,6 +118,25 @@ void block_set_type(block *blk, enum block_type type)
 	blk->type = type;
 }
 
+void block_set_branch(block *current, val *cond, block *btrue, block *bfalse)
+{
+	block_set_type(current, BLK_BRANCH);
+
+	block_add_pred(btrue, current);
+	block_add_pred(bfalse, current);
+
+	current->u.branch.cond = val_retain(cond);
+	current->u.branch.t = btrue;
+	current->u.branch.f = bfalse;
+}
+
+void block_set_jmp(block *current, block *new)
+{
+	block_set_type(current, BLK_JMP);
+	block_add_pred(new, current);
+	current->u.jmp.target = new; /* weak ref */
+}
+
 static void blocks_traverse_r(
 		block *blk,
 		void fn(block *, void *),

@@ -7,9 +7,6 @@
 block *block_new_entry(void);
 block *block_new(char *lbl /* consumed */);
 
-void block_add_isn(block *, struct isn *);
-void block_insert_isn(block *, struct isn *);
-
 void block_finalize(block *);
 
 const char *block_label(block *);

@@ -7,7 +7,6 @@
 #include "val_internal.h"
 #include "target.h"
 #include "isn.h"
-#include "isn_struct.h"
 #include "block_internal.h"
 #include "type.h"
 #include "type_iter.h"
@@ -110,14 +109,13 @@ static void convert_incoming_arg_stack(
 {
 	/* structsplat will expand this if necessary */
 	val *stack;
-	isn *store = isn_new(ISN_STORE);
+	isn *store;
 
 	/* FIXME: alignment */
 	state->stackoff += type_size(argty);
 	stack = val_new_abi_stack(state->stackoff, argty);
 
-	store->u.store.lval = val_retain(stack);
-	store->u.store.from = val_retain(argval);
+	store = isn_store(argval, stack);
 
 	dynarray_add(&state->abi_copies, store);
 }
