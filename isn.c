@@ -22,6 +22,11 @@ isn *isn_new(enum isn_type t)
 	return isn;
 }
 
+isn *isn_next(isn *i)
+{
+	return i->next;
+}
+
 static void isn_free_1(isn *isn)
 {
 	switch(isn->type){
