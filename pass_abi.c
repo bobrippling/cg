@@ -21,11 +21,6 @@ enum regclass {
 	INT,
 	SSE
 };
-static const char *const regclass_strs[] = {
-	"NO_CLASS",
-	"INT",
-	"SSE"
-};
 
 struct typeclass
 {
@@ -39,6 +34,20 @@ struct regpass_state
 	int stackoff;
 	unsigned int_idx;
 	unsigned fp_idx;
+	unsigned *uniq_index_per_func;
+};
+
+enum regoverlay_direction
+{
+	OVERLAY_TO_REGS,
+	OVERLAY_FROM_REGS
+};
+
+struct convert_out_ctx
+{
+	const struct target *target;
+	uniq_type_list *utl;
+	unsigned uniq_index_per_func;
 };
 
 static enum regclass regclass_merge(enum regclass a, enum regclass b)
@@ -120,15 +129,15 @@ static void convert_incoming_arg_stack(
 	dynarray_add(&state->abi_copies, store);
 }
 
-static void convert_incoming_arg_regs(
+static void create_arg_reg_overlay_isns(
 		struct regpass_state *const state,
 		const struct typeclass *const regclass,
 		const struct target *target,
 		block *const entry,
 		uniq_type_list *utl,
-		const unsigned argindex,
 		val *argval,
-		type *argty)
+		type *argty,
+		const enum regoverlay_direction overlay_direction)
 {
 	/* we either have rdx:rax (or a subset)
 	 * or xmm1:xmm0 (or a subset),
@@ -159,9 +168,9 @@ static void convert_incoming_arg_regs(
 				arg_reg_array[*reg_index],
 				argty); /* FIXME: argty */
 
-		copy = isn_new(ISN_COPY);
-		copy->u.copy.from = val_retain(abiv);
-		copy->u.copy.to = val_retain(argval);
+		copy = isn_copy(
+				overlay_direction == OVERLAY_FROM_REGS ? argval : abiv,
+				overlay_direction == OVERLAY_FROM_REGS ? abiv : argval);
 
 		dynarray_add(&state->abi_copies, copy);
 
@@ -171,13 +180,11 @@ static void convert_incoming_arg_regs(
 
 	spilt_arg = val_new_localf(
 			type_get_ptr(utl, argty),
-			"spil.%d",
-			argindex);
+			"spill.%d",
+			(*state->uniq_index_per_func)++);
 
 	/* insert the final assignment first, so we get it last */
-	load = isn_new(ISN_LOAD);
-	load->u.load.to = val_retain(argval);
-	load->u.load.lval = val_retain(spilt_arg);
+	load = isn_load(argval, spilt_arg);
 	block_insert_isn(entry, load);
 
 	/* for each argument, we copy register,
@@ -204,31 +211,38 @@ static void convert_incoming_arg_regs(
 				arg_reg_array[*reg_index],
 				argty); /* FIXME: argty */
 
-		abi_copy = val_new_localf(argty, "abi.%d.%d", argindex, i);
+		abi_copy = val_new_localf(argty, "abi.%d.%d", (*state->uniq_index_per_func)++, i);
 
 		elemp = val_new_localf(
 				type_get_ptr(utl, argty),
-				"spil.%d.%d",
-				argindex, i);
+				"spill.%d.%d",
+				(*state->uniq_index_per_func)++,
+				i);
 
-		/* copy from abiv -> local register */
-		tmpisn = isn_new(ISN_COPY);
-		tmpisn->u.copy.from = val_retain(abiv);
-		tmpisn->u.copy.to = val_retain(abi_copy);
-		dynarray_add(&state->abi_copies, tmpisn);
+		/* copy from abiv -> local register,
+		 * or vice-versa */
+		if(overlay_direction == OVERLAY_FROM_REGS){
+			tmpisn = isn_copy(abiv, abi_copy);
+			dynarray_add(&state->abi_copies, tmpisn);
 
-		/* the next two are in reverse as we're using block_insert_isn() */
-		/* copy from abiv -> spilt arg */
-		tmpisn = isn_new(ISN_STORE);
-		tmpisn->u.store.from = val_retain(abi_copy);
-		tmpisn->u.store.lval = val_retain(elemp);
-		block_insert_isn(entry, tmpisn);
+			/* copy from abiv -> spilt arg (inside struct) */
+			tmpisn = isn_store(abi_copy, elemp);
+			block_insert_isn(entry, tmpisn);
+		}else{
+			/* load from inside struct / arg */
+			tmpisn = isn_load(abi_copy, elemp);
+			block_insert_isn(entry, tmpisn);
+
+			/* move to abi reg */
+			tmpisn = isn_copy(abiv, abi_copy);
+			dynarray_add(&state->abi_copies, tmpisn);
+		}
 
 		/* compute spill for register */
-		tmpisn = isn_new(ISN_ELEM);
-		tmpisn->u.elem.lval = val_retain(spilt_arg);
-		tmpisn->u.elem.index = val_retain(val_new_i(i, type_get_primitive(utl, i4)));
-		tmpisn->u.elem.res = val_retain(elemp);
+		tmpisn = isn_elem(
+				spilt_arg,
+				val_new_i(i, type_get_primitive(utl, i4)),
+				elemp);
 		block_insert_isn(entry, tmpisn);
 
 		bytes_to_copy -= type_size(regty);
@@ -236,21 +250,18 @@ static void convert_incoming_arg_regs(
 	}
 
 	/* insert the alloca last, so we get it first */
-	alloca = isn_new(ISN_ALLOCA);
-	alloca->u.alloca.out = val_retain(spilt_arg);
+	alloca = isn_alloca(spilt_arg);
 	block_insert_isn(entry, alloca);
 }
 
-static void convert_incoming_arg(
+static void classify_and_create_abi_isns_for_arg(
 		const struct target *target,
 		val *argval,
-		const unsigned argindex,
 		struct regpass_state *const state,
 		uniq_type_list *utl,
-		function *fn,
-		block *const entry)
+		block *const entry,
+		const enum regoverlay_direction direction)
 {
-	const char *const argname = dynarray_ent(function_arg_names(fn), argindex);
 	type *argty = val_type(argval);
 	struct typeclass cls;
 
@@ -268,34 +279,35 @@ static void convert_incoming_arg(
 		}
 	}
 
-	if(SHOW_CLASSIFICATION){
-		printf("classified \"%s\":\n", argname);
-
-		if(cls.inmem){
-			printf("\tinmem\n");
-		}else{
-			int i;
-			for(i = 0; i < 2; i++)
-				printf("\tclass[%d] = %s\n",
-						i,
-						regclass_strs[cls.regs[i]]);
-		}
-	}
-
 	if(cls.inmem){
 		convert_incoming_arg_stack(state, argty, argval);
 
 	}else{
-		convert_incoming_arg_regs(
+		create_arg_reg_overlay_isns(
 				state,
 				&cls,
 				target,
 				entry,
 				utl,
-				argindex,
 				argval,
-				argty);
+				argty,
+				direction);
 	}
+}
+
+static void add_state_isns(
+		struct regpass_state *state, block *block)
+{
+	unsigned i;
+
+	/* emit ABI copies as the first thing the function does: */
+	dynarray_iter(&state->abi_copies, i){
+		isn *isn = dynarray_ent(&state->abi_copies, i);
+
+		block_insert_isn(block, isn);
+	}
+
+	dynarray_reset(&state->abi_copies);
 }
 
 static void convert_incoming_args(
@@ -313,6 +325,7 @@ static void convert_incoming_args(
 	type *retty = type_func_call(type_deref(function_type(fn)), NULL, NULL);
 	unsigned i;
 	struct regpass_state state = { 0 };
+	/* state.uniq_index_per_func is fine as this is only done once per func */
 
 	dynarray_init(&state.abi_copies);
 
@@ -327,66 +340,73 @@ static void convert_incoming_args(
 		if(!argval)
 			continue;
 
-		convert_incoming_arg(target, argval, i, &state, utl, fn, entry);
+		classify_and_create_abi_isns_for_arg(
+				target, argval, &state, utl, entry,
+				OVERLAY_FROM_REGS);
 	}
 
-	/* emit ABI copies as the first thing the function does: */
-	dynarray_iter(&state.abi_copies, i){
-		isn *isn = dynarray_ent(&state.abi_copies, i);
-
-		block_insert_isn(entry, isn);
-	}
-
-	dynarray_reset(&state.abi_copies);
+	add_state_isns(&state, entry);
 }
 
 static isn *convert_outgoing_args_isn(
-		isn *inst, const struct target *target, block *blk)
+		isn *inst,
+		unsigned *const uniq_index_per_func,
+		const struct target *target,
+		uniq_type_list *utl,
+		block *const entry)
 {
-	val *const fnval = inst->u.call.fn;
-	type *const fnty = type_deref(val_type(fnval));
-	dynarray *arg_tys;
-	type *const retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
+	struct regpass_state state = { 0 };
 	size_t i;
-	struct {
-		size_t i, f;
-	} regidx = { 0 };
+	type *retty;
+	val *fnval; type *fnty;
+	dynarray *fnargs; dynarray *arg_tys;
+
+	if(!isn_call_getfnval_args(inst, &fnval, &fnargs))
+		return isn_next(inst);
+
+	state.uniq_index_per_func = uniq_index_per_func;
+
+	fnty = type_deref(val_type(fnval));
+	retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
 
 	/* first, check for stret */
 	if(type_is_struct(retty)){
-		/*create_or_use_stret_space();*/
-		regidx.i++;
+		/* TODO */
 	}
 
 	for(i = 0; i < dynarray_count(arg_tys); i++){
-		type *argty = dynarray_ent(arg_tys, i);
-		val *argval = dynarray_ent(&inst->u.call.args, i);
+		val *argval = dynarray_ent(fnargs, i);
+
+		classify_and_create_abi_isns_for_arg(
+				target, argval, &state, utl, entry,
+				OVERLAY_TO_REGS);
 	}
 
-	return inst->next;
+	add_state_isns(&state, entry);
+
+	return NULL; /* FIXME */
 }
 
 static void convert_outgoing_args_block(block *blk, void *const vctx)
 {
-	const struct target *const target = vctx;
+	struct convert_out_ctx *const ctx = vctx;
 	isn *i = block_first_isn(blk);
 
 	while(i){
-		if(i->type != ISN_CALL){
-			i = i->next;
-			continue;
-		}
-
-		i = convert_outgoing_args_isn(i, target, blk);
+		i = convert_outgoing_args_isn(
+				i, &ctx->uniq_index_per_func, ctx->target, ctx->utl, blk);
 	}
 }
 
 static void convert_outgoing_args(
-		const struct target *target, block *const entry)
+		const struct target *target, uniq_type_list *utl, block *const entry)
 {
-	blocks_traverse(
-			entry, convert_outgoing_args_block,
-			/*remove const*/(struct target *)target, NULL);
+	struct convert_out_ctx ctx = { 0 };
+
+	ctx.target = target;
+	ctx.utl = utl;
+
+	blocks_traverse(entry, convert_outgoing_args_block, &ctx, NULL);
 }
 
 void pass_abi(function *fn, unit *unit, const struct target *target)
@@ -401,5 +421,5 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	}
 
 	convert_incoming_args(fn, unit_uniqtypes(unit), target, entry);
-	convert_outgoing_args(target, entry);
+	convert_outgoing_args(target, unit_uniqtypes(unit), entry);
 }

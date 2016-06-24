@@ -709,6 +709,18 @@ static void isn_dump1(isn *i)
 	}
 }
 
+bool isn_call_getfnval_args(
+		isn *isn, struct val **const pfn, dynarray **const pargs)
+{
+	if(isn->type != ISN_CALL)
+		return false;
+
+	*pfn = isn->u.call.fn;
+	*pargs = &isn->u.call.args;
+
+	return true;
+}
+
 #include "dynmap.h"
 #include "val_struct.h"
 static void get_named_val(val *v, isn *isn, void *ctx)

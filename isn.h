@@ -39,6 +39,8 @@ isn *isn_call(struct val *into, struct val *fn, dynarray *args /*not consumed*/)
 
 bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
 
+bool isn_call_getfnval_args(isn *, struct val **, dynarray **);
+
 isn *isn_next(isn *);
 
 #endif
