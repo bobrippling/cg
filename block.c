@@ -38,6 +38,12 @@ static void branch_free(block *b)
 	val_release(b->u.branch.cond);
 }
 
+static void block_rewind_isnhead(block *b)
+{
+	if(b->isnhead)
+		b->isnhead = isn_first(b->isnhead);
+}
+
 void block_free(block *b)
 {
 	size_t i;
@@ -53,6 +59,7 @@ void block_free(block *b)
 
 	dynmap_free(b->val_lifetimes);
 
+	block_rewind_isnhead(b);
 	isn_free_r(b->isnhead);
 	free(b->lbl);
 	free(b);
@@ -76,32 +83,27 @@ const char *block_label(block *b)
 
 isn *block_first_isn(block *b)
 {
+	block_rewind_isnhead(b);
 	return b->isnhead;
+}
+
+void block_add_isn(block *b, struct isn *i)
+{
+	if(!b->isnhead){
+		b->isnhead = i;
+		b->isntail = i;
+		return;
+	}
+
+	assert(b->isntail);
+
+	isn_insert_after(b->isntail, i);
+	b->isntail = i;
 }
 
 int block_tenative(block *b)
 {
 	return block_first_isn(b) == NULL;
-}
-
-void block_add_isn(block *blk, isn *isn)
-{
-	if(blk->isntail){
-		assert(!blk->isntail->next);
-		blk->isntail->next = isn;
-		blk->isntail = isn;
-		assert(!isn->next);
-	}else{
-		assert(!blk->isnhead);
-		blk->isnhead = blk->isntail = isn;
-	}
-}
-
-void block_insert_isn(block *blk, struct isn *isn)
-{
-	assert(!isn->next);
-	isn->next = blk->isnhead;
-	blk->isnhead = isn;
 }
 
 bool block_unknown_ending(block *blk)

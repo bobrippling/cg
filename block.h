@@ -29,7 +29,6 @@ void blocks_traverse(block *, void (block *, void *), void *, struct dynmap *);
 
 struct isn *block_first_isn(block *);
 void block_add_isn(block *, struct isn *);
-void block_insert_isn(block *, struct isn *);
 
 void block_set_type(block *blk, enum block_type type);
 void block_set_branch(

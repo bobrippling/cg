@@ -22,6 +22,41 @@ isn *isn_new(enum isn_type t)
 	return isn;
 }
 
+void isn_insert_before(isn *target, isn *new)
+{
+	assert(target && "no insert target");
+	assert(new && "insert null isn?");
+
+	/* link in new: */
+	new->prev = target->prev;
+	new->next = target;
+
+	if(target->prev)
+		target->prev->next = new;
+	target->prev = new;
+}
+
+void isn_insert_after(isn *target, isn *new)
+{
+	assert(target && "no insert target");
+	assert(new && "insert null isn?");
+
+	/* link in new: */
+	new->next = target->next;
+	new->prev = target;
+
+	if(target->next)
+		target->next->prev = new;
+	target->next = new;
+}
+
+isn *isn_first(isn *i)
+{
+	while(i->prev)
+		i = i->prev;
+	return i;
+}
+
 isn *isn_next(isn *i)
 {
 	return i->next;

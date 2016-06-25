@@ -41,6 +41,10 @@ bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
 
 bool isn_call_getfnval_args(isn *, struct val **, dynarray **);
 
+isn *isn_first(isn *);
 isn *isn_next(isn *);
+
+void isn_insert_before(isn *, isn *);
+void isn_insert_after(isn *, isn *);
 
 #endif

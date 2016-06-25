@@ -97,7 +97,7 @@ struct isn
 		struct val *ret;
 	} u;
 
-	struct isn *next;
+	struct isn *next, *prev;
 
 	bool skip;
 };
