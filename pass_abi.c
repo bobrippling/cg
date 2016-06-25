@@ -383,6 +383,8 @@ static isn *convert_outgoing_args_isn(
 	if(!isn_call_getfnval_args(inst, &fnval, &fnargs))
 		return isn_next(inst);
 
+	dynarray_init(&state.abi_copies);
+
 	state.uniq_index_per_func = uniq_index_per_func;
 
 	fnty = type_deref(val_type(fnval));
