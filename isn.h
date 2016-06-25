@@ -37,6 +37,11 @@ isn *isn_ret(struct val *);
 
 isn *isn_call(struct val *into, struct val *fn, dynarray *args /*not consumed*/);
 
+/* used for preserving register allocations until their (implicit) use,
+ * e.g. call, end of prologue argument spill */
+isn *isn_implicit_use(void);
+void isn_implicit_use_add(isn *, struct val *);
+
 bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
 
 bool isn_call_getfnval_args(isn *, struct val **, dynarray **);

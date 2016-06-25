@@ -135,6 +135,15 @@ static void isn_free_1(isn *isn)
 			dynarray_reset(&isn->u.call.args);
 			break;
 		}
+		case ISN_IMPLICIT_USE:
+		{
+			size_t i;
+
+			dynarray_iter(&isn->u.implicit_use.vals, i)
+				val_release(dynarray_ent(&isn->u.implicit_use.vals, i));
+			dynarray_reset(&isn->u.implicit_use.vals);
+			break;
+		}
 	}
 
 	free(isn);
@@ -168,6 +177,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_PTR2INT:return "ptr2int";
 		case ISN_INT2PTR:return "int2ptr";
 		case ISN_PTRCAST:return "ptrcast";
+		case ISN_IMPLICIT_USE: return "implicituse";
 	}
 	return NULL;
 }
@@ -356,6 +366,19 @@ isn *isn_copy(val *to, val *from)
 	return isn;
 }
 
+isn *isn_implicit_use()
+{
+	isn *isn = isn_new(ISN_IMPLICIT_USE);
+	dynarray_init(&isn->u.implicit_use.vals);
+	return isn;
+}
+
+void isn_implicit_use_add(isn *i, val *v)
+{
+	assert(i->type == ISN_IMPLICIT_USE);
+	dynarray_add(&i->u.implicit_use.vals, val_retain(v));
+}
+
 isn *isn_alloca(val *v)
 {
 	isn *isn;
@@ -460,6 +483,9 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 		case ISN_BR:
 		case ISN_CALL:
 			break;
+
+		case ISN_IMPLICIT_USE:
+			return true;
 
 		case ISN_PTR2INT:
 		case ISN_INT2PTR:
@@ -568,6 +594,15 @@ static void isn_on_vals(
 			dynarray_iter(&current->u.call.args, i){
 				fn(dynarray_ent(&current->u.call.args, i), current, ctx);
 			}
+			break;
+		}
+
+		case ISN_IMPLICIT_USE:
+		{
+			size_t i;
+
+			dynarray_iter(&current->u.implicit_use.vals, i)
+				fn(dynarray_ent(&current->u.implicit_use.vals, i), current, ctx);
 			break;
 		}
 	}
@@ -739,6 +774,21 @@ static void isn_dump1(isn *i)
 					val_str(i->u.branch.cond),
 					i->u.branch.t->lbl,
 					i->u.branch.f->lbl);
+			break;
+		}
+
+		case ISN_IMPLICIT_USE:
+		{
+			size_t j;
+			const char *sep = "";
+
+			printf("\timplicituse ");
+
+			dynarray_iter(&i->u.implicit_use.vals, j){
+				printf("%s%s", sep, val_str(dynarray_ent(&i->u.implicit_use.vals, j)));
+				sep = ", ";
+			}
+			printf("\n");
 			break;
 		}
 	}

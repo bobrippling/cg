@@ -25,7 +25,8 @@ struct isn
 		ISN_BR,
 		ISN_JMP,
 		ISN_RET,
-		ISN_CALL
+		ISN_CALL,
+		ISN_IMPLICIT_USE
 	} type;
 
 	union
@@ -95,6 +96,11 @@ struct isn
 		} call;
 
 		struct val *ret;
+
+		struct
+		{
+			dynarray vals;
+		} implicit_use;
 	} u;
 
 	struct isn *next, *prev;
