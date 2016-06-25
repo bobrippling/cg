@@ -101,6 +101,11 @@ bool val_is_volatile(val *v)
 	return loc && loc->where == NAME_IN_REG;
 }
 
+bool val_is_abi(val *v)
+{
+	return v->kind == ABI_TEMP;
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;

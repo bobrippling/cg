@@ -37,6 +37,7 @@ val *val_new_abi_stack(int stack_off, struct type *);
 
 void val_temporary_init(val *, struct type *);
 
+bool val_is_abi(val *);
 unsigned val_size(val *);
 void val_size_align(val *, unsigned *, unsigned *);
 struct type *val_type(val *);

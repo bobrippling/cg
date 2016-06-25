@@ -313,19 +313,42 @@ static void classify_and_create_abi_isns_for_arg(
 	}
 }
 
+static void add_state_isns_helper(val *v, isn *i, void *ctx)
+{
+	isn *implicituse = ctx;
+	(void)i;
+
+	if(!val_is_abi(v))
+		return;
+
+	isn_implicit_use_add(implicituse, v);
+}
+
 static void add_state_isns(
 		struct regpass_state *state, isn *insertion_point)
 {
+	isn *implicituse;
 	unsigned i;
+
+	if(dynarray_count(&state->abi_copies) == 0)
+		return;
+
+	implicituse = isn_implicit_use();
 
 	/* emit ABI copies as the first thing the function does: */
 	dynarray_iter(&state->abi_copies, i){
 		isn *isn = dynarray_ent(&state->abi_copies, i);
 
 		isn_insert_before(insertion_point, isn);
+
+		isn_on_all_vals(isn, add_state_isns_helper, implicituse);
 	}
 
 	dynarray_reset(&state->abi_copies);
+
+	/* emit an implicit use of all abi values,
+	 * so they're preserved up until this point: */
+	isn_insert_before(insertion_point, implicituse);
 }
 
 static void convert_incoming_args(
