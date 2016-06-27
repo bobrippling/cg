@@ -324,7 +324,7 @@ static void add_state_isns_helper(val *v, isn *i, void *ctx)
 	isn_implicit_use_add(implicituse, v);
 }
 
-static void add_state_isns(
+static void prepend_state_isns(
 		struct regpass_state *state, isn *insertion_point)
 {
 	isn *implicituse;
@@ -388,7 +388,7 @@ static void convert_incoming_args(
 				OVERLAY_FROM_REGS);
 	}
 
-	add_state_isns(&state, block_first_isn(entry));
+	prepend_state_isns(&state, block_first_isn(entry));
 }
 
 static isn *convert_outgoing_args_isn(
@@ -426,7 +426,7 @@ static isn *convert_outgoing_args_isn(
 				inst, OVERLAY_TO_REGS);
 	}
 
-	add_state_isns(&state, inst);
+	prepend_state_isns(&state, inst);
 
 	return isn_next(inst);
 }
