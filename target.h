@@ -43,6 +43,9 @@ struct target
 		unsigned arg_regs_cnt_int;
 		const unsigned *arg_regs_fp;
 		unsigned arg_regs_cnt_fp;
+
+		const unsigned *ret_regs_int;
+		const unsigned ret_regs_cnt;
 	} abi;
 
 	global_emit_func *emit;

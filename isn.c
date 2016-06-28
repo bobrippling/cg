@@ -806,6 +806,14 @@ bool isn_call_getfnval_args(
 	return true;
 }
 
+val *isn_is_ret(isn *i)
+{
+	if(i->type != ISN_RET)
+		return NULL;
+
+	return i->u.ret;
+}
+
 #include "dynmap.h"
 #include "val_struct.h"
 static void get_named_val(val *v, isn *isn, void *ctx)

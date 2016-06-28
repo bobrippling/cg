@@ -24,6 +24,11 @@ static const unsigned arg_regs_x64[] = {
 	/* TODO: r8, r9 */
 };
 
+static const unsigned ret_regs_x64[] = {
+	0, /* rax */
+	3, /* rdx */
+};
+
 static const struct
 {
 	const char *name;
@@ -49,7 +54,11 @@ static const struct
 			callee_save_x64,
 			countof(callee_save_x64),
 			arg_regs_x64,
-			countof(arg_regs_x64)
+			countof(arg_regs_x64),
+			NULL, /* TODO: float */
+			0,
+			ret_regs_x64,
+			countof(ret_regs_x64)
 		},
 		global_dump /* TODO: x64_dump */
 	}

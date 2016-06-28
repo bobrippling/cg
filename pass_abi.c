@@ -452,6 +452,66 @@ static void convert_outgoing_args(
 	blocks_traverse(entry, convert_outgoing_args_block, &ctx, NULL);
 }
 
+static isn *convert_return_isn(
+		isn *inst,
+		val *stret_stash,
+		uniq_type_list *utl,
+		const struct target *target)
+{
+	val *retval = isn_is_ret(inst);
+	type *retty;
+
+	if(!retval)
+		goto out;
+
+	retty = val_type(retval);
+	if(type_is_struct(retty)){
+		assert(0 && "todo: stret");
+
+	}else if(type_is_float(retty, 1)){
+		assert(0 && "todo: fpret");
+
+	}else{
+		val *abiv;
+		isn *movret;
+
+		assert(target->abi.ret_regs_cnt > 0);
+		assert(type_is_int(retty));
+
+		abiv = val_new_abi_reg(target->abi.ret_regs_int[0], retty);
+		movret = isn_copy(abiv, retval);
+
+		isn_insert_before(inst, movret);
+	}
+
+out:
+	return isn_next(inst);
+}
+
+static void convert_return(block *blk, void *const vctx)
+{
+	struct convert_ret_ctx *ctx = vctx;
+	isn *i = block_first_isn(blk);
+
+	while(i){
+		i = convert_return_isn(i, ctx->stret_stash, ctx->utl, ctx->target);
+	}
+}
+
+static void convert_returns(
+		val *stret_stash,
+		uniq_type_list *utl,
+		const struct target *target,
+		block *entry)
+{
+	struct convert_ret_ctx ctx;
+	ctx.stret_stash = stret_stash;
+	ctx.utl = utl;
+	ctx.target = target;
+
+	blocks_traverse(entry, convert_return, &ctx, NULL);
+}
+
 void pass_abi(function *fn, unit *unit, const struct target *target)
 {
 	/* convert incoming and outgoing arguments
@@ -464,5 +524,7 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	}
 
 	convert_incoming_args(fn, unit_uniqtypes(unit), target, entry);
+	convert_returns(NULL, unit_uniqtypes(unit), target, entry);
+
 	convert_outgoing_args(target, unit_uniqtypes(unit), entry);
 }
