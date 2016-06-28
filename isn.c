@@ -360,6 +360,8 @@ isn *isn_copy(val *to, val *from)
 	val_retain(to);
 	val_retain(from);
 
+	assert(val_type(to) == val_type(from));
+
 	isn = isn_new(ISN_COPY);
 	isn->u.copy.from = from;
 	isn->u.copy.to = to;
