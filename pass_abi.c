@@ -127,7 +127,7 @@ static void convert_incoming_arg_stack(
 	val *stack;
 	isn *store;
 
-	/* FIXME: alignment */
+	fprintf(stderr, "FIXME: stack argument alignment\n");
 	state->stackoff += type_size(argty);
 	stack = val_new_abi_stack(state->stackoff, argty);
 
@@ -453,7 +453,7 @@ static isn *convert_outgoing_args_isn(
 
 	/* first, check for stret */
 	if(type_is_struct(retty)){
-		/* TODO */
+		assert(0 && "todo: setup for stret");
 	}
 
 	for(i = 0; i < dynarray_count(arg_tys); i++){
