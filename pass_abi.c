@@ -173,7 +173,7 @@ static void create_arg_reg_overlay_isns(
 
 		abiv = val_new_abi_reg(
 				arg_reg_array[*reg_index],
-				argty); /* FIXME: argty */
+				argty); /* argty is acceptable here */
 
 		copy = isn_copy(
 				overlay_direction == OVERLAY_FROM_REGS ? argval : abiv,
@@ -225,15 +225,15 @@ static void create_arg_reg_overlay_isns(
 
 		abiv = val_new_abi_reg(
 				arg_reg_array[*reg_index],
-				argty); /* FIXME: argty */
+				regty);
 
 		abi_copy = val_new_localf(
-				argty, "abi.%d.%d",
+				regty, "abi.%d.%d",
 				i, (*state->uniq_index_per_func)++);
 
 		/* compute spill position / elem for register */
 		elemp = val_new_localf(
-				type_get_ptr(utl, argty),
+				type_get_ptr(utl, regty),
 				"spill.%d.%d",
 				i,
 				(*state->uniq_index_per_func)++);
