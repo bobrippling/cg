@@ -50,6 +50,13 @@ struct convert_out_ctx
 	unsigned uniq_index_per_func;
 };
 
+struct convert_ret_ctx
+{
+	val *stret_stash;
+	uniq_type_list *utl;
+	const struct target *target;
+};
+
 static enum regclass regclass_merge(enum regclass a, enum regclass b)
 {
 	if(a == NO_CLASS)
@@ -351,8 +358,34 @@ static void prepend_state_isns(
 	isn_insert_before(insertion_point, implicituse);
 }
 
+static val *stret_ptr_stash(
+		type *retty,
+		block *entry,
+		const struct target *target,
+		uniq_type_list *utl)
+{
+	isn *save_alloca;
+	isn *save_store;
+	val *alloca_val;
+	val *abiv;
+	type *stptr_ty = type_get_ptr(utl, retty);
+
+	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), ".stret");
+	save_alloca = isn_alloca(alloca_val);
+
+	assert(target->abi.arg_regs_cnt_int > 0);
+	abiv = val_new_abi_reg(target->abi.arg_regs_int[0], stptr_ty);
+	save_store = isn_store(abiv, alloca_val);
+
+	isn_insert_before(block_first_isn(entry), save_alloca);
+	isn_insert_after(save_alloca, save_store);
+
+	return alloca_val;
+}
+
 static void convert_incoming_args(
 		function *fn,
+		val **const stret_stash_out,
 		uniq_type_list *utl,
 		const struct target *target,
 		block *const entry)
@@ -367,13 +400,18 @@ static void convert_incoming_args(
 	unsigned i;
 	struct regpass_state state = { 0 };
 	unsigned uniq_index_per_func = 0;
+	struct typeclass retcls;
+
 	state.uniq_index_per_func = &uniq_index_per_func;
 
 	dynarray_init(&state.abi_copies);
 
-	if(type_is_struct(retty)){
-		/* need to remember this and generate the memcpy for return later */
-		/* TODO */
+	classify_type(retty, &retcls);
+	if(retcls.inmem){
+		assert(type_is_struct(retty));
+		/* store stret pointer for return later */
+		*stret_stash_out = stret_ptr_stash(retty, entry, target, utl);
+		state.int_idx++;
 	}
 
 	for(i = 0; i < function_arg_count(fn); i++){
@@ -466,7 +504,21 @@ static isn *convert_return_isn(
 
 	retty = val_type(retval);
 	if(type_is_struct(retty)){
-		assert(0 && "todo: stret");
+		if(stret_stash){
+			/* return via memory */
+			isn *load, *store;
+			val *loadtmp = val_new_localf(
+					type_get_ptr(utl, retty),
+					"stret.val");
+
+			load = isn_load(loadtmp, stret_stash);
+			store = isn_store(retval, loadtmp);
+
+			isn_insert_before(inst, load);
+			isn_insert_after(load, store);
+		}else{
+			assert(0 && "todo: stret via regs");
+		}
 
 	}else if(type_is_float(retty, 1)){
 		assert(0 && "todo: fpret");
@@ -517,14 +569,15 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	/* convert incoming and outgoing arguments
 	 * into registers/stack entries */
 	block *const entry = function_entry_block(fn, false);
+	val *stret_stash = NULL;
 
 	if(!entry){
 		assert(function_is_forward_decl(fn));
 		return;
 	}
 
-	convert_incoming_args(fn, unit_uniqtypes(unit), target, entry);
-	convert_returns(NULL, unit_uniqtypes(unit), target, entry);
+	convert_incoming_args(fn, &stret_stash, unit_uniqtypes(unit), target, entry);
+	convert_returns(stret_stash, unit_uniqtypes(unit), target, entry);
 
 	convert_outgoing_args(target, unit_uniqtypes(unit), entry);
 }
