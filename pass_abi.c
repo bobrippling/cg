@@ -363,7 +363,7 @@ static void convert_incoming_args(
 	 * - stret
 	 * - struct arguments
 	 */
-	type *retty = type_func_call(type_deref(function_type(fn)), NULL, NULL);
+	type *retty = type_func_call(function_type(fn), NULL, NULL);
 	unsigned i;
 	struct regpass_state state = { 0 };
 	unsigned uniq_index_per_func = 0;
