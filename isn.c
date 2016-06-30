@@ -22,10 +22,24 @@ isn *isn_new(enum isn_type t)
 	return isn;
 }
 
+static bool isn_in_list(isn *list, isn *candidate)
+{
+	for(; list; list = isn_next(list))
+		if(candidate == list)
+			return true;
+
+	return false;
+}
+
 void isn_insert_before(isn *target, isn *new)
 {
 	assert(target && "no insert target");
 	assert(new && "insert null isn?");
+
+	assert(!new->prev);
+	assert(!new->next);
+
+	assert(!isn_in_list(target, new));
 
 	/* link in new: */
 	new->prev = target->prev;
@@ -41,6 +55,11 @@ void isn_insert_after(isn *target, isn *new)
 	assert(target && "no insert target");
 	assert(new && "insert null isn?");
 
+	assert(!new->prev);
+	assert(!new->next);
+
+	assert(!isn_in_list(target, new));
+
 	/* link in new: */
 	new->next = target->next;
 	new->prev = target;
@@ -50,10 +69,49 @@ void isn_insert_after(isn *target, isn *new)
 	target->next = new;
 }
 
+void isns_insert_before(isn *target, isn *list)
+{
+	isn *head = isn_first(list);
+	isn *tail = isn_last(list);
+
+	assert(!head->prev);
+	assert(!tail->next);
+
+	head->prev = target->prev;
+	if(target->prev)
+		target->prev->next = head;
+
+	tail->next = target;
+	target->prev = tail;
+}
+
+void isns_insert_after(isn *target, isn *list)
+{
+	isn *head = isn_first(list);
+	isn *tail = isn_last(list);
+
+	assert(!head->prev);
+	assert(!tail->next);
+
+	tail->next = target->next;
+	if(target->next)
+		target->next->prev = tail;
+
+	head->prev = target;
+	target->next = head;
+}
+
 isn *isn_first(isn *i)
 {
 	while(i->prev)
 		i = i->prev;
+	return i;
+}
+
+isn *isn_last(isn *i)
+{
+	while(i->next)
+		i = i->next;
 	return i;
 }
 

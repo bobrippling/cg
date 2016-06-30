@@ -54,8 +54,19 @@ struct val *isn_is_ret(isn *);
 
 isn *isn_first(isn *);
 isn *isn_next(isn *);
+isn *isn_last(isn *);
+
+#define ISN_APPEND_OR_SET(lval, new) do{ \
+	if(lval) \
+		isn_insert_after(isn_last(lval), new); \
+	else \
+		lval = new; \
+}while(0)
 
 void isn_insert_before(isn *, isn *);
 void isn_insert_after(isn *, isn *);
+
+void isns_insert_before(isn *, isn *list);
+void isns_insert_after(isn *, isn *list);
 
 #endif
