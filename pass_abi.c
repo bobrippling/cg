@@ -57,6 +57,19 @@ struct convert_ret_ctx
 	const struct target *target;
 };
 
+static void regpass_state_init(
+		struct regpass_state *state,
+		unsigned *uniq_index_per_func)
+{
+	dynarray_init(&state->abi_copies);
+	state->uniq_index_per_func = uniq_index_per_func;
+}
+
+static void regpass_state_deinit(struct regpass_state *state)
+{
+	dynarray_reset(&state->abi_copies);
+}
+
 static enum regclass regclass_merge(enum regclass a, enum regclass b)
 {
 	if(a == NO_CLASS)
@@ -444,9 +457,7 @@ static isn *convert_outgoing_args_isn(
 	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
 		return isn_next(inst);
 
-	dynarray_init(&state.abi_copies);
-
-	state.uniq_index_per_func = uniq_index_per_func;
+	regpass_state_init(&state, uniq_index_per_func);
 
 	fnty = type_deref(val_type(fnval));
 	retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
@@ -465,8 +476,7 @@ static isn *convert_outgoing_args_isn(
 	}
 
 	prepend_state_isns(&state, inst);
-
-	dynarray_reset(&state.abi_copies);
+	regpass_state_deinit(&state);
 
 	return isn_next(inst);
 }
