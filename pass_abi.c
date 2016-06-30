@@ -437,11 +437,11 @@ static isn *convert_outgoing_args_isn(
 {
 	struct regpass_state state = { 0 };
 	size_t i;
-	type *retty;
+	val *fnret; type *retty;
 	val *fnval; type *fnty;
 	dynarray *fnargs; dynarray *arg_tys;
 
-	if(!isn_call_getfnval_args(inst, &fnval, &fnargs))
+	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
 		return isn_next(inst);
 
 	dynarray_init(&state.abi_copies);

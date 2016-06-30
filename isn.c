@@ -796,13 +796,17 @@ static void isn_dump1(isn *i)
 	}
 }
 
-bool isn_call_getfnval_args(
-		isn *isn, struct val **const pfn, dynarray **const pargs)
+bool isn_call_getfnval_ret_args(
+		isn *isn,
+		struct val **const pfn,
+		struct val **const pret,
+		dynarray **const pargs)
 {
 	if(isn->type != ISN_CALL)
 		return false;
 
 	*pfn = isn->u.call.fn;
+	*pret = isn->u.call.into_or_null;
 	*pargs = &isn->u.call.args;
 
 	return true;

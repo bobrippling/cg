@@ -44,7 +44,12 @@ void isn_implicit_use_add(isn *, struct val *);
 
 bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
 
-bool isn_call_getfnval_args(isn *, struct val **, dynarray **);
+bool isn_call_getfnval_ret_args(
+		isn *isn,
+		struct val **const pfn,
+		struct val **const pret,
+		dynarray **const pargs);
+
 struct val *isn_is_ret(isn *);
 
 isn *isn_first(isn *);
