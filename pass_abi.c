@@ -448,7 +448,7 @@ static isn *convert_outgoing_args_isn(
 		const struct target *target,
 		uniq_type_list *utl)
 {
-	struct regpass_state state = { 0 };
+	struct regpass_state arg_state = { 0 };
 	size_t i;
 	val *fnret; type *retty;
 	val *fnval; type *fnty;
@@ -457,7 +457,7 @@ static isn *convert_outgoing_args_isn(
 	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
 		return isn_next(inst);
 
-	regpass_state_init(&state, uniq_index_per_func);
+	regpass_state_init(&arg_state, uniq_index_per_func);
 
 	fnty = type_deref(val_type(fnval));
 	retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
@@ -471,12 +471,12 @@ static isn *convert_outgoing_args_isn(
 		val *argval = dynarray_ent(fnargs, i);
 
 		classify_and_create_abi_isns_for_arg(
-				target, argval, &state, utl,
+				target, argval, &arg_state, utl,
 				inst, OVERLAY_TO_REGS);
 	}
 
-	prepend_state_isns(&state, inst);
-	regpass_state_deinit(&state);
+	prepend_state_isns(&arg_state, inst);
+	regpass_state_deinit(&arg_state);
 
 	return isn_next(inst);
 }
