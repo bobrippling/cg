@@ -442,7 +442,7 @@ static void convert_incoming_args(
 	prepend_state_isns(&state, block_first_isn(entry));
 }
 
-static isn *convert_outgoing_args_isn(
+static isn *convert_outgoing_args_and_call_isn(
 		isn *inst,
 		unsigned *const uniq_index_per_func,
 		const struct target *target,
@@ -481,17 +481,17 @@ static isn *convert_outgoing_args_isn(
 	return isn_next(inst);
 }
 
-static void convert_outgoing_args_block(block *blk, void *const vctx)
+static void convert_outgoing_args_and_call_block(block *blk, void *const vctx)
 {
 	struct convert_out_ctx *const ctx = vctx;
 	isn *i = block_first_isn(blk);
 
 	while(i){
-		i = convert_outgoing_args_isn(i, &ctx->uniq_index_per_func, ctx->target, ctx->utl);
+		i = convert_outgoing_args_and_call_isn(i, &ctx->uniq_index_per_func, ctx->target, ctx->utl);
 	}
 }
 
-static void convert_outgoing_args(
+static void convert_outgoing_args_and_call(
 		const struct target *target, uniq_type_list *utl, block *const entry)
 {
 	struct convert_out_ctx ctx = { 0 };
@@ -499,7 +499,7 @@ static void convert_outgoing_args(
 	ctx.target = target;
 	ctx.utl = utl;
 
-	blocks_traverse(entry, convert_outgoing_args_block, &ctx, NULL);
+	blocks_traverse(entry, convert_outgoing_args_and_call_block, &ctx, NULL);
 }
 
 static isn *convert_return_isn(
@@ -591,5 +591,5 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	convert_incoming_args(fn, &stret_stash, unit_uniqtypes(unit), target, entry);
 	convert_returns(stret_stash, unit_uniqtypes(unit), target, entry);
 
-	convert_outgoing_args(target, unit_uniqtypes(unit), entry);
+	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), entry);
 }
