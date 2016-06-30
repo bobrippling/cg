@@ -442,6 +442,54 @@ static void convert_incoming_args(
 	prepend_state_isns(&state, block_first_isn(entry));
 }
 
+static isn *convert_call(
+		isn *inst,
+		val *fnret,
+		struct regpass_state *arg_state,
+		unsigned *const uniq_index_per_func,
+		const struct target *target,
+		uniq_type_list *utl)
+{
+	struct typeclass cls;
+
+	classify_type(val_type(fnret), &cls);
+
+	if(cls.inmem){
+		isn *alloca;
+		isn *load;
+		val *stret_alloca;
+
+		stret_alloca = val_new_localf(
+				type_get_ptr(utl, val_type(fnret)),
+				"stret.%d",
+				(*uniq_index_per_func)++);
+
+		alloca = isn_alloca(stret_alloca);
+		isn_insert_before(inst, alloca);
+
+		/* pass the stret pointer in the first argument */
+		create_arg_reg_overlay_isns(
+				arg_state,
+				&cls,
+				target,
+				inst /* inserted before */,
+				utl,
+				stret_alloca,
+				val_type(stret_alloca),
+				OVERLAY_TO_REGS);
+
+		/* afterwards we load from stret into retval */
+		load = isn_load(fnret, stret_alloca);
+		isn_insert_after(inst, load);
+
+	}else{
+		assert(0 && "TODO: ret-via-regs");
+	}
+
+
+	return isn_next(inst);
+}
+
 static isn *convert_outgoing_args_and_call_isn(
 		isn *inst,
 		unsigned *const uniq_index_per_func,
@@ -462,10 +510,8 @@ static isn *convert_outgoing_args_and_call_isn(
 	fnty = type_deref(val_type(fnval));
 	retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
 
-	/* first, check for stret */
-	if(type_is_struct(retty)){
-		assert(0 && "todo: setup for stret");
-	}
+	/* first, check for stret / allocate stret args, etc */
+	convert_call(inst, fnret, &arg_state, uniq_index_per_func, target, utl);
 
 	for(i = 0; i < dynarray_count(arg_tys); i++){
 		val *argval = dynarray_ent(fnargs, i);
