@@ -466,6 +466,8 @@ static isn *convert_outgoing_args_isn(
 
 	prepend_state_isns(&state, inst);
 
+	dynarray_reset(&state.abi_copies);
+
 	return isn_next(inst);
 }
 
