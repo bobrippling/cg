@@ -178,7 +178,7 @@ static void create_arg_reg_overlay_isns(
 	/* if it's a struct (or larger than machine word size),
 	 * we need to spill it */
 
-	if(bytes_to_copy <= 8){
+	if(!type_is_struct(argty)){
 		/* simply assign to the argval from the abival */
 		const int is_fp = !!(regclass->regs[0] & SSE);
 		const unsigned *arg_reg_array = (
