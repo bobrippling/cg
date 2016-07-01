@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "unit.h" /* global_emit_func */
+#include "regset.h"
 
 /* <arch><sub>-<vendor>-<sys>-<abi>
  * arch affects target_arch
@@ -34,18 +35,10 @@ struct target
 
 	struct target_abi
 	{
-		unsigned nregs;
-
-		const unsigned *callee_save;
-		unsigned callee_save_cnt;
-
-		const unsigned *arg_regs_int;
-		unsigned arg_regs_cnt_int;
-		const unsigned *arg_regs_fp;
-		unsigned arg_regs_cnt_fp;
-
-		const unsigned *ret_regs_int;
-		const unsigned ret_regs_cnt;
+		struct regset scratch_regs;
+		struct regset callee_saves;
+		struct regset arg_regs;
+		struct regset ret_regs;
 	} abi;
 
 	global_emit_func *emit;

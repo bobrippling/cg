@@ -12,22 +12,50 @@
 
 #include "x86.h"
 
-static const unsigned callee_save_x64[] = {
-	1 /* rbx */
+static const unsigned scratch_regs_x64[] = {
+	regt_make(0, 0), /* eax */
+	regt_make(2, 0), /* ecx */
+	regt_make(3, 0), /* edx */
+	regt_make(4, 0), /* esi */
+	regt_make(5, 0)  /* edi */
+};
+
+static const unsigned callee_saves_x64[] = {
+	regt_make(1, 0) /* rbx */
 };
 
 static const unsigned arg_regs_x64[] = {
-	4, /* rdi */
-	5, /* rsi */
-	3, /* rdx */
-	2, /* rcx */
+	regt_make(4, 0), /* rdi */
+	regt_make(5, 0), /* rsi */
+	regt_make(3, 0), /* rdx */
+	regt_make(2, 0)  /* rcx */
 	/* TODO: r8, r9 */
 };
 
 static const unsigned ret_regs_x64[] = {
-	0, /* rax */
-	3, /* rdx */
+	regt_make(0, 0), /* rax */
+	regt_make(3, 0)  /* rdx */
 };
+
+#define ARCH_ABI(arch)             \
+	{                                \
+		{                              \
+			scratch_regs_##arch,         \
+			countof(scratch_regs_##arch) \
+		},                             \
+		{                              \
+			callee_saves_##arch,         \
+			countof(callee_saves_##arch) \
+		},                             \
+		{                              \
+			arg_regs_##arch,             \
+			countof(arg_regs_##arch)     \
+		},                             \
+		{                              \
+			ret_regs_##arch,             \
+			countof(ret_regs_##arch)     \
+		},                             \
+	}
 
 static const struct
 {
@@ -49,17 +77,7 @@ static const struct
 	{
 		"x86_64",
 		{ 8, 8 },
-		{
-			6, /* eax-edx, di, si */
-			callee_save_x64,
-			countof(callee_save_x64),
-			arg_regs_x64,
-			countof(arg_regs_x64),
-			NULL, /* TODO: float */
-			0,
-			ret_regs_x64,
-			countof(ret_regs_x64)
-		},
+		ARCH_ABI(x64),
 		global_dump /* TODO: x64_dump */
 	}
 	/* TODO: i386 */

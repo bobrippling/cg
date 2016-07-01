@@ -159,7 +159,7 @@ static void convert_incoming_arg_stack(
 static void create_arg_reg_overlay_isns(
 		struct regpass_state *const state,
 		const struct typeclass *const regclass,
-		const struct target *target,
+		const struct regset *regs,
 		const struct isn_insertion *insertion,
 		uniq_type_list *utl,
 		val *argval,
@@ -182,10 +182,6 @@ static void create_arg_reg_overlay_isns(
 	if(!type_is_struct(argty)){
 		/* simply assign to the argval from the abival */
 		const int is_fp = !!(regclass->regs[0] & SSE);
-		const unsigned *arg_reg_array = (
-				is_fp
-				? target->abi.arg_regs_fp
-				: target->abi.arg_regs_int);
 		unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
 		val *abiv;
 		isn *copy;
@@ -193,7 +189,7 @@ static void create_arg_reg_overlay_isns(
 		assert(regclass->regs[1] == NO_CLASS);
 
 		abiv = val_new_abi_reg(
-				arg_reg_array[*reg_index],
+				regset_nth(regs, *reg_index, is_fp),
 				argty); /* argty is acceptable here */
 
 		copy = isn_copy(
@@ -230,10 +226,6 @@ static void create_arg_reg_overlay_isns(
 
 	for(i = 0; i < 2 && regclass->regs[i] != NO_CLASS; i++){
 		const int is_fp = !!(regclass->regs[i] & SSE);
-		const unsigned *arg_reg_array = (
-				is_fp
-				? target->abi.arg_regs_fp
-				: target->abi.arg_regs_int);
 		unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
 		type *regty;
 		isn *elem_isn;
@@ -246,7 +238,7 @@ static void create_arg_reg_overlay_isns(
 					is_fp));
 
 		abiv = val_new_abi_reg(
-				arg_reg_array[*reg_index],
+				regset_nth(regs, *reg_index, is_fp),
 				regty);
 
 		abi_copy = val_new_localf(
@@ -309,7 +301,7 @@ static void create_arg_reg_overlay_isns(
 }
 
 static void classify_and_create_abi_isns_for_arg(
-		const struct target *target,
+		const struct regset *regs,
 		val *argval,
 		struct regpass_state *const state,
 		uniq_type_list *utl,
@@ -326,8 +318,8 @@ static void classify_and_create_abi_isns_for_arg(
 		unsigned nsse = (cls.regs[0] == SSE) + (cls.regs[1] == SSE);
 		unsigned nint = (cls.regs[0] == INT) + (cls.regs[1] == INT);
 
-		if((nint && state->int_idx + nint > target->abi.arg_regs_cnt_int)
-		|| (nsse && state->fp_idx + nsse > target->abi.arg_regs_cnt_fp))
+		if((nint && state->int_idx + nint > regset_int_count(regs))
+		|| (nsse && state->fp_idx + nsse > regset_fp_count(regs)))
 		{
 			cls.inmem = 1;
 		}
@@ -345,7 +337,7 @@ static void classify_and_create_abi_isns_for_arg(
 		create_arg_reg_overlay_isns(
 				state,
 				&cls,
-				target,
+				regs,
 				&insertion,
 				utl,
 				argval,
@@ -395,7 +387,7 @@ static void insert_state_isns(
 static val *stret_ptr_stash(
 		type *retty,
 		block *entry,
-		const struct target *target,
+		const struct regset *regs,
 		uniq_type_list *utl)
 {
 	isn *save_alloca;
@@ -407,8 +399,7 @@ static val *stret_ptr_stash(
 	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), ".stret");
 	save_alloca = isn_alloca(alloca_val);
 
-	assert(target->abi.arg_regs_cnt_int > 0);
-	abiv = val_new_abi_reg(target->abi.arg_regs_int[0], stptr_ty);
+	abiv = val_new_abi_reg(regset_nth(regs, 0, 0), stptr_ty);
 	save_store = isn_store(abiv, alloca_val);
 
 	isn_insert_before(block_first_isn(entry), save_alloca);
@@ -421,7 +412,7 @@ static void convert_incoming_args(
 		function *fn,
 		val **const stret_stash_out,
 		uniq_type_list *utl,
-		const struct target *target,
+		const struct regset *regs,
 		block *const entry,
 		unsigned *const uniq_index_per_func)
 {
@@ -442,7 +433,7 @@ static void convert_incoming_args(
 	if(retcls.inmem){
 		assert(type_is_struct(retty));
 		/* store stret pointer for return later */
-		*stret_stash_out = stret_ptr_stash(retty, entry, target, utl);
+		*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl);
 		state.int_idx++;
 	}
 
@@ -453,7 +444,7 @@ static void convert_incoming_args(
 			continue;
 
 		classify_and_create_abi_isns_for_arg(
-				target, argval, &state, utl,
+				regs, argval, &state, utl,
 				block_first_isn(entry),
 				OVERLAY_FROM_REGS);
 	}
@@ -494,7 +485,7 @@ static isn *convert_call(
 		create_arg_reg_overlay_isns(
 				arg_state,
 				&cls,
-				target,
+				&target->abi.arg_regs,
 				&insertion,
 				utl,
 				stret_alloca,
@@ -516,7 +507,7 @@ static isn *convert_call(
 		create_arg_reg_overlay_isns(
 				&ret_state,
 				&cls,
-				target,
+				&target->abi.ret_regs,
 				&insertion,
 				utl,
 				fnret,
@@ -552,13 +543,19 @@ static isn *convert_outgoing_args_and_call_isn(
 	retty = type_func_call(fnty, &arg_tys, /*variadic*/NULL);
 
 	/* first, check for stret / allocate stret args, etc */
-	convert_call(inst, fnret, &arg_state, uniq_index_per_func, target, utl);
+	convert_call(
+			inst,
+			fnret,
+			&arg_state,
+			uniq_index_per_func,
+			target,
+			utl);
 
 	for(i = 0; i < dynarray_count(arg_tys); i++){
 		val *argval = dynarray_ent(fnargs, i);
 
 		classify_and_create_abi_isns_for_arg(
-				target, argval, &arg_state, utl,
+				&target->abi.arg_regs, argval, &arg_state, utl,
 				inst, OVERLAY_TO_REGS);
 	}
 
@@ -632,7 +629,7 @@ static isn *convert_return_isn(
 			create_arg_reg_overlay_isns(
 					&state,
 					&cls,
-					target,
+					&target->abi.ret_regs,
 					&insertion,
 					utl,
 					retval,
@@ -650,10 +647,9 @@ static isn *convert_return_isn(
 		val *abiv;
 		isn *movret;
 
-		assert(target->abi.ret_regs_cnt > 0);
 		assert(type_is_int(retty));
 
-		abiv = val_new_abi_reg(target->abi.ret_regs_int[0], retty);
+		abiv = val_new_abi_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
 		movret = isn_copy(abiv, retval);
 
 		isn_insert_before(inst, movret);
@@ -711,7 +707,7 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 			fn,
 			&stret_stash,
 			unit_uniqtypes(unit),
-			target,
+			&target->abi.arg_regs,
 			entry,
 			&uniq_index_per_func);
 
