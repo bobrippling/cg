@@ -512,7 +512,25 @@ static isn *convert_call(
 		isn_insert_after(inst, load);
 
 	}else{
-		assert(0 && "TODO: ret-via-regs");
+		struct regpass_state ret_state = { 0 };
+
+		regpass_state_init(&ret_state, uniq_index_per_func);
+
+		insertion.before = false;
+
+		/* copy return value(s) into inst->u.call.into_or_null */
+		create_arg_reg_overlay_isns(
+				&ret_state,
+				&cls,
+				target,
+				&insertion,
+				utl,
+				fnret,
+				val_type(fnret),
+				OVERLAY_FROM_REGS);
+
+		insert_state_isns(&ret_state, inst, false);
+		regpass_state_deinit(&ret_state);
 	}
 
 
