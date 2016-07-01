@@ -30,11 +30,17 @@ struct typeclass
 
 struct regpass_state
 {
-	dynarray abi_copies; /* array of isn*, %abi_... = <reg %d> */
+	isn *abi_copies; /* list of isn*, %abi_... = <reg %d> */
 	int stackoff;
 	unsigned int_idx;
 	unsigned fp_idx;
 	unsigned *uniq_index_per_func;
+};
+
+struct isn_insertion
+{
+	isn *at;
+	bool before;
 };
 
 enum regoverlay_direction
@@ -61,13 +67,13 @@ static void regpass_state_init(
 		struct regpass_state *state,
 		unsigned *uniq_index_per_func)
 {
-	dynarray_init(&state->abi_copies);
+	state->abi_copies = NULL;
 	state->uniq_index_per_func = uniq_index_per_func;
 }
 
 static void regpass_state_deinit(struct regpass_state *state)
 {
-	dynarray_reset(&state->abi_copies);
+	state->abi_copies = NULL;
 }
 
 static enum regclass regclass_merge(enum regclass a, enum regclass b)
@@ -146,14 +152,14 @@ static void convert_incoming_arg_stack(
 
 	store = isn_store(argval, stack);
 
-	dynarray_add(&state->abi_copies, store);
+	ISN_APPEND_OR_SET(state->abi_copies, store);
 }
 
 static void create_arg_reg_overlay_isns(
 		struct regpass_state *const state,
 		const struct typeclass *const regclass,
 		const struct target *target,
-		isn *const insertion_point, /* insert before here */
+		const struct isn_insertion *insertion,
 		uniq_type_list *utl,
 		val *argval,
 		type *argty,
@@ -163,10 +169,11 @@ static void create_arg_reg_overlay_isns(
 	 * or xmm1:xmm0 (or a subset),
 	 * so we read from memory into those regs */
 	/* first arg: */
-	isn *alloca;
+	isn *alloca = NULL;
 	val *spilt_arg;
 	int i;
 	unsigned bytes_to_copy = type_size(argty);
+	isn *current_isn = NULL;
 
 	/* if it's a struct (or larger than machine word size),
 	 * we need to spill it */
@@ -194,7 +201,7 @@ static void create_arg_reg_overlay_isns(
 
 		/* this is an instruction involving an abi register/stack slot,
 		 * so needs to go into abi_copies and dealt with later */
-		dynarray_add(&state->abi_copies, copy);
+		ISN_APPEND_OR_SET(state->abi_copies, copy);
 
 		++*reg_index;
 		return;
@@ -208,16 +215,22 @@ static void create_arg_reg_overlay_isns(
 	if(overlay_direction == OVERLAY_TO_REGS){
 		/* spill the struct to somewhere we can elem it from */
 		isn *initial_spill = isn_store(argval, spilt_arg);
-		isn_insert_before(insertion_point, initial_spill);
+
+		assert(!current_isn);
+		current_isn = initial_spill;
 	}
 
 	if(overlay_direction == OVERLAY_FROM_REGS){
 		/* need a local storage space for the (struct) argument */
 		alloca = isn_alloca(spilt_arg);
-		isn_insert_before(insertion_point, alloca);
-	}else{
-		alloca = NULL;
+
+		if(current_isn)
+			isn_insert_after(current_isn, alloca);
+
+		current_isn = alloca;
 	}
+
+	assert(current_isn);
 
 	for(i = 0; i < 2 && regclass->regs[i] != NO_CLASS; i++){
 		const int is_fp = !!(regclass->regs[i] & SSE);
@@ -254,31 +267,34 @@ static void create_arg_reg_overlay_isns(
 				spilt_arg,
 				val_new_i(i, type_get_primitive(utl, i4)),
 				elemp);
-		isn_insert_before(insertion_point, elem_isn);
 
+		isn_insert_after(current_isn, elem_isn);
+		current_isn = elem_isn;
 
 		/* copy from abiv -> local register,
 		 * or vice-versa */
 		if(overlay_direction == OVERLAY_FROM_REGS){
 			isn *store;
 			isn *copy = isn_copy(abi_copy, abiv);
-			dynarray_add(&state->abi_copies, copy);
+			ISN_APPEND_OR_SET(state->abi_copies, copy);
 
 			/* copy from abiv -> spilt arg (inside struct) */
 			store = isn_store(abi_copy, elemp);
 			assert(alloca);
-			isn_insert_after(elem_isn, store);
+			isn_insert_after(current_isn, store);
+			current_isn = store;
 		}else{
 			isn *load, *copy;
 
 			assert(!alloca);
 			/* load from inside struct / arg */
 			load = isn_load(abi_copy, elemp);
-			isn_insert_after(elem_isn, load);
+			isn_insert_after(current_isn, load);
+			current_isn = load;
 
 			/* move to abi reg */
 			copy = isn_copy(abiv, abi_copy);
-			dynarray_add(&state->abi_copies, copy);
+			ISN_APPEND_OR_SET(state->abi_copies, copy);
 		}
 
 		bytes_to_copy -= type_size(regty);
@@ -288,8 +304,14 @@ static void create_arg_reg_overlay_isns(
 	if(overlay_direction == OVERLAY_FROM_REGS){
 		/* insert the final assignment - the constructed struct */
 		isn *final_load = isn_load(argval, spilt_arg);
-		isn_insert_before(insertion_point, final_load);
+
+		isn_insert_after(current_isn, final_load);
 	}
+
+	if(insertion->before)
+		isns_insert_before(insertion->at, current_isn);
+	else
+		isns_insert_after(insertion->at, current_isn);
 }
 
 static void classify_and_create_abi_isns_for_arg(
@@ -321,11 +343,16 @@ static void classify_and_create_abi_isns_for_arg(
 		convert_incoming_arg_stack(state, argty, argval);
 
 	}else{
+		struct isn_insertion insertion;
+
+		insertion.before = true;
+		insertion.at = insertion_point;
+
 		create_arg_reg_overlay_isns(
 				state,
 				&cls,
 				target,
-				insertion_point,
+				&insertion,
 				utl,
 				argval,
 				argty,
@@ -344,31 +371,31 @@ static void add_state_isns_helper(val *v, isn *i, void *ctx)
 	isn_implicit_use_add(implicituse, v);
 }
 
-static void prepend_state_isns(
-		struct regpass_state *state, isn *insertion_point)
+static void insert_state_isns(
+		struct regpass_state *state,
+		isn *insertion_point,
+		bool insert_before)
 {
-	isn *implicituse;
-	unsigned i;
+	isn *implicituse, *i;
 
-	if(dynarray_count(&state->abi_copies) == 0)
+	if(!state->abi_copies)
 		return;
 
 	implicituse = isn_implicit_use();
 
 	/* emit ABI copies as the first thing the function does: */
-	dynarray_iter(&state->abi_copies, i){
-		isn *isn = dynarray_ent(&state->abi_copies, i);
-
-		isn_insert_before(insertion_point, isn);
-
-		isn_on_all_vals(isn, add_state_isns_helper, implicituse);
+	for(i = isn_first(state->abi_copies); i; i = isn_next(i)){
+		isn_on_all_vals(i, add_state_isns_helper, implicituse);
 	}
 
-	dynarray_reset(&state->abi_copies);
+	/* repurpose abi_copies to emit an implicit use of all abi values,
+	 * so they're preserved up until the final point */
+	isn_insert_after(isn_last(state->abi_copies), implicituse);
 
-	/* emit an implicit use of all abi values,
-	 * so they're preserved up until this point: */
-	isn_insert_before(insertion_point, implicituse);
+	(insert_before ? isns_insert_before : isns_insert_after)(
+			insertion_point, state->abi_copies);
+
+	state->abi_copies = NULL;
 }
 
 static val *stret_ptr_stash(
@@ -417,8 +444,6 @@ static void convert_incoming_args(
 
 	state.uniq_index_per_func = &uniq_index_per_func;
 
-	dynarray_init(&state.abi_copies);
-
 	classify_type(retty, &retcls);
 	if(retcls.inmem){
 		assert(type_is_struct(retty));
@@ -439,7 +464,7 @@ static void convert_incoming_args(
 				OVERLAY_FROM_REGS);
 	}
 
-	prepend_state_isns(&state, block_first_isn(entry));
+	insert_state_isns(&state, block_first_isn(entry), true);
 }
 
 static isn *convert_call(
@@ -450,7 +475,11 @@ static isn *convert_call(
 		const struct target *target,
 		uniq_type_list *utl)
 {
+	struct isn_insertion insertion;
 	struct typeclass cls;
+
+	insertion.before = true;
+	insertion.at = inst;
 
 	classify_type(val_type(fnret), &cls);
 
@@ -472,7 +501,7 @@ static isn *convert_call(
 				arg_state,
 				&cls,
 				target,
-				inst /* inserted before */,
+				&insertion,
 				utl,
 				stret_alloca,
 				val_type(stret_alloca),
@@ -521,7 +550,7 @@ static isn *convert_outgoing_args_and_call_isn(
 				inst, OVERLAY_TO_REGS);
 	}
 
-	prepend_state_isns(&arg_state, inst);
+	insert_state_isns(&arg_state, inst, true);
 	regpass_state_deinit(&arg_state);
 
 	return isn_next(inst);
