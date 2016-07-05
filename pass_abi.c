@@ -61,6 +61,7 @@ struct convert_ret_ctx
 	val *stret_stash;
 	uniq_type_list *utl;
 	const struct target *target;
+	unsigned *uniq_index_per_func;
 };
 
 static void regpass_state_init(
@@ -428,7 +429,8 @@ static void convert_incoming_args(
 		val **const stret_stash_out,
 		uniq_type_list *utl,
 		const struct target *target,
-		block *const entry)
+		block *const entry,
+		unsigned *const uniq_index_per_func)
 {
 	/* need to consider:
 	 * - int/ptr regs
@@ -439,10 +441,9 @@ static void convert_incoming_args(
 	type *retty = type_func_call(function_type(fn), NULL, NULL);
 	unsigned i;
 	struct regpass_state state = { 0 };
-	unsigned uniq_index_per_func = 0;
 	struct typeclass retcls;
 
-	state.uniq_index_per_func = &uniq_index_per_func;
+	state.uniq_index_per_func = uniq_index_per_func;
 
 	classify_type(retty, &retcls);
 	if(retcls.inmem){
@@ -599,6 +600,7 @@ static isn *convert_return_isn(
 		isn *inst,
 		val *stret_stash,
 		uniq_type_list *utl,
+		unsigned *const uniq_index_per_func,
 		const struct target *target)
 {
 	val *retval = isn_is_ret(inst);
@@ -655,6 +657,7 @@ static void convert_return(block *blk, void *const vctx)
 				i,
 				ctx->stret_stash,
 				ctx->utl,
+				ctx->uniq_index_per_func,
 				ctx->target);
 	}
 }
@@ -663,12 +666,14 @@ static void convert_returns(
 		val *stret_stash,
 		uniq_type_list *utl,
 		const struct target *target,
-		block *entry)
+		block *entry,
+		unsigned *const uniq_index_per_func)
 {
 	struct convert_ret_ctx ctx;
 	ctx.stret_stash = stret_stash;
 	ctx.utl = utl;
 	ctx.target = target;
+	ctx.uniq_index_per_func = uniq_index_per_func;
 
 	blocks_traverse(entry, convert_return, &ctx, NULL);
 }
@@ -691,13 +696,15 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 			&stret_stash,
 			unit_uniqtypes(unit),
 			target,
-			entry);
+			entry,
+			&uniq_index_per_func);
 
 	convert_returns(
 			stret_stash,
 			unit_uniqtypes(unit),
 			target,
-			entry);
+			entry,
+			&uniq_index_per_func);
 
 	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), entry);
 }
