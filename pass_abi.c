@@ -651,7 +651,11 @@ static void convert_return(block *blk, void *const vctx)
 	isn *i = block_first_isn(blk);
 
 	while(i){
-		i = convert_return_isn(i, ctx->stret_stash, ctx->utl, ctx->target);
+		i = convert_return_isn(
+				i,
+				ctx->stret_stash,
+				ctx->utl,
+				ctx->target);
 	}
 }
 
@@ -675,14 +679,25 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 	 * into registers/stack entries */
 	block *const entry = function_entry_block(fn, false);
 	val *stret_stash = NULL;
+	unsigned uniq_index_per_func = 0;
 
 	if(!entry){
 		assert(function_is_forward_decl(fn));
 		return;
 	}
 
-	convert_incoming_args(fn, &stret_stash, unit_uniqtypes(unit), target, entry);
-	convert_returns(stret_stash, unit_uniqtypes(unit), target, entry);
+	convert_incoming_args(
+			fn,
+			&stret_stash,
+			unit_uniqtypes(unit),
+			target,
+			entry);
+
+	convert_returns(
+			stret_stash,
+			unit_uniqtypes(unit),
+			target,
+			entry);
 
 	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), entry);
 }
