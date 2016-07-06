@@ -213,22 +213,17 @@ static void create_arg_reg_overlay_isns(
 			"spill.%d",
 			(*state->uniq_index_per_func)++);
 
+	/* need a local storage space for the (struct) argument/return value */
+	alloca = isn_alloca(spilt_arg);
+	current_isn = alloca;
+
 	if(overlay_direction == OVERLAY_TO_REGS){
 		/* spill the struct to somewhere we can elem it from */
 		isn *initial_spill = isn_store(argval, spilt_arg);
 
-		assert(!current_isn);
+		assert(current_isn);
+		isn_insert_after(current_isn, initial_spill);
 		current_isn = initial_spill;
-	}
-
-	if(overlay_direction == OVERLAY_FROM_REGS){
-		/* need a local storage space for the (struct) argument */
-		alloca = isn_alloca(spilt_arg);
-
-		if(current_isn)
-			isn_insert_after(current_isn, alloca);
-
-		current_isn = alloca;
 	}
 
 	assert(current_isn);
@@ -281,13 +276,11 @@ static void create_arg_reg_overlay_isns(
 
 			/* copy from abiv -> spilt arg (inside struct) */
 			store = isn_store(abi_copy, elemp);
-			assert(alloca);
 			isn_insert_after(current_isn, store);
 			current_isn = store;
 		}else{
 			isn *load, *copy;
 
-			assert(!alloca);
 			/* load from inside struct / arg */
 			load = isn_load(abi_copy, elemp);
 			isn_insert_after(current_isn, load);
@@ -624,7 +617,30 @@ static isn *convert_return_isn(
 			isn_insert_before(inst, load);
 			isn_insert_after(load, store);
 		}else{
-			assert(0 && "todo: stret via regs");
+			struct typeclass cls;
+			struct regpass_state state;
+			struct isn_insertion insertion;
+
+			classify_type(retty, &cls);
+			assert(!cls.inmem && "stashed for mem-ret but not inmem");
+
+			regpass_state_init(&state, uniq_index_per_func);
+
+			insertion.before = true;
+			insertion.at = inst;
+
+			create_arg_reg_overlay_isns(
+					&state,
+					&cls,
+					target,
+					&insertion,
+					utl,
+					retval,
+					retty,
+					OVERLAY_TO_REGS);
+
+			insert_state_isns(&state, inst, true);
+			regpass_state_deinit(&state);
 		}
 
 	}else if(type_is_float(retty, 1)){
