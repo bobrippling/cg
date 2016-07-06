@@ -68,7 +68,7 @@ static void regpass_state_init(
 		struct regpass_state *state,
 		unsigned *uniq_index_per_func)
 {
-	state->abi_copies = NULL;
+	memset(state, 0, sizeof(*state));
 	state->uniq_index_per_func = uniq_index_per_func;
 }
 
