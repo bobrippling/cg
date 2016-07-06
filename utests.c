@@ -4,6 +4,7 @@
 #include "type_iter.h"
 #include "uniq_type_list.h"
 #include "uniq_type_list_struct.h"
+#include "reg.h"
 
 static unsigned failed, passed;
 
@@ -79,6 +80,20 @@ static void test_type_iter(void)
 	uniq_type_list_free(&uts);
 }
 
+static void test_regt(void)
+{
+	regt a = regt_make(0x5678, 0);
+	regt b = regt_make(0x5, 1);
+
+	test(!regt_is_fp(a));
+	test(regt_is_int(a));
+	test(regt_index(a) == 0x5678);
+
+	test(regt_is_fp(b));
+	test(!regt_is_int(b));
+	test(regt_index(b) == 5);
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -88,6 +103,7 @@ int main(int argc, const char *argv[])
 
 	test_type_uniq();
 	test_type_iter();
+	test_regt();
 
 	printf("passed: %d, failed: %d\n", passed, failed);
 
