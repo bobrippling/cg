@@ -60,6 +60,7 @@ clean:
 	$Q${CC} -MM ${CFLAGS} $< > $@
 
 -include ${OBJ:%.o=.%.d}
+-include ${TEST_OBJ:%.o=.%.d}
 -include Makefile.cfg
 
 STRBUF_PATH = strbuf
