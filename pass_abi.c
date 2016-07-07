@@ -551,7 +551,7 @@ static isn *convert_outgoing_args_and_call_isn(
 			target,
 			utl);
 
-	for(i = 0; i < dynarray_count(arg_tys); i++){
+	for(i = 0; i < dynarray_count(fnargs); i++){
 		val *argval = dynarray_ent(fnargs, i);
 
 		classify_and_create_abi_isns_for_arg(
