@@ -430,7 +430,7 @@ static void convert_incoming_args(
 	state.uniq_index_per_func = uniq_index_per_func;
 
 	classify_type(retty, &retcls);
-	if(retcls.inmem){
+	if(retcls.inmem && !type_is_void(retty)){
 		assert(type_is_struct(retty));
 		/* store stret pointer for return later */
 		*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl);
@@ -642,6 +642,8 @@ static isn *convert_return_isn(
 
 	}else if(type_is_float(retty, 1)){
 		assert(0 && "todo: fpret");
+
+	}else if(type_is_void(retty)){
 
 	}else{
 		val *abiv;

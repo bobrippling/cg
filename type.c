@@ -606,7 +606,7 @@ void type_size_align(type *ty, unsigned *sz, unsigned *align)
 
 		case VOID:
 		{
-			assert(0 && "size of void");
+			*sz = *align = 0;
 			break;
 		}
 	}
