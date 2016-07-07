@@ -183,8 +183,7 @@ static void isn_free_1(isn *isn)
 		{
 			size_t i;
 
-			if(isn->u.call.into_or_null)
-				val_release(isn->u.call.into_or_null);
+			val_release(isn->u.call.into);
 			val_release(isn->u.call.fn);
 
 			dynarray_iter(&isn->u.call.args, i){
@@ -495,7 +494,7 @@ isn *isn_call(val *into, val *fn, dynarray *args)
 
 	isn = isn_new(ISN_CALL);
 	isn->u.call.fn = fn;
-	isn->u.call.into_or_null = into;
+	isn->u.call.into = into;
 	dynarray_move(&isn->u.call.args, args);
 	return isn;
 }
@@ -647,8 +646,7 @@ static void isn_on_vals(
 		{
 			size_t i;
 
-			if(current->u.call.into_or_null)
-				fn(current->u.call.into_or_null, current, ctx);
+			fn(current->u.call.into, current, ctx);
 			fn(current->u.call.fn, current, ctx);
 
 			dynarray_iter(&current->u.call.args, i){
@@ -810,9 +808,7 @@ static void isn_dump1(isn *i)
 
 			printf("\t");
 
-			if(i->u.call.into_or_null){
-				printf("%s = ", val_str(i->u.call.into_or_null));
-			}
+			printf("%s = ", val_str(i->u.call.into));
 
 			printf("call %s(", val_str(i->u.call.fn));
 
@@ -864,7 +860,7 @@ bool isn_call_getfnval_ret_args(
 		return false;
 
 	*pfn = isn->u.call.fn;
-	*pret = isn->u.call.into_or_null;
+	*pret = isn->u.call.into;
 	*pargs = &isn->u.call.args;
 
 	return true;

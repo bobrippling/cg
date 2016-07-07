@@ -91,7 +91,7 @@ struct isn
 
 		struct
 		{
-			struct val *into_or_null, *fn;
+			struct val *into, *fn;
 			dynarray args;
 		} call;
 

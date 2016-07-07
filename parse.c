@@ -430,7 +430,7 @@ static val *parse_val(parse *p)
 	return val_new_i(0, ty);
 }
 
-static void parse_call(parse *p, char *ident_or_null)
+static void parse_call(parse *p, char *ident)
 {
 	val *target;
 	val *into;
@@ -454,15 +454,10 @@ static void parse_call(parse *p, char *ident_or_null)
 				type_to_str(val_type(target)));
 	}
 
-	if(ident_or_null){
-		into = uniq_val(p, ident_or_null, retty, VAL_CREATE);
-		if(type_is_void(retty)){
-			sema_error(p, "using void result of call");
-			retty = default_type(p);
-		}
-	}else{
-		into = NULL;
-		/* retty may be non-void - discarded */
+	into = uniq_val(p, ident, retty, VAL_CREATE);
+	if(type_is_void(retty)){
+		sema_error(p, "using void result of call");
+		retty = default_type(p);
 	}
 
 	eat(p, "call paren", tok_lparen);
@@ -889,10 +884,6 @@ static void parse_block(parse *p)
 
 		case tok_ret:
 			parse_ret(p);
-			break;
-
-		case tok_call:
-			parse_call(p, NULL);
 			break;
 
 		case tok_ident:
