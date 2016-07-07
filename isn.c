@@ -900,6 +900,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 }
 
 #define SHOW_LIFE 0
+#define SHOW_TYPE 0
 void isn_dump(isn *const head, block *blk)
 {
 	size_t idx = 0;
@@ -915,7 +916,7 @@ void isn_dump(isn *const head, block *blk)
 		isn_dump1(i);
 	}
 
-	if(SHOW_LIFE){
+	if(SHOW_LIFE || SHOW_TYPE){
 		dynmap *vals = dynmap_new(val *, 0, val_hash);
 
 		for(i = head; i; i = i->next)
@@ -923,22 +924,29 @@ void isn_dump(isn *const head, block *blk)
 
 		val *v;
 		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
-			struct lifetime *lt = dynmap_get(
-					val *, struct lifetime *,
-					block_lifetime_map(blk),
-					v);
+			printf("# %s:", val_str(v));
 
-			if(lt){
-				printf("[-] %s: %u - %u. inter-block = %d\n",
-						val_str(v),
-						lt->start,
-						lt->end,
-						v->live_across_blocks
-						);
-			}else{
-				printf("[-] %s: no-ltime inter-block = %d\n",
-						val_str(v), v->live_across_blocks);
+			if(SHOW_TYPE)
+				printf(" %s", type_to_str(val_type(v)));
+
+			if(SHOW_LIFE){
+				struct lifetime *lt = dynmap_get(
+						val *, struct lifetime *,
+						block_lifetime_map(blk),
+						v);
+
+				if(lt){
+					printf(" %u - %u. inter-block = %d",
+							lt->start,
+							lt->end,
+							v->live_across_blocks);
+				}else{
+					printf(" no-ltime inter-block = %d",
+							v->live_across_blocks);
+				}
 			}
+
+			putchar('\n');
 		}
 
 		dynmap_free(vals);
