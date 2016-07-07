@@ -8,6 +8,8 @@
 #include "dynarray.h"
 
 typedef struct isn isn;
+struct block;
+struct val;
 
 isn *isn_load(struct val *to, struct val *lval);
 isn *isn_store(struct val *from, struct val *lval);
@@ -68,5 +70,19 @@ void isn_insert_after(isn *, isn *);
 
 void isns_insert_before(isn *, isn *list);
 void isns_insert_after(isn *, isn *list);
+
+void isn_free_r(struct isn *);
+
+void isn_dump(struct isn *, struct block *);
+
+void isn_on_live_vals(
+		struct isn *,
+		void (struct val *, struct isn *, void *),
+		void *);
+
+void isn_on_all_vals(
+		struct isn *,
+		void (struct val *, struct isn *, void *),
+		void *);
 
 #endif
