@@ -1,0 +1,29 @@
+type $struct_regs = { i8, i8 }
+
+$callee_regs = $struct_regs(i4 $1, i4 $2)
+{
+	$a = alloca $struct_regs
+	$st = load $a
+	ret $st
+}
+
+$caller_regs = i4()
+{
+	$y = call $callee_regs(i4 5, i4 6)
+	ret i4 3
+}
+
+type $struct_mem = { i8, i8, i8 }
+
+$callee_mem = $struct_mem(i4 $1, i4 $2)
+{
+	$a = alloca $struct_mem
+	$st = load $a
+	ret $st
+}
+
+$caller_mem = i4()
+{
+	$y = call $callee_mem(i4 5, i4 6)
+	ret i4 3
+}
