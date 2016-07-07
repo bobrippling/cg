@@ -247,7 +247,7 @@ static void create_arg_reg_overlay_isns(
 
 		/* compute spill position / elem for register */
 		elemp = val_new_localf(
-				type_get_ptr(utl, regty),
+				type_get_ptr(utl, regty), /* using regty here ensures correct size */
 				"spill.%d.%d",
 				i,
 				(*state->uniq_index_per_func)++);
