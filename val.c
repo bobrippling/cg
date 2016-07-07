@@ -443,11 +443,11 @@ void val_temporary_init(val *vtmp, type *ty)
 	name_loc_init_reg(&vtmp->u.temp_loc);
 }
 
-val *val_new_abi_reg(int rno, type *ty)
+val *val_new_abi_reg(regt reg, type *ty)
 {
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_IN_REG;
-	p->u.abi.u.reg = rno;
+	p->u.abi.u.reg = reg;
 	return p;
 }
 

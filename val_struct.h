@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "reg.h"
+
 struct name_loc
 {
 	enum
@@ -12,7 +14,7 @@ struct name_loc
 	} where;
 	union
 	{
-		int reg;
+		regt reg;
 		int off;
 	} u;
 };

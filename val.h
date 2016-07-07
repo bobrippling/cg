@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "macros.h"
+#include "reg.h"
 
 struct type;
 struct variable;
@@ -32,7 +33,7 @@ val *val_new_argument(
 		struct function *)
 	attr_nonnull();
 
-val *val_new_abi_reg(int rno, struct type *);
+val *val_new_abi_reg(regt, struct type *);
 val *val_new_abi_stack(int stack_off, struct type *);
 
 void val_temporary_init(val *, struct type *);
