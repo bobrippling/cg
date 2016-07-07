@@ -231,7 +231,7 @@ static void topographical_reg_init(dynarray *args, size_t n_reg_args, dep *deps)
 		deps[i].target = x86_arg_regs[i];
 
 		if(loc && loc->where == NAME_IN_REG){
-			deps[i].current = loc->u.reg;
+			deps[i].current = loc->u.reg; /* FIXME: regt? */
 		}else{
 			deps[i].current = -1;
 		}
@@ -370,7 +370,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			val *arg_to_use = arg;
 
 			if(loc && loc->where == NAME_IN_REG){
-				assert(deps[j].current == loc->u.reg);
+				assert(deps[j].current == loc->u.reg); /* FIXME: regt? */
 			}else{
 				assert(deps[j].current == -1);
 			}

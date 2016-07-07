@@ -67,6 +67,7 @@ int val_size(val *v, unsigned ptrsz)
 
 unsigned name_loc_hash(struct name_loc const *loc)
 {
+	/* FIXME: regt_hash */
 	return loc->where ^ (loc->u.reg << 3);
 }
 

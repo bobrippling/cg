@@ -152,7 +152,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
 
-	if(lt->start == ctx->isn_num && val_locn->u.reg == -1){
+	if(lt->start == ctx->isn_num && /*FIXME:regt_valid()*/val_locn->u.reg == -1){
 		int i;
 
 		for(i = 0; i < ctx->nregs; i++)
@@ -170,7 +170,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			ctx->in_use[i] = 1;
 
 			val_locn->where = NAME_IN_REG;
-			val_locn->u.reg = i;
+			val_locn->u.reg = i; /* FIXME: regt_make() */
 
 			if(SHOW_REGALLOC)
 				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
@@ -180,9 +180,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(!v->live_across_blocks
 	&& lt->end == ctx->isn_num
 	&& val_locn->where == NAME_IN_REG
-	&& val_locn->u.reg >= 0)
+	&& /*FIXME: regt_valid()*/ val_locn->u.reg >= 0)
 	{
 		assert(val_locn->u.reg < ctx->nregs);
+		/* FIXME: regt indexing */
 		ctx->in_use[val_locn->u.reg] = 0;
 	}
 }
@@ -218,6 +219,7 @@ static void mark_other_block_val_as_used(val *v, isn *isn, void *vctx)
 			return;
 	}
 
+	/* FIXME: regt indexing */
 	if(idx == -1)
 		return;
 
@@ -238,7 +240,7 @@ static void mark_arg_vals_as_used(char *in_use, function *func)
 		struct name_loc *loc = dynarray_ent(&func->arg_locns, i);
 
 		if(loc->where == NAME_IN_REG)
-			in_use[loc->u.reg] = 1;
+			in_use[loc->u.reg] = 1; /* FIXME: regt indexing */
 	}
 }
 

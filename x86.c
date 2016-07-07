@@ -121,10 +121,11 @@ static const char *x86_size_name(unsigned sz)
 static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 {
 	int sz_idx;
-	int reg = loc->u.reg;
+	regt reg = loc->u.reg;
 
 	assert(loc->where == NAME_IN_REG);
 
+	/* FIXME: regt_valid */
 	if(reg == -1)
 		return NULL;
 
@@ -138,6 +139,7 @@ static const char *name_in_reg_str(const struct name_loc *loc, const int size)
 		default: assert(0 && "reg size too large");
 	}
 
+	/* FIXME: regt indexing */
 	return regs[reg][sz_idx];
 }
 
@@ -342,7 +344,7 @@ void x86_make_reg(val *reg, int regidx, type *ty)
 	val_temporary_init(reg, ty);
 
 	reg->u.temp_loc.where = NAME_IN_REG;
-	reg->u.temp_loc.u.reg = regidx;
+	reg->u.temp_loc.u.reg = regidx; /* FIXME: regt indexing */
 }
 
 void x86_make_eax(val *out, type *ty)
@@ -356,7 +358,7 @@ static void make_val_temporary_reg(val *valp, type *ty)
 
 	/* use scratch register */
 	valp->u.local.loc.where = NAME_IN_REG;
-	valp->u.local.loc.u.reg = SCRATCH_REG;
+	valp->u.local.loc.u.reg = SCRATCH_REG; /* FIXME: regt indexing */
 }
 
 static void make_val_temporary_store(
@@ -389,7 +391,7 @@ static void make_val_temporary_store(
 		/* use scratch register */
 
 		write_to->u.local.loc.where = NAME_IN_REG;
-		write_to->u.local.loc.u.reg = SCRATCH_REG;
+		write_to->u.local.loc.u.reg = SCRATCH_REG; /* FIXME: regt indexing */
 
 		assert(!octx->scratch_reg_reserved);
 
@@ -731,7 +733,7 @@ static void mov_deref_force(
 		if(loc_from && loc_to
 		&& loc_from->where == NAME_IN_REG
 		&& loc_to->where == NAME_IN_REG
-		&& loc_from->u.reg == loc_to->u.reg)
+		&& loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
 		{
 			fprintf(octx->fout, "\t;");
 		}
