@@ -8,8 +8,6 @@
 val *val_retain(val *);
 void val_release(val *);
 
-struct name_loc *val_location(val *);
-
 void val_mirror(val *, val *);
 
 #if 0

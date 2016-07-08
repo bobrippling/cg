@@ -42,6 +42,9 @@ unsigned val_size(val *);
 void val_size_align(val *, unsigned *, unsigned *);
 struct type *val_type(val *);
 
+struct name_loc *val_location(val *);
+
+
 /* --- util */
 #define VAL_STR_SZ 32
 

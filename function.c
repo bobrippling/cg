@@ -133,8 +133,6 @@ block *function_block_find(
 
 void function_finalize(function *f)
 {
-	function_onblocks(f, block_finalize);
-
 	if(f->entry)
 		block_lifecheck(f->entry);
 }

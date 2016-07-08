@@ -191,59 +191,6 @@ void blocks_traverse(
 	assert(!markers || dynmap_is_empty(markers));
 }
 
-struct lifetime_assign_ctx
-{
-	unsigned isn_count;
-	block *blk;
-};
-
-static void assign_lifetime(val *v, isn *isn, void *vctx)
-{
-	struct lifetime_assign_ctx *ctx = vctx;
-	struct lifetime *lt;
-	unsigned start;
-
-	(void)isn;
-
-	switch(v->kind){
-		case FROM_ISN:
-			start = ctx->isn_count;
-			break;
-		case ARGUMENT:
-			start = 0;
-			break;
-		default:
-			return;
-	}
-
-	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
-
-	if(!lt){
-		lt = xcalloc(1, sizeof *lt);
-		dynmap_set(val *, struct lifetime *, ctx->blk->val_lifetimes, v, lt);
-
-		lt->start = start;
-	}
-
-	lt->end = ctx->isn_count;
-}
-
-static void assign_lifetimes(block *const blk, isn *const head)
-{
-	struct lifetime_assign_ctx ctx = { 0 };
-	isn *i;
-
-	ctx.blk = blk;
-
-	for(i = head; i; i = i->next, ctx.isn_count++)
-		isn_on_live_vals(i, assign_lifetime, &ctx);
-}
-
-void block_finalize(block *blk)
-{
-	assign_lifetimes(blk, block_first_isn(blk));
-}
-
 void block_add_pred(block *b, block *pred)
 {
 	dynarray_add(&b->preds, pred);

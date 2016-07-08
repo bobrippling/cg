@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-#include "isn_internal.h"
 #include "lifetime_struct.h"
 #include "dynarray.h"
 

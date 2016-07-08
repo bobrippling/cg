@@ -8,7 +8,6 @@
 #include "backend.h"
 #include "val_internal.h"
 #include "isn.h"
-#include "isn_internal.h"
 #include "isn_struct.h"
 #include "block_struct.h"
 #include "block_internal.h"
