@@ -140,20 +140,27 @@ static void classify_type(type *argty, struct typeclass *const argclass)
 
 static void convert_incoming_arg_stack(
 		struct regpass_state *const state,
+		uniq_type_list *utl,
 		type *argty,
-		val *argval)
+		val *argval,
+		const enum regoverlay_direction direction)
 {
 	/* structsplat will expand this if necessary */
 	val *stack;
-	isn *store;
+	isn *loadstore;
+	int stackoff;
 
-	fprintf(stderr, "FIXME: stack argument alignment\n");
-	state->stackoff += type_size(argty);
-	stack = val_new_abi_stack(state->stackoff, argty);
+	state->stackoff += type_size(argty); /* FIXME: align */
 
-	store = isn_store(argval, stack);
+	stackoff = direction == OVERLAY_FROM_REGS
+			? -state->stackoff
+			: /* TODO: bottomstack? */state->stackoff;
 
-	ISN_APPEND_OR_SET(state->abi_copies, store);
+	stack = val_new_abi_stack(stackoff, type_get_ptr(utl, argty));
+
+	loadstore = (direction == OVERLAY_FROM_REGS ? isn_load : isn_store)(argval, stack);
+
+	ISN_APPEND_OR_SET(state->abi_copies, loadstore);
 }
 
 static void create_arg_reg_overlay_isns(
@@ -326,7 +333,7 @@ static void classify_and_create_abi_isns_for_arg(
 	}
 
 	if(cls.inmem){
-		convert_incoming_arg_stack(state, argty, argval);
+		convert_incoming_arg_stack(state, utl, argty, argval, direction);
 
 	}else{
 		struct isn_insertion insertion;
