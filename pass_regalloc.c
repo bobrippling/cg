@@ -75,6 +75,8 @@ static void regalloc_spill(val *v, struct greedy_ctx *ctx)
 		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u - %u\n",
 				val_str(v), type_to_str(val_type(v)), size, slot - size, slot);
 	}
+#else
+	fprintf(stderr, "TODO: %s()\n", __func__);
 #endif
 }
 
