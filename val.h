@@ -28,9 +28,8 @@ val *val_new_localf(struct type *, const char *fmt, ...)
 	attr_nonnull();
 
 val *val_new_argument(
-		char * /*consumed*/, int idx,
-		struct type *ty,
-		struct function *)
+		char * /*consumed*/,
+		struct type *ty)
 	attr_nonnull();
 
 val *val_new_abi_reg(regt, struct type *);

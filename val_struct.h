@@ -33,14 +33,7 @@ struct val
 		{
 			struct name_loc loc;
 			char *name;
-		} local, alloca;
-		struct
-		{
-			/* location needs to be asked from the function */
-			struct function *func;
-			char *name;
-			unsigned idx;
-		} argument;
+		} local, alloca, argument;
 		struct name_loc temp_loc;
 		struct name_loc abi;
 	} u;

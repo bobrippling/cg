@@ -124,10 +124,7 @@ unsigned val_hash(val *v)
 		}
 
 		case ARGUMENT:
-		{
-			h ^= v->u.argument.idx;
 			break;
-		}
 
 		case ALLOCA:
 			break;
@@ -157,9 +154,8 @@ struct name_loc *val_location(val *v)
 			return &v->u.alloca.loc;
 		case FROM_ISN:
 			return &v->u.local.loc;
-
 		case ARGUMENT:
-			return function_arg_loc(v->u.argument.func, v->u.argument.idx);
+			return &v->u.argument.loc;
 
 		case BACKEND_TEMP:
 			return &v->u.temp_loc;
@@ -395,12 +391,11 @@ val *val_new_undef(struct type *ty)
 	return v;
 }
 
-val *val_new_argument(char *name, int idx, struct type *ty, struct function *fn)
+val *val_new_argument(char *name, struct type *ty)
 {
 	val *p = val_new(ARGUMENT, ty);
-	p->u.argument.idx = idx;
 	p->u.argument.name = name;
-	p->u.argument.func = fn;
+	name_loc_init_reg(&p->u.argument.loc);
 	return p;
 }
 

@@ -133,7 +133,7 @@ found:
 
 	/* check args */
 	if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
-		v = val_new_argument(name, arg_idx, arg_ty, p->func);
+		v = val_new_argument(name, arg_ty);
 
 		function_register_arg_val(p->func, arg_idx, v);
 
