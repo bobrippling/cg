@@ -18,7 +18,7 @@ struct name_loc
 		int off;
 	} u;
 };
-#define name_loc_init_reg(nl) ((nl)->where = NAME_IN_REG, (nl)->u.reg = -1)
+#define name_loc_init_reg(nl) ((nl)->where = NAME_IN_REG, (nl)->u.reg = regt_make_invalid())
 unsigned name_loc_hash(struct name_loc const *);
 
 struct val
