@@ -42,7 +42,6 @@ void function_register_arg_val(function *, unsigned arg_idx, struct val *);
 struct val *function_arg_val(function *, unsigned arg_idx);
 
 struct dynarray *function_arg_names(function *);
-struct name_loc *function_arg_loc(function *, size_t idx);
 size_t function_arg_count(function *);
 
 #if 0

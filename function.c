@@ -33,8 +33,6 @@ function *function_new(
 	dynarray_init(&fn->arg_names);
 	dynarray_move(&fn->arg_names, toplvl_args);
 
-	dynarray_init(&fn->arg_locns);
-
 	fn->arg_vals = xcalloc(
 			dynarray_count(&fn->arg_names), sizeof(*fn->arg_vals));
 
@@ -47,9 +45,6 @@ void function_free(function *f)
 
 	dynarray_foreach(&f->arg_names, free);
 	dynarray_reset(&f->arg_names);
-
-	dynarray_foreach(&f->arg_locns, free);
-	dynarray_reset(&f->arg_locns);
 
 	free(f->arg_vals);
 
@@ -75,12 +70,6 @@ void function_onblocks(function *f, void cb(block *))
 dynarray *function_arg_names(function *f)
 {
 	return &f->arg_names;
-}
-
-struct name_loc *function_arg_loc(function *fn, size_t idx)
-{
-	assert(idx < dynarray_count(&fn->arg_locns));
-	return dynarray_ent(&fn->arg_locns, idx);
 }
 
 block *function_entry_block(function *f, bool create)
