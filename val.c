@@ -241,14 +241,14 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 }
 #endif
 
-static char *val_abi_str_r(char buf[VAL_STR_SZ], struct name_loc *loc)
+static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct name_loc *loc)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
-			snprintf(buf, VAL_STR_SZ, "<reg %d>", loc->u.reg);
+			snprintf(buf, n, "<reg %d>", loc->u.reg);
 			break;
 		case NAME_SPILT:
-			snprintf(buf, VAL_STR_SZ, "<stack %d>", loc->u.off);
+			snprintf(buf, n, "<stack %d>", loc->u.off);
 			break;
 	}
 	return buf;
@@ -257,12 +257,6 @@ static char *val_abi_str_r(char buf[VAL_STR_SZ], struct name_loc *loc)
 char *val_str_r(char buf[VAL_STR_SZ], val *v)
 {
 	struct name_loc *loc = val_location(v);
-	if(loc
-	&& loc->where == NAME_IN_REG
-	&& regt_is_valid(loc->u.reg))
-	{
-		goto abi;
-	}
 
 	switch(v->kind){
 		case LITERAL:
@@ -287,9 +281,18 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
 		case ABI_TEMP:
-abi:
-			return val_abi_str_r(buf, &v->u.abi);
+			return val_abi_str_r(buf, VAL_STR_SZ, &v->u.abi);
 	}
+
+	if(loc
+	&& loc->where == NAME_IN_REG
+	&& regt_is_valid(loc->u.reg))
+	{
+		/* append reg */
+		const size_t len = strlen(buf);
+		val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
+	}
+
 	return buf;
 }
 
