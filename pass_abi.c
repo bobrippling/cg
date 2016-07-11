@@ -351,7 +351,7 @@ static void add_state_isns_helper(val *v, isn *i, void *ctx)
 	isn *implicituse = ctx;
 	(void)i;
 
-	if(!val_is_abi(v))
+	if(!val_is_abi_reg(v))
 		return;
 
 	isn_implicit_use_add(implicituse, v);
