@@ -15,7 +15,7 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
 SRC = ${OBJ:.o=.c}
 
 TEST_OBJ = utests.o type.o uniq_type_list.o type_iter.o \
-           mem.o dynmap.o dynarray.o imath.o
+           mem.o dynmap.o dynarray.o imath.o regset.o
 
 CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L -Istrbuf
 

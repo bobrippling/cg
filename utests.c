@@ -1,10 +1,13 @@
 #include <stdio.h>
 
+#include "macros.h"
+
 #include "type.h"
 #include "type_iter.h"
 #include "uniq_type_list.h"
 #include "uniq_type_list_struct.h"
 #include "reg.h"
+#include "regset.h"
 
 static unsigned failed, passed;
 
@@ -94,6 +97,58 @@ static void test_regt(void)
 	test(regt_index(b) == 5);
 }
 
+static void test_regset(void)
+{
+	const regt regs[] = {
+		regt_make(0, false),
+		regt_make(1, false),
+		regt_make(2, false)
+	};
+	struct regset set = { regs, countof(regs) };
+
+	test(regset_int_count(&set) == 3);
+	test(regset_fp_count(&set) == 0);
+
+	test(regset_nth(&set, 1, false) == regs[1]);
+}
+
+static void test_regset_mark(void)
+{
+	regset_marks marks = 0;
+	const regt regs[] = {
+		regt_make(0, true),
+		regt_make(7, true),
+		regt_make(7, false),
+		regt_make(15, false)
+	};
+
+	/* mark:
+	 * {0,true}
+	 * {7,true}
+	 * {7,false}
+	 * {15,false}
+	 */
+	regset_mark(&marks, regs[0], true);
+	regset_mark(&marks, regs[1], true);
+	regset_mark(&marks, regs[2], true);
+	regset_mark(&marks, regs[3], true);
+
+	test(regset_is_marked(marks, regs[0]));
+	test(regset_is_marked(marks, regs[1]));
+	test(regset_is_marked(marks, regs[2]));
+	test(regset_is_marked(marks, regs[3]));
+
+	test(!regset_is_marked(marks, regt_make(0, false)));
+	test(!regset_is_marked(marks, regt_make(1, false)));
+	test(!regset_is_marked(marks, regt_make(2, false)));
+	test(!regset_is_marked(marks, regt_make(3, false)));
+
+	test(!regset_is_marked(marks, regt_make(1, true)));
+	test(!regset_is_marked(marks, regt_make(2, true)));
+	test(!regset_is_marked(marks, regt_make(3, true)));
+	test(!regset_is_marked(marks, regt_make(15, true)));
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -104,6 +159,8 @@ int main(int argc, const char *argv[])
 	test_type_uniq();
 	test_type_iter();
 	test_regt();
+	test_regset();
+	test_regset_mark();
 
 	printf("passed: %d, failed: %d\n", passed, failed);
 
