@@ -90,6 +90,7 @@ static void regalloc_mirror(val *dest, val *src)
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
+	bool needs_regalloc;
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
 	struct name_loc *val_locn;
@@ -164,7 +165,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
 
-	if(lt->start == ctx->isn_num && !regt_is_valid(val_locn->u.reg)){
+	needs_regalloc = !regt_is_valid(val_locn->u.reg)
+		&& lt->start <= ctx->isn_num && ctx->isn_num <= lt->end;
+
+	if(needs_regalloc){
 		const bool is_fp = type_is_float(val_type(v), 1);
 		unsigned i;
 		regt reg = regt_make_invalid();
@@ -194,7 +198,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	}
 
 	if(!v->live_across_blocks
-	&& lt->end == ctx->isn_num
+	&& ctx->isn_num >= lt->end
 	&& val_locn->where == NAME_IN_REG
 	&& regt_is_valid(val_locn->u.reg))
 	{
