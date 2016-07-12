@@ -26,10 +26,14 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 	switch(v->kind){
 		case FROM_ISN:
 		case BACKEND_TEMP:
-			start = ctx->isn_count;
-			break;
 		case ARGUMENT:
-			start = 0;
+			/* even though arguments technically exist
+			 * from the start, we count their lifetime
+			 * from their first use,
+			 * i.e. pass_abi's first assignment from
+			 * an ABI register
+			 */
+			start = ctx->isn_count;
 			break;
 		case LITERAL:
 		case GLOBAL:
