@@ -147,6 +147,14 @@ static void test_regset_mark(void)
 	test(!regset_is_marked(marks, regt_make(2, true)));
 	test(!regset_is_marked(marks, regt_make(3, true)));
 	test(!regset_is_marked(marks, regt_make(15, true)));
+
+	regset_mark(&marks, regs[1], false);
+	regset_mark(&marks, regs[2], false);
+
+	test(regset_is_marked(marks, regs[0]));
+	test(!regset_is_marked(marks, regs[1]));
+	test(!regset_is_marked(marks, regs[2]));
+	test(regset_is_marked(marks, regs[3]));
 }
 
 int main(int argc, const char *argv[])
