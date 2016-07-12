@@ -190,11 +190,12 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		}
 	}
 
-	if(!v->live_across_blocks
-	&& ctx->isn_num >= lt->end
-	&& val_locn->where == NAME_IN_REG
-	&& regt_is_valid(val_locn->u.reg))
-	{
+	assert(!v->live_across_blocks);
+	assert(val_locn->where == NAME_IN_REG);
+
+	assert(regt_is_valid(val_locn->u.reg) == regset_is_marked(ctx->in_use, val_locn->u.reg));
+
+	if(ctx->isn_num >= lt->end && regt_is_valid(val_locn->u.reg)){
 		regset_mark(&ctx->in_use, val_locn->u.reg, false);
 	}
 }
