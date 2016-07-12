@@ -186,7 +186,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
 
 			val_locn->where = NAME_IN_REG;
-			val_locn->u.reg = regt_make(i, is_fp);
+			val_locn->u.reg = reg;
 		}
 	}
 
