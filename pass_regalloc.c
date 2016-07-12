@@ -180,6 +180,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			regalloc_spill(v, ctx);
 
 		}else{
+			assert(regt_is_valid(reg));
+
 			regset_mark(&ctx->in_use, reg, true);
 
 			if(SHOW_REGALLOC)
