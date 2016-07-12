@@ -159,8 +159,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt);
 
-	needs_regalloc = !regt_is_valid(val_locn->u.reg)
-		&& lt->start <= ctx->isn_num && ctx->isn_num <= lt->end;
+	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == ctx->isn_num;
 
 	if(needs_regalloc){
 		const bool is_fp = type_is_float(val_type(v), 1);
