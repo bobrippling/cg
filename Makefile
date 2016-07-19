@@ -1,6 +1,6 @@
 OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
       dynmap.o string.o imath.o \
-      isn.o \
+      isn.o isn_replace.o \
       function.o variable.o global.o variable_global.o block.o unit.o \
       die.o io.o str.o lbl.o \
       tokenise.o parse.o \

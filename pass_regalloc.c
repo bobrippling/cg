@@ -11,6 +11,7 @@
 #include "val_struct.h"
 #include "type.h"
 #include "isn.h"
+#include "isn_replace.h"
 #include "isn_struct.h"
 #include "lifetime.h"
 #include "regset.h"
@@ -49,7 +50,7 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 
 	isn_insert_before(use_isn, alloca);
 
-	replace_uses_with_load_store(v, spill, use_isn);
+	isn_replace_uses_with_load_store(v, spill, use_isn);
 
 	return spill;
 }
