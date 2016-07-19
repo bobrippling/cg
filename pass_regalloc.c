@@ -25,6 +25,7 @@ struct greedy_ctx
 {
 	block *blk;
 	const struct regset *scratch_regs;
+	uniq_type_list *utl;
 	regset_marks in_use;
 	unsigned *spill_space;
 	unsigned isn_num;
@@ -33,51 +34,24 @@ struct greedy_ctx
 struct regalloc_ctx
 {
 	const struct target *target;
+	uniq_type_list *utl;
 	unsigned spill_space;
 };
 
-static void regalloc_spill(val *v, struct greedy_ctx *ctx)
+static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 {
-#if 0
-	unsigned slot;
-	unsigned size, align;
-	struct name_loc *loc;
+	type *const ty = val_type(v);
+	val *spill = val_new_localf(
+			type_get_ptr(ctx->utl, ty),
+			"spill.%u",
+			/*something unique:*/ctx->isn_num);
+	isn *alloca = isn_alloca(spill);
 
-	switch(v->kind){
-		case FROM_ISN:
-			val_size_align(v, &size, &align);
-			break;
-		case ALLOCA:
-			type_size_align(type_deref(val_type(v)), &size, &align);
-			break;
-		default:
-			assert(0 && "trying to spill val that can't be spilt");
-			return;
-	}
+	isn_insert_before(use_isn, alloca);
 
-	loc = val_location(v);
-	assert(loc);
+	replace_uses_with_load_store(v, spill, use_isn);
 
-	if(loc->where == NAME_SPILT)
-		return; /* already done */
-
-	loc->where = NAME_SPILT;
-
-	assert(size && "unsized name val in regalloc");
-
-	*ctx->spill_space += (gap_for_alignment(*ctx->spill_space, align) + size);
-
-	slot = *ctx->spill_space;
-
-	loc->u.off = slot;
-
-	if(SHOW_STACKALLOC){
-		fprintf(stderr, "stackalloc(%s, ty=%s, size=%u) => %u - %u\n",
-				val_str(v), type_to_str(val_type(v)), size, slot - size, slot);
-	}
-#else
-	fprintf(stderr, "TODO: %s()\n", __func__);
-#endif
+	return spill;
 }
 
 static void regalloc_mirror(val *dest, val *src)
@@ -106,16 +80,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			return;
 
 		case ALLOCA:
-			if(isn->type == ISN_ALLOCA){
-				if(SHOW_REGALLOC){
-					fprintf(stderr, "regalloc(%s) => spill [because of alloca]\n",
-							val_str(v));
-				}
-
-				regalloc_spill(v, ctx);
-			}else{
-				/* use of alloca in non-alloca isn, leave it for now */
-			}
+			/* stack automatically */
 			return;
 
 		case ARGUMENT:
@@ -148,7 +113,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(v->live_across_blocks){
 		/* optimisation - ensure the value is in the same register for all blocks
 		 * mem2reg or something similar should do this */
-		regalloc_spill(v, ctx);
+		regalloc_spill(v, isn, ctx);
 		return;
 	}
 
@@ -174,10 +139,12 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->scratch_regs->count){
 			/* no reg available */
-			if(SHOW_REGALLOC)
-				fprintf(stderr, "regalloc(%s) => spill\n", val_str(v));
+			val *spill = regalloc_spill(v, isn, ctx);
 
-			regalloc_spill(v, ctx);
+			if(SHOW_REGALLOC){
+				fprintf(stderr, "regalloc_spill(%s) => ", val_str(v));
+				fprintf(stderr, "%s\n", val_str(spill));
+			}
 
 		}else{
 			assert(regt_is_valid(reg));
@@ -221,6 +188,7 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	alloc_ctx.scratch_regs = &ctx->target->abi.scratch_regs;
 	alloc_ctx.in_use = 0x0;
 	alloc_ctx.spill_space = &ctx->spill_space;
+	alloc_ctx.utl = ctx->utl;
 
 	mark_callee_save_as_used(
 			&alloc_ctx.in_use,
@@ -242,6 +210,7 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 	alloc_markers = BLOCK_DYNMAP_NEW();
 
 	ctx.target = target;
+	ctx.utl = unit_uniqtypes(unit);
 
 	lifetime_fill_func(fn);
 
