@@ -1,0 +1,1 @@
+$f = void() $main = i4(){ $x = call $f() ret i4 0 }

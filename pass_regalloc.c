@@ -94,6 +94,9 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			return;
 	}
 
+	if(type_is_void(val_type(v)))
+		return;
+
 	/* if the instruction is a no-op (e.g. ptrcast, ptr2int/int2ptr where the sizes match),
 	 * then we reuse the source register/spill */
 	if(isn_is_noop(isn, &src, &dest)){

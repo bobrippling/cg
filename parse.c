@@ -455,10 +455,7 @@ static void parse_call(parse *p, char *ident)
 	}
 
 	into = uniq_val(p, ident, retty, VAL_CREATE);
-	if(type_is_void(retty)){
-		sema_error(p, "using void result of call");
-		retty = default_type(p);
-	}
+	/* void results are fine */
 
 	eat(p, "call paren", tok_lparen);
 

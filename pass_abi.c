@@ -544,6 +544,9 @@ static isn *convert_outgoing_args_and_call_isn(
 	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
 		return isn_next(inst);
 
+	if(type_is_void(val_type(fnret)))
+		return isn_next(inst);
+
 	regpass_state_init(&arg_state, uniq_index_per_func);
 
 	fnty = type_deref(val_type(fnval));
