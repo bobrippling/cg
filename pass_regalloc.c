@@ -50,7 +50,7 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 
 	isn_insert_before(use_isn, alloca);
 
-	isn_replace_uses_with_load_store(v, spill, use_isn);
+	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk);
 
 	return spill;
 }
