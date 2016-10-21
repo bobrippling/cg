@@ -56,6 +56,7 @@ struct passes_and_target
 {
 	dynarray *passes;
 	struct target *target;
+	bool show_intermediates;
 };
 
 static unit *read_and_parse(
@@ -138,6 +139,11 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 		}
 
 		passes[j].fn(fn, unit, pat->target);
+
+		if(pat->show_intermediates){
+			printf("------- after %s -------\n", passes[j].spel);
+			unit_on_globals(unit, global_dump);
+		}
 	}
 }
 
@@ -152,7 +158,7 @@ int main(int argc, char *argv[])
 	int parse_err = 0;
 	struct target target = { 0 };
 	const char *emit_arg = NULL;
-	struct passes_and_target pat;
+	struct passes_and_target pat = { 0 };
 
 	argv0 = argv[0];
 
@@ -200,6 +206,9 @@ int main(int argc, char *argv[])
 
 		}else if(!strcmp(argv[i], "--help")){
 			usage(*argv);
+
+		}else if(!strcmp(argv[i], "--show-intermediates")){
+			pat.show_intermediates = true;
 
 		}else if(!strcmp(argv[i], "--")){
 			i++;
