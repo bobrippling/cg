@@ -65,15 +65,9 @@ int val_size(val *v, unsigned ptrsz)
 }
 #endif
 
-unsigned name_loc_hash(struct name_loc const *loc)
-{
-	/* FIXME: regt_hash */
-	return loc->where ^ (loc->u.reg << 3);
-}
-
 bool val_is_mem(val *v)
 {
-	struct name_loc *loc = val_location(v);
+	struct location *loc = val_location(v);
 
 	if(v->kind == GLOBAL){
 		assert(!loc);
@@ -97,7 +91,7 @@ bool val_is_int(val *v, size_t *const out)
 
 bool val_is_volatile(val *v)
 {
-	struct name_loc *loc = val_location(v);
+	struct location *loc = val_location(v);
 
 	return loc && loc->where == NAME_IN_REG;
 }
@@ -138,7 +132,7 @@ unsigned val_hash(val *v)
 
 		case ABI_TEMP:
 			/* safe to use here - set on init */
-			h ^= name_loc_hash(&v->u.abi);
+			h ^= location_hash(&v->u.abi);
 			break;
 	}
 
@@ -148,7 +142,7 @@ unsigned val_hash(val *v)
 	return h;
 }
 
-struct name_loc *val_location(val *v)
+struct location *val_location(val *v)
 {
 	switch(v->kind){
 		case ALLOCA:
@@ -242,7 +236,7 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 }
 #endif
 
-static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct name_loc *loc)
+static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct location *loc)
 {
 	switch(loc->where){
 		case NAME_IN_REG:
@@ -257,7 +251,7 @@ static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct name_loc *loc)
 
 char *val_str_r(char buf[VAL_STR_SZ], val *v)
 {
-	struct name_loc *loc = val_location(v);
+	struct location *loc = val_location(v);
 
 	switch(v->kind){
 		case LITERAL:
@@ -413,7 +407,7 @@ val *val_new_argument(char *name, struct type *ty)
 {
 	val *p = val_new(ARGUMENT, ty);
 	p->u.argument.name = name;
-	name_loc_init_reg(&p->u.argument.loc);
+	location_init_reg(&p->u.argument.loc);
 	return p;
 }
 
@@ -428,7 +422,7 @@ val *val_new_local(char *name, struct type *ty, bool alloca)
 {
 	val *p = val_new(alloca ? ALLOCA : FROM_ISN, ty);
 	p->u.local.name = name;
-	name_loc_init_reg(&p->u.local.loc);
+	location_init_reg(&p->u.local.loc);
 	return p;
 }
 
@@ -454,7 +448,7 @@ void val_temporary_init(val *vtmp, type *ty)
 	vtmp->kind = BACKEND_TEMP;
 	vtmp->ty = ty;
 	vtmp->retains = 1;
-	name_loc_init_reg(&vtmp->u.temp_loc);
+	location_init_reg(&vtmp->u.temp_loc);
 }
 
 val *val_new_abi_reg(regt reg, type *ty)

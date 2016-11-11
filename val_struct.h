@@ -5,21 +5,7 @@
 
 #include "reg.h"
 
-struct name_loc
-{
-	enum
-	{
-		NAME_IN_REG,
-		NAME_SPILT
-	} where;
-	union
-	{
-		regt reg;
-		int off;
-	} u;
-};
-#define name_loc_init_reg(nl) ((nl)->where = NAME_IN_REG, (nl)->u.reg = regt_make_invalid())
-unsigned name_loc_hash(struct name_loc const *);
+#include "location.h"
 
 struct val
 {
@@ -31,11 +17,11 @@ struct val
 		struct global *global;
 		struct
 		{
-			struct name_loc loc;
+			struct location loc;
 			char *name;
 		} local, alloca, argument;
-		struct name_loc temp_loc;
-		struct name_loc abi;
+		struct location temp_loc;
+		struct location abi;
 	} u;
 
 	void *pass_data;

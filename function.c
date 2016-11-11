@@ -249,11 +249,11 @@ val *function_arg_val(function *f, unsigned arg_idx)
 }
 
 #if 0
-static struct name_loc *locate_arg_reg(
+static struct location *locate_arg_reg(
 		size_t idx,
 		const struct backend_traits *backend)
 {
-	struct name_loc *loc = xmalloc(sizeof *loc);
+	struct location *loc = xmalloc(sizeof *loc);
 
 	if(idx >= backend->arg_regs_cnt){
 		assert(0 && "TODO: arg on stack");
@@ -272,7 +272,7 @@ static void assign_argument_registers(
 	size_t i;
 
 	dynarray_iter(&f->arg_names, i){
-		struct name_loc *arg_loc = locate_arg_reg(i, backend);
+		struct location *arg_loc = locate_arg_reg(i, backend);
 
 		dynarray_add(&f->arg_locns, arg_loc);
 	}

@@ -68,7 +68,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	bool needs_regalloc;
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
-	struct name_loc *val_locn;
+	struct location *val_locn;
 	val *src, *dest;
 
 	switch(v->kind){

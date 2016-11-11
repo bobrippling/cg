@@ -221,7 +221,7 @@ static void topographical_reg_init(dynarray *args, size_t n_reg_args, dep *deps)
 
 	for(i = 0; i < n_reg_args; i++){
 		val *varg = dynarray_ent(args, i);
-		struct name_loc *loc = val_location(varg);
+		struct location *loc = val_location(varg);
 
 		deps[i].next = -1;
 		deps[i].prev = -1;
@@ -365,7 +365,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 		/* walk the dep chain */
 		for(j = i; j != -1; j = deps[j].next){
 			val *arg = dynarray_ent(args, j);
-			struct name_loc *loc = val_location(arg);
+			struct location *loc = val_location(arg);
 			val reg, scratch_fix;
 			val *arg_to_use = arg;
 

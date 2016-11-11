@@ -118,7 +118,7 @@ static const char *x86_size_name(unsigned sz)
 	}
 }
 
-static const char *name_in_reg_str(const struct name_loc *loc, const int size)
+static const char *name_in_reg_str(const struct location *loc, const int size)
 {
 	int sz_idx;
 	regt reg = loc->u.reg;
@@ -197,7 +197,7 @@ static const char *x86_type_suffix(type *t)
 
 static bool x86_can_infer_size(val *val)
 {
-	struct name_loc *loc = NULL;
+	struct location *loc = NULL;
 
 	switch(val->kind){
 		case ALLOCA: return false;
@@ -222,7 +222,7 @@ static bool x86_can_infer_size(val *val)
 }
 
 static const char *x86_name_str(
-		const struct name_loc *loc,
+		const struct location *loc,
 		char *buf, size_t bufsz,
 		enum deref_type dereference_ty,
 		type *ty, const struct target *target)
@@ -274,7 +274,7 @@ static const char *x86_val_str(
 	(void)octx;
 
 	switch(val->kind){
-		struct name_loc *loc;
+		struct location *loc;
 
 		case LITERAL:
 		{
@@ -725,7 +725,7 @@ static void mov_deref_force(
 	const struct x86_isn *chosen_isn = &x86_isn_mov;
 
 	if(!force && !deref_from && !deref_to){
-		struct name_loc *loc_from, *loc_to;
+		struct location *loc_from, *loc_to;
 
 		loc_from = val_location(from);
 		loc_to = val_location(to);
@@ -779,7 +779,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 	val *const lval = i->u.elem.lval;
 
 	switch(lval->kind){
-			struct name_loc *loc;
+			struct location *loc;
 
 		case LITERAL:
 			break;
@@ -1002,8 +1002,8 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
-	struct name_loc *from_loc = val_location(from);
-	struct name_loc *to_loc = val_location(to);
+	struct location *from_loc = val_location(from);
+	struct location *to_loc = val_location(to);
 
 	if(sz_from > sz_to){
 		/* trunc */
@@ -1060,7 +1060,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 			case ALLOCA:
 			case BACKEND_TEMP:
 			{
-				struct name_loc *loc = val_location(rhs);
+				struct location *loc = val_location(rhs);
 				need_temp_reg = (!loc || loc->where == NAME_SPILT);
 				break;
 			}
