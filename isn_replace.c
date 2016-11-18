@@ -170,3 +170,19 @@ void isn_replace_uses_with_load_store(
 			isn_vals_set(any_isn, reads, &write);
 	}
 }
+
+void isn_replace_val_with_val(isn *isn, val *old, val *new, enum replace_mode mode)
+{
+	val *reads[2], *write;
+
+	isn_vals_get(isn, reads, &write);
+
+	if(mode & REPLACE_READS){
+		if(reads[0] == old) reads[0] = new;
+		if(reads[1] == old) reads[1] = new;
+	}
+	if(mode & REPLACE_WRITES)
+		if(write == old) write = new;
+
+	isn_vals_set(isn, reads, &write);
+}
