@@ -25,7 +25,8 @@ struct constraint {
 static void populate_constraints(
 		isn *isn,
 		struct constraint *req_lhs,
-		struct constraint *req_rhs)
+		struct constraint *req_rhs,
+		struct constraint *req_ret)
 {
 	enum {
 		REG_EAX = 0,
@@ -43,9 +44,10 @@ static void populate_constraints(
 				case op_div:
 				case op_mod:
 				{
-					/* a/b
+					/* r = a/b
 					 * a -> %eax
 					 * b -> div operand, reg or mem
+					 * r -> (op == /) ? %eax : %edx
 					 */
 					req_lhs->req = REQ_REG;
 					req_lhs->reg[0] = regt_make(REG_EAX, 0);
@@ -65,6 +67,11 @@ static void populate_constraints(
 					req_rhs->reg[0] = regt_make_invalid();
 					req_rhs->reg[1] = regt_make_invalid();
 					req_rhs->val = isn->u.op.rhs;
+
+					req_ret->req = REQ_REG;
+					req_ret->reg[0] = regt_make(isn->u.op.op == op_div ? REG_EAX : REG_EDX, 0);
+					req_ret->reg[1] = regt_make_invalid();
+					req_ret->val = isn->u.op.res;
 					break;
 				}
 
@@ -119,7 +126,7 @@ static void populate_constraints(
 }
 
 static void gen_constraint_isns(
-		isn *isn, struct constraint const *req)
+		isn *isn_to_constrain, struct constraint const *req, int postisn)
 {
 	/* We don't know where `req->val` will end up so we can pick any constraint,
 	 * within reason. Regalloc will work around us later on. Attempt to pick
@@ -155,9 +162,15 @@ static void gen_constraint_isns(
 			val *abi = val_new_abi_reg(req->reg[0], val_type(v));
 			isn *copy;
 
-			copy = isn_copy(abi, v);
-			isn_insert_before(isn_to_constrain, copy);
-			isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_READS);
+			if(postisn){
+				copy = isn_copy(v, abi);
+				isn_insert_after(isn_to_constrain, copy);
+				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_WRITES);
+			}else{
+				copy = isn_copy(abi, v);
+				isn_insert_before(isn_to_constrain, copy);
+				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_READS);
+			}
 		}
 		return;
 	}
@@ -177,14 +190,16 @@ static void gen_constraint_isns(
 
 static void isel_reserve_cisc_isn(isn *isn)
 {
-	struct constraint req_lhs = { 0 }, req_rhs = { 0 };
+	struct constraint req_lhs = { 0 }, req_rhs = { 0 }, req_ret = { 0 };
 
-	populate_constraints(isn, &req_lhs, &req_rhs);
+	populate_constraints(isn, &req_lhs, &req_rhs, &req_ret);
 
 	if(req_lhs.val)
 		gen_constraint_isns(isn, &req_lhs, 0);
 	if(req_rhs.val)
 		gen_constraint_isns(isn, &req_rhs, 0);
+	if(req_ret.val)
+		gen_constraint_isns(isn, &req_ret, 1);
 }
 
 static void isel_reserve_cisc_block(block *block, void *vctx)
