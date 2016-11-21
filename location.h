@@ -9,6 +9,7 @@ struct location
 {
 	enum
 	{
+		NAME_NOWHERE,
 		NAME_IN_REG,
 		NAME_SPILT
 	} where;

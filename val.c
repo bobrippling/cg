@@ -239,6 +239,9 @@ val *val_op_symbolic(enum op op, val *l, val *r)
 static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct location *loc)
 {
 	switch(loc->where){
+		case NAME_NOWHERE:
+			snprintf(buf, n, "<unlocated>");
+			break;
 		case NAME_IN_REG:
 			snprintf(buf, n, "<reg %d>", loc->u.reg);
 			break;

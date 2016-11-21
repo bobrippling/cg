@@ -13,6 +13,9 @@ bool location_eq(struct location const *a, struct location const *b)
 		return false;
 
 	switch(a->where){
+		case NAME_NOWHERE:
+			return true;
+
 		case NAME_IN_REG:
 			return a->u.reg == b->u.reg;
 
