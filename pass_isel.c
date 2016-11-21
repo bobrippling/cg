@@ -134,7 +134,45 @@ static void gen_constraint_isns(
 	}
 
 	if(req->req & REQ_REG){
-		/* is it a specific reg? */
+		struct location *loc = val_location(v);
+		struct location desired;
+		assert(loc);
+
+		/* TODO: assert(!regt_is_valid(req->reg[1]) && "todo"); */
+
+		desired.where = NAME_IN_REG;
+		memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
+
+		if(loc->where == NAME_NOWHERE){
+			/* we can set the value directly to be what we want */
+			memcpy(loc, &desired, sizeof(*loc));
+
+		}else if(location_eq(loc, &desired)){
+			/* fine */
+
+		}else{
+			/* need to go via an ABI temp */
+			val *abi = val_new_abi_reg(req->reg[0], val_type(v));
+			isn *copy;
+
+			copy = isn_copy(abi, v);
+			isn_insert_before(isn_to_constrain, copy);
+			isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_READS);
+		}
+		return;
+	}
+
+	if(req->req & REQ_MEM){
+		struct location *loc = val_location(v);
+		assert(loc);
+
+		loc->where = NAME_SPILT;
+
+		assert(0 && "TODO");
+		return;
+	}
+
+	/* no constraint */
 }
 
 static void isel_reserve_cisc_isn(isn *isn)
@@ -143,8 +181,10 @@ static void isel_reserve_cisc_isn(isn *isn)
 
 	populate_constraints(isn, &req_lhs, &req_rhs);
 
-	gen_constraint_isns(isn, &req_lhs);
-	gen_constraint_isns(isn, &req_rhs);
+	if(req_lhs.val)
+		gen_constraint_isns(isn, &req_lhs, 0);
+	if(req_rhs.val)
+		gen_constraint_isns(isn, &req_rhs, 0);
 }
 
 static void isel_reserve_cisc_block(block *block, void *vctx)
