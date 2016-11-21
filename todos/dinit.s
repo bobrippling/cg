@@ -1,0 +1,51 @@
+.globl x
+.globl str
+.globl str2
+.globl a_of_a
+.globl struct
+.globl array_of_structs
+
+x:
+.long 0x5
+
+str:
+.ascii "hello\000"
+
+str2:
+.byte 0x68
+.byte 0x65
+.byte 0x6c
+.byte 0x6c
+.byte 0x6f
+.byte 0
+
+a_of_a:
+.long 0x1
+.long 0x2
+.long 0x3
+.long 0x4
+.long 0x5
+.long 0x6
+
+struct:
+.long 0x1
+.word 0x3
+
+array_of_structs:
+.long 0x1
+.quad 0x1
+.quad 0x2
+.quad 0x3
+.long 0x2
+.quad 0x4
+.quad 0x5
+.quad 0x6
+
+i:
+.long 0x3
+
+p:
+.quad i - 0
+
+self:
+.quad self + 1

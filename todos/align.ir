@@ -1,0 +1,16 @@
+$f = void({i1,i4}*)
+
+$_main = i4()
+{
+	$y = alloca {i1, i4}
+
+	$p1 = elem $y, i4 0
+	store $p1, i1 5
+
+	$p2 = elem $y, i4 1
+	store $p2, i4 6
+
+	call $f($y)
+
+	ret i4 0
+}

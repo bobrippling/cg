@@ -1,0 +1,19 @@
+$x = i4 global 5
+
+$str = [i1 x 6] global "hello\0"
+
+$str2 = [i1 x 6] global { 104, 101, 108, 108, 111, 0 }
+
+$a_of_a = [[i4 x 3] x 2] global { { 1, 2, 3 }, { 4, 5, 6 } }
+
+$struct = { i4, i2 } global { 1, 3 }
+
+$array_of_structs = [{i4, [i8 x 3]} x 2] global {
+	{ 1, { 1, 2, 3 } },
+	{ 2, { 4, 5, 6 } },
+}
+
+$i = i4 internal 3
+$p = i4* internal $i
+
+$self = i1* internal $self add 1 anyptr

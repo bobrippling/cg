@@ -1,0 +1,14 @@
+$_f = void({i4}* $p)
+{
+$a_p_0 = alloca {i4}*
+store $a_p_0, $p
+$1 = load $a_p_0
+$0 = elem $1, i4 0
+$2 = load $0
+$3 = and $2, i4 4294967247
+$4 = and i4 2, i4 3
+$5 = shiftl $4, i4 4
+$6 = or $3, $4
+store $0, $6 # mov mem -> mem
+ret void
+}

@@ -1,0 +1,12 @@
+$_f = i4({i4, i2}* $p)
+{
+$a_p_0 = alloca {i4, i2}*
+store $a_p_0, $p
+$1 = load $a_p_0
+$0 = elem $1, i4 2
+$2 = load $0
+# bitfield width=1 offset=6
+$3 = shiftr_arith $2, i4 6
+$4 = and $3, i4 0
+ret $4
+}

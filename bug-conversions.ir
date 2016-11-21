@@ -1,0 +1,29 @@
+type $struct1_A = {[i1 x 4101]}
+$_f = void(...)
+{
+$l_a_0 = alloca $struct1_A
+$0 = alloca i8
+store $0, i8 0x1005
+$5 = alloca void*
+$4 = ptrcast void*, $l_a_0
+store $5, $4
+$0:
+$6 = load $5
+$8 = ptrcast i8*, $6
+store $8, i8 0x0
+$2 = load $0
+$1 = sub $2, i8 0x8
+store $0, $1
+$7 = ptradd $6, i4 1
+store $5, $7
+$3 = gt $1, i8 0x8
+br $3, $0, $1
+$1:
+# unrolled memset($6, 0x0, 5)
+$9 = ptrcast i4*, $6
+store $9, i4 0x0
+$10 = ptradd $6, i4 1
+$11 = ptrcast i1*, $10
+store $11, i1 0x0
+ret void
+}

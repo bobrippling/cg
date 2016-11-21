@@ -1,0 +1,124 @@
+$str.2 = [i1 x 0]
+$str.1 = [i1 x 0]
+# struct A:
+#   a index 0 (first bitfield = 1, field_width = Y)
+#   c index 0 (first bitfield = 0, field_width = Y)
+#   ? index 0 (first bitfield = 1, field_width = Y)
+#   x index 1 (first bitfield = 1, field_width = Y)
+#   z index 1 (first bitfield = 0, field_width = Y)
+$_f = i4({i4, i2}* $p)
+{
+$a_p_0 = alloca {i4, i2}*
+store $a_p_0, $p
+$3 = load $a_p_0
+$2 = elem $3, i4 0
+$4 = load $2
+# bitfield width=1 offset=4
+$5 = shiftr_arith $4, i4 4
+$6 = and $5, i4 0
+$8 = load $a_p_0
+$7 = elem $8, i4 1
+$9 = load $7
+# bitfield width=3 offset=0
+$10 = shiftr_arith $9, i2 0
+$11 = and $10, i2 2
+$12 = sext i4, $11
+$1 = add $6, $12
+$14 = load $a_p_0
+$13 = elem $14, i4 1
+$15 = load $13
+# bitfield width=7 offset=3
+$16 = shiftr_arith $15, i2 3
+$17 = and $16, i2 6
+$18 = sext i4, $17
+$0 = add $1, $18
+ret $0
+}
+$_init = void({i4, i2}* $p)
+{
+$a_p_0 = alloca {i4, i2}*
+store $a_p_0, $p
+$20 = load $a_p_0
+$19 = elem $20, i4 0
+$21 = load $19
+$22 = and $21, i4 4294967280
+$23 = and i4 2, i4 15
+$24 = shiftl $23, i4 0
+$25 = or $22, $24
+store $19, $25
+$27 = load $a_p_0
+$26 = elem $27, i4 0
+$28 = load $26
+$29 = and $28, i4 4294967279
+$30 = and i4 0, i4 1
+$31 = shiftl $30, i4 4
+$32 = or $29, $31
+store $26, $32
+$34 = load $a_p_0
+$33 = elem $34, i4 1
+$35 = trunc i2, i4 1
+$36 = load $33
+$37 = and $36, i2 65528
+$38 = and $35, i2 7
+$39 = shiftl $38, i2 0
+$40 = or $37, $39
+store $33, $40
+$42 = load $a_p_0
+$41 = elem $42, i4 1
+$43 = trunc i2, i4 7
+$44 = load $41
+$45 = and $44, i2 64519
+$46 = and $43, i2 127
+$47 = shiftl $46, i2 3
+$48 = or $45, $47
+store $41, $48
+ret void
+}
+$_printf = i4(...)
+$_print = void({i4, i2}* $p)
+{
+$a_p_0 = alloca {i4, i2}*
+store $a_p_0, $p
+$49 = elem $str.1, i1 0
+$51 = load $a_p_0
+$50 = elem $51, i4 0
+$52 = load $50
+# bitfield width=4 offset=0
+$53 = shiftr_arith $52, i4 0
+$54 = and $53, i4 3
+$56 = load $a_p_0
+$55 = elem $56, i4 0
+$57 = load $55
+# bitfield width=1 offset=4
+$58 = shiftr_arith $57, i4 4
+$59 = and $58, i4 0
+$60 = call $_printf($49, $54, $59)
+$61 = elem $str.2, i1 0
+$63 = load $a_p_0
+$62 = elem $63, i4 1
+$64 = load $62
+# bitfield width=3 offset=0
+$65 = shiftr_arith $64, i2 0
+$66 = and $65, i2 2
+$67 = sext i4, $66
+$69 = load $a_p_0
+$68 = elem $69, i4 1
+$70 = load $68
+# bitfield width=7 offset=3
+$71 = shiftr_arith $70, i2 3
+$72 = and $71, i2 6
+$73 = sext i4, $72
+$74 = load $a_p_0
+$75 = call $_f($74)
+$76 = call $_printf($61, $67, $73, $75)
+ret void
+}
+$_main = i4(...)
+{
+$l_a_0 = alloca {i4, i2}
+call $_init($l_a_0)
+call $_print($l_a_0)
+ret i4 0
+}
+$str.2 = [i1 x 0] internal "%d, %d }) = %d\012\000"
+$str.1 = [i1 x 0] internal "f(&{ %d, %d, \000"

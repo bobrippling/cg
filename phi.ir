@@ -1,0 +1,16 @@
+$f = i4(i4 $a)
+{
+	$cond = ne $a, i4 0
+	br $cond, $t, $f
+
+$t:
+	$r = load i4* 0
+	jmp $fin
+
+$f:
+	#$r = copy i4 3
+	jmp $fin
+
+$fin:
+	ret $r
+}

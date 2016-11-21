@@ -1,0 +1,39 @@
+$str.1 = [i1 x 0]
+
+$_f = i4*({i4, i4}* $p)
+{
+	$a_p_0 = alloca {i4, i4}*
+	store $a_p_0, $p
+	$1 = load $a_p_0
+	$0 = elem $1, i4 1
+	ret $0
+}
+
+$_g = i4(...)
+{
+	ret i4 5
+}
+
+$_printf = i4(...)
+
+$_main = i4(...)
+{
+	$l_a_0 = alloca {i4, i4}
+	$2 = call $_f($l_a_0)
+
+	$4 = ptrcast i4(...)*, $_g
+	$3 = call $4()
+
+	store $2, $3
+	$5 = elem $l_a_0, i4 0
+	store $5, i4 3
+	$7 = elem $str.1, i1 0
+	$8 = elem $l_a_0, i4 0
+	$9 = load $8
+	$10 = elem $l_a_0, i4 1
+	$11 = load $10
+	$6 = call $_printf($7, $9, $11)
+	ret i4 0
+}
+
+$str.1 = [i1 x 0] internal "{ %d, %d }\012\000"

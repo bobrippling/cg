@@ -1,0 +1,18 @@
+$f = void({i4}*)
+
+$_main = i4()
+{
+	$a = alloca {i4}
+
+	$p1 = elem $a, i4 0
+	store $p1, i4 5
+
+	call $f($a)
+
+	$b = alloca {i4}
+
+	$c = eq $a, $b
+	$d = zext i4, $c
+
+	ret $d
+}
