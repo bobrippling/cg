@@ -279,7 +279,8 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
 		case ABI_TEMP:
-			return val_abi_str_r(buf, VAL_STR_SZ, &v->u.abi);
+			snprintf(buf, VAL_STR_SZ, "<abi %p>", (void *)v);
+			break;
 	}
 
 	if(loc
