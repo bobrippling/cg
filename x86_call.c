@@ -16,6 +16,7 @@
 #include "block_struct.h"
 #include "val_struct.h"
 #include "val_internal.h"
+#include "isn.h"
 #include "isn_struct.h"
 #include "type.h"
 
@@ -78,6 +79,7 @@ static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
 		case GLOBAL:
 		case BACKEND_TEMP:
 		case ALLOCA:
+		case ABI_TEMP:
 			return; /* no need to spill */
 
 		case FROM_ISN:
@@ -215,6 +217,7 @@ static void x86_restoreregs(dynmap *regs, x86_octx *octx)
 	dynmap_free(regs);
 }
 
+#if 0
 static void topographical_reg_init(dynarray *args, size_t n_reg_args, dep *deps)
 {
 	size_t i;
@@ -227,11 +230,11 @@ static void topographical_reg_init(dynarray *args, size_t n_reg_args, dep *deps)
 		deps[i].prev = -1;
 		deps[i].done = false;
 
-		assert(i < countof(x86_arg_regs));
+		assert(i < x86_arg_reg_count);
 		deps[i].target = x86_arg_regs[i];
 
 		if(loc && loc->where == NAME_IN_REG){
-			deps[i].current = loc->u.reg; /* FIXME: regt? */
+			deps[i].current = regt_index(loc->u.reg);
 		}else{
 			deps[i].current = -1;
 		}
@@ -308,7 +311,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 	 * have eax, so we do reverse order for mov:ing
 	 */
 	const size_t n_reg_args = MIN(
-			dynarray_count(args), countof(x86_arg_regs));
+			dynarray_count(args), x86_arg_reg_count);
 	dep *deps = xmalloc(n_reg_args * sizeof *deps);
 	size_t i;
 	bool chain_loop = false;
@@ -370,7 +373,7 @@ static void topographical_reg_args_move(dynarray *args, x86_octx *octx)
 			val *arg_to_use = arg;
 
 			if(loc && loc->where == NAME_IN_REG){
-				assert(deps[j].current == loc->u.reg); /* FIXME: regt? */
+				assert(deps[j].current == regt_index(loc->u.reg));
 			}else{
 				assert(deps[j].current == -1);
 			}
@@ -410,7 +413,7 @@ static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 	dynarray_iter(args, i){
 		val *arg;
 
-		if(i < countof(x86_arg_regs))
+		if(i < x86_arg_reg_count)
 			continue;
 
 		arg = dynarray_ent(args, i);
@@ -421,6 +424,7 @@ static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 
 	topographical_reg_args_move(args, octx);
 }
+#endif
 
 void x86_emit_call(
 		block *blk, unsigned isn_idx,
@@ -440,7 +444,9 @@ void x86_emit_call(
 	spilt = x86_spillregs(blk, except, isn_idx, octx);
 
 	/* all regs spilt, can now shift arguments into arg regs */
+#if 0
 	x86_call_assign_arg_regs(args, octx);
+#endif
 
 	if(fn->kind == GLOBAL){
 		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));

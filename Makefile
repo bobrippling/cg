@@ -7,8 +7,8 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
       lifetime.o \
       type.o uniq_type_list.o type_iter.o target.o location.o \
       regset.o \
-      pass_abi.o pass_isel.o pass_regalloc.o
-      #x86.o x86_call.o x86_isns.o
+      pass_abi.o pass_isel.o pass_regalloc.o \
+      x86.o x86_call.o x86_isns.o
 
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
 

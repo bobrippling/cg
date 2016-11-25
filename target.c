@@ -78,7 +78,7 @@ static const struct
 		"x86_64",
 		{ 8, 8 },
 		ARCH_ABI(x64),
-		global_dump /* TODO: x64_dump */
+		x86_out
 	}
 	/* TODO: i386 */
 };

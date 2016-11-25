@@ -15,7 +15,7 @@
 #include "x86_internal.h"
 #include "target.h"
 
-#include "isn_internal.h"
+#include "isn.h"
 #include "isn_struct.h"
 #include "val_struct.h"
 #include "block_struct.h"
@@ -25,7 +25,6 @@
 #include "unit_internal.h"
 #include "val_internal.h" /* val_location() */
 #include "global_struct.h"
-#include "regalloc.h"
 
 #include "x86_call.h"
 #include "x86_isns.h"
@@ -44,9 +43,11 @@ static const char *const regs[][4] = {
 	{ "sil", "si", "esi", "rsi" },
 };
 
+#if 0
 static const int callee_saves[] = {
 	1 /* ebx */
 };
+#endif
 
 enum deref_type
 {
@@ -83,6 +84,9 @@ static operand_category val_category(val *v, bool dereference)
 		case GLOBAL:
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
+
+		case ABI_TEMP:
+			return OPERAND_REG;
 
 		case BACKEND_TEMP:
 		case ARGUMENT:
@@ -125,8 +129,7 @@ static const char *name_in_reg_str(const struct location *loc, const int size)
 
 	assert(loc->where == NAME_IN_REG);
 
-	/* FIXME: regt_valid */
-	if(reg == -1)
+	if(!regt_is_valid(reg))
 		return NULL;
 
 	assert(reg < (int)countof(regs));
@@ -139,8 +142,7 @@ static const char *name_in_reg_str(const struct location *loc, const int size)
 		default: assert(0 && "reg size too large");
 	}
 
-	/* FIXME: regt indexing */
-	return regs[reg][sz_idx];
+	return regs[regt_index(reg)][sz_idx];
 }
 
 static const char *x86_cmp_str(enum op_cmp cmp)
@@ -204,8 +206,12 @@ static bool x86_can_infer_size(val *val)
 		case LITERAL: return false;
 		case GLOBAL: return false;
 
+		case ABI_TEMP:
+			loc = &val->u.abi;
+			break;
+
 		case ARGUMENT:
-			loc = function_arg_loc(val->u.argument.func, val->u.argument.idx);
+			loc = &val->u.argument.loc;
 			break;
 
 		case FROM_ISN:
@@ -228,6 +234,9 @@ static const char *x86_name_str(
 		type *ty, const struct target *target)
 {
 	switch(loc->where){
+		case NAME_NOWHERE:
+			assert(0 && "NAME_NOWHERE in backend");
+
 		case NAME_IN_REG:
 		{
 			const bool deref = (dereference_ty == DEREFERENCE_TRUE);
@@ -305,13 +314,11 @@ static const char *x86_val_str(
 			break;
 		}
 
-		case ARGUMENT:
-			loc = function_arg_loc(val->u.argument.func, val->u.argument.idx);
-			goto loc;
-
+		case ARGUMENT: loc = &val->u.argument.loc; goto loc;
 		case ALLOCA: loc = &val->u.alloca.loc; goto loc;
 		case FROM_ISN: loc = &val->u.local.loc; goto loc;
 		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
+		case ABI_TEMP: loc = &val->u.abi; goto loc;
 loc:
 		{
 			return x86_name_str(
@@ -785,7 +792,7 @@ static void emit_elem(isn *i, x86_octx *octx)
 			break;
 
 		case ARGUMENT:
-			loc = function_arg_loc(lval->u.argument.func, lval->u.argument.idx);
+			loc = &lval->u.argument.loc;
 			goto loc;
 		case ALLOCA:
 			loc = &lval->u.alloca.loc;
@@ -796,6 +803,9 @@ static void emit_elem(isn *i, x86_octx *octx)
 		case BACKEND_TEMP:
 			loc = &lval->u.temp_loc;
 			goto loc;
+		case ABI_TEMP:
+			loc = &lval->u.abi;
+			goto loc;
 
 loc:
 		{
@@ -804,6 +814,9 @@ loc:
 				break;
 
 			switch(loc->where){
+				case NAME_NOWHERE:
+					assert(0 && "NAME_NOWHERE in backend");
+
 				case NAME_IN_REG:
 				{
 					const char *pointer_str = x86_val_str(
@@ -922,8 +935,10 @@ static void x86_op(
 	}
 
 	/* no instruction selection / register merging. just this for now */
+#if 0
 	x86_comment(octx, "pre-op x86_mov:");
 	x86_mov(lhs, res, octx);
+#endif
 
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
@@ -1058,6 +1073,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 			case ARGUMENT:
 			case FROM_ISN:
 			case ALLOCA:
+			case ABI_TEMP:
 			case BACKEND_TEMP:
 			{
 				struct location *loc = val_location(rhs);
@@ -1215,6 +1231,9 @@ static void x86_out_block1(block *blk, void *vctx)
 			case ISN_ALLOCA:
 				break;
 
+			case ISN_IMPLICIT_USE:
+				break;
+
 			case ISN_RET:
 			{
 				if(!type_is_void(i->u.ret->ty)){
@@ -1296,7 +1315,7 @@ static void x86_out_block1(block *blk, void *vctx)
 			case ISN_CALL:
 			{
 				x86_emit_call(blk, idx,
-						i->u.call.into_or_null,
+						i->u.call.into,
 						i->u.call.fn,
 						&i->u.call.args,
 						octx);
@@ -1349,7 +1368,6 @@ static void x86_out_fn(unit *unit, function *func)
 	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func, unit);
-	struct regalloc_info regalloc;
 	dynmap *markers = BLOCK_DYNMAP_NEW();
 
 	out_ctx.unit = unit;
@@ -1357,10 +1375,6 @@ static void x86_out_fn(unit *unit, function *func)
 	out_ctx.fout = tmpfile();
 	if(!out_ctx.fout)
 		die("tmpfile():");
-
-	/* regalloc */
-	x86_init_regalloc_info(&regalloc, func);
-	func_regalloc(func, &regalloc, &alloca_sum);
 
 	out_ctx.exitblk = exit;
 	out_ctx.func = func;
