@@ -12,6 +12,13 @@
 #include "isn_replace.h"
 #include "type.h"
 
+/* FIXME: this is all x86(_64) specific */
+enum {
+	REG_EAX = 0,
+	REG_ECX = 2,
+	REG_EDX = 3
+};
+
 struct constraint {
 	enum {
 		REQ_REG   = 1 << 0,
@@ -28,13 +35,7 @@ static void populate_constraints(
 		struct constraint *req_rhs,
 		struct constraint *req_ret)
 {
-	enum {
-		REG_EAX = 0,
-		REG_ECX = 2,
-		REG_EDX = 3
-	};
 	/* div, shift, cmp
-	 * FIXME: this is all x86(_64) specific
 	 */
 	switch(isn->type){
 		case ISN_OP:
@@ -205,6 +206,32 @@ static void isel_reserve_cisc_isn(isn *isn)
 		gen_constraint_isns(isn, &req_ret, 1);
 }
 
+static void isel_pad_cisc_isn(isn *i)
+{
+	if(i->type == ISN_OP){
+		/* need a zero/sign-extension of the value into edx */
+		switch(i->u.op.op){
+			case op_sdiv:
+			case op_smod:
+			{
+				break;
+			}
+			case op_udiv:
+			case op_umod:
+			{
+				type *opty = val_type(i->u.op.lhs);
+				val *edx = val_new_abi_reg(regt_make(REG_EDX, 0), opty);
+				val *zero = val_new_i(0, opty);
+				isn *copy = isn_copy(edx, zero);
+				isn_insert_before(i, copy);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+}
+
 static void isel_reserve_cisc_block(block *block, void *vctx)
 {
 	isn *i;
@@ -213,6 +240,7 @@ static void isel_reserve_cisc_block(block *block, void *vctx)
 
 	for(i = block_first_isn(block); i; i = i->next){
 		isel_reserve_cisc_isn(i);
+		isel_pad_cisc_isn(i);
 	}
 }
 

@@ -933,7 +933,15 @@ static void x86_op(
 		case op_smod:
 		case op_udiv:
 		case op_umod:
-			assert(0 && "TODO: x86 division");
+		{
+			emit_isn_operand op;
+			op.val = rhs;
+			op.dereference = false;
+			opisn.mnemonic = "idiv";
+			opisn.arg_count = 1; /* idiv takes an implicit second operand */
+			x86_emit_isn(&opisn, octx, &op, 1, NULL);
+			return;
+		}
 	}
 
 	/* no instruction selection / register merging. just this for now */
