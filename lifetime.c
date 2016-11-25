@@ -24,6 +24,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 	(void)isn;
 
 	switch(v->kind){
+		case ABI_TEMP:
 		case FROM_ISN:
 		case BACKEND_TEMP:
 		case ARGUMENT:
@@ -38,7 +39,6 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 		case LITERAL:
 		case GLOBAL:
 		case ALLOCA:
-		case ABI_TEMP:
 			return;
 	}
 
