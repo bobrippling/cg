@@ -5,8 +5,10 @@
 	X(add)      \
 	X(sub)      \
 	X(mul)      \
-	X(div)      \
-	X(mod)      \
+	X(sdiv)     \
+	X(udiv)     \
+	X(smod)     \
+	X(umod)     \
 	X(and)      \
 	X(or)       \
 	X(xor)      \

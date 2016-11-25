@@ -929,8 +929,10 @@ static void x86_op(
 		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
 		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
 
-		case op_div:
-		case op_mod:
+		case op_sdiv:
+		case op_smod:
+		case op_udiv:
+		case op_umod:
 			assert(0 && "TODO: x86 division");
 	}
 

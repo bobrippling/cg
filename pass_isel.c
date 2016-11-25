@@ -41,9 +41,12 @@ static void populate_constraints(
 			switch(isn->u.op.op){
 				default:
 					return;
-				case op_div:
-				case op_mod:
+				case op_sdiv:
+				case op_smod:
+				case op_udiv:
+				case op_umod:
 				{
+					const int is_div = (isn->u.op.op == op_sdiv || isn->u.op.op == op_udiv);
 					/* r = a/b
 					 * a -> %eax
 					 * b -> div operand, reg or mem
@@ -69,7 +72,7 @@ static void populate_constraints(
 					req_rhs->val = isn->u.op.rhs;
 
 					req_ret->req = REQ_REG;
-					req_ret->reg[0] = regt_make(isn->u.op.op == op_div ? REG_EAX : REG_EDX, 0);
+					req_ret->reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
 					req_ret->reg[1] = regt_make_invalid();
 					req_ret->val = isn->u.op.res;
 					break;

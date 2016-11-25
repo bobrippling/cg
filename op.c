@@ -6,18 +6,30 @@ int op_exe(enum op op, int l, int r, int *const div0)
 {
 	*div0 = 0;
 
+#define div0check() \
+			if(r == 0){   \
+				*div0 = 1;  \
+				return 0;   \
+			}
+
 	switch(op){
 		case op_add: return l + r;
 		case op_sub: return l - r;
 		case op_mul: return l * r;
 
-		case op_div:
-		case op_mod:
-			if(r == 0){
-				*div0 = 1;
-				return 0;
-			}
+		case op_sdiv:
+			div0check();
 			return l / r;
+		case op_smod:
+			div0check();
+			return l % r;
+
+		case op_udiv:
+			div0check();
+			return (unsigned)l / r;
+		case op_umod:
+			div0check();
+			return (unsigned)l % r;
 
 		case op_and: return l & r;
 		case op_or: return l | r;

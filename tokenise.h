@@ -55,8 +55,10 @@
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \
-	OP(div)             \
-	OP(mod)             \
+	OP(sdiv)            \
+	OP(smod)            \
+	OP(udiv)            \
+	OP(umod)            \
 	OP(xor)             \
 	OP(or)              \
 	OP(and)             \
