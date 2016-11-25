@@ -882,9 +882,9 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+			return;
 		case BACKEND_TEMP:
 		case ABI_TEMP:
-			return;
 		case ALLOCA:
 		case ARGUMENT:
 		case FROM_ISN:
