@@ -69,9 +69,9 @@ static const struct
 	{
 		"ir",
 		{ 8, 8 },
-		{
-			0
-		},
+		/* arbitrary ABI
+		 * this should be configurable to emit abi'd IR for a certain arch */
+		ARCH_ABI(x64),
 		global_dump
 	},
 	{
