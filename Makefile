@@ -28,6 +28,7 @@ ir: ${OBJ} strbuf/strbuf.a
 	@echo compile $<
 	$Q${CC} -c -o $@ $< ${CFLAGS}
 
+test: check
 check: ir
 	make -Ctest
 
@@ -50,4 +51,4 @@ clean:
 STRBUF_PATH = strbuf
 include strbuf/strbuf.mk
 
-.PHONY: clean all check
+.PHONY: clean all check test
