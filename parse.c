@@ -147,7 +147,6 @@ found:
 
 	if(glob){
 		v = val_new_global(unit_uniqtypes(p->unit), glob);
-		name = NULL;
 		goto found;
 	}
 
@@ -971,8 +970,6 @@ static void parse_function(
 	while(token_peek(p->tok) != tok_rbrace && !parse_finished(p->tok)){
 		parse_block(p);
 	}
-
-	dynmap_clear(p->names2vals);
 
 	eat(p, "function close brace", tok_rbrace);
 

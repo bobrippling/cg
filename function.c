@@ -18,13 +18,13 @@
 static void function_add_block(function *, block *);
 
 function *function_new(
-		const char *lbl, struct type *fnty,
+		char *lbl, struct type *fnty,
 		dynarray *toplvl_args,
 		unsigned *uniq_counter)
 {
 	function *fn = xcalloc(1, sizeof *fn);
 
-	fn->name = xstrdup(lbl);
+	fn->name = lbl;
 	fn->fnty = fnty;
 	fn->uniq_counter = uniq_counter;
 

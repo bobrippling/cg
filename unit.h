@@ -19,7 +19,7 @@ void unit_on_functions(unit *, void (function *, void *), void *);
 void unit_on_globals(unit *, global_emit_func);
 
 function *unit_function_new(
-		unit *u, const char *lbl,
+		unit *u, char *lbl /*consumed*/,
 		struct type *fnty, struct dynarray *toplvl_args);
 
 variable_global *unit_variable_new(

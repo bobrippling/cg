@@ -285,6 +285,23 @@ val *val_retain(val *v)
 
 static void val_free(val *v)
 {
+	switch(v->kind){
+		case LITERAL:
+			break;
+		case GLOBAL:
+			break;
+		case ARGUMENT:
+			free(v->u.argument.name);
+			break;
+		case FROM_ISN:
+			free(v->u.local.name);
+			break;
+		case ALLOCA:
+			free(v->u.alloca.name);
+			break;
+		case BACKEND_TEMP:
+			break;
+	}
 	free(v);
 }
 

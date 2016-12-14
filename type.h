@@ -26,6 +26,8 @@ enum type_primitive
 #undef X
 };
 
+void uniq_type_list_free(uniq_type_list *);
+
 bool type_is_fn(type *);
 bool type_is_fn_variadic(type *);
 bool type_is_primitive(type *, enum type_primitive);

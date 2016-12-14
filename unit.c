@@ -72,6 +72,8 @@ void unit_free(unit *unit)
 
 	unit_on_functions(unit, unit_function_free, NULL);
 
+	uniq_type_list_free(unit_uniqtypes(unit));
+
 	for(i = 0; i < unit->nglobals; i++)
 		free(unit->globals[i]);
 
@@ -79,6 +81,7 @@ void unit_free(unit *unit)
 		free(str);
 	dynmap_free(unit->names2types);
 
+	free(unit->globals);
 	free(unit);
 }
 
@@ -124,7 +127,7 @@ static void unit_add_global(unit *u, void *global, enum global_kind kind)
 }
 
 function *unit_function_new(
-		unit *u, const char *lbl,
+		unit *u, char *lbl,
 		struct type *fnty, struct dynarray *toplvl_args)
 {
 	function *fn = function_new(lbl, fnty, toplvl_args, &u->uniq_counter);

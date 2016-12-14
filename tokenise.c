@@ -74,6 +74,8 @@ void token_fin(tokeniser *t, int *const err)
 
 	*err = t->ferr;
 
+	free(t->lastident);
+	free(t->lastbareword);
 	free(t);
 }
 
