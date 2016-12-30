@@ -50,4 +50,6 @@ struct init_toplvl
 
 void init_dump(struct init_toplvl *);
 
+void init_free(struct init_toplvl *);
+
 #endif

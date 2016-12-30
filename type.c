@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <assert.h>
@@ -13,6 +14,11 @@
 
 #include "type.h"
 #include "type_uniq_struct.h"
+
+static void type_free_1(type *);
+static void type_free_dynarray_1(dynarray *);
+static void type_free_r(type *);
+static void type_free_dynarray_r(dynarray *);
 
 struct uptype
 {
@@ -333,12 +339,13 @@ type *type_get_func(uniq_type_list *us, type *ret, /*consumed*/dynarray *args, b
 		&& ent->u.func.variadic == variadic
 		&& dynarray_refeq(&ent->u.func.args, args))
 		{
+			dynarray_reset(args);
 			return ent;
 		}
 	}
 
 	func = tnew(FUNC);
-	memset(&func->u.func.args, 0, sizeof func->u.func.args);
+	dynarray_init(&func->u.func.args);
 	dynarray_move(&func->u.func.args, args);
 	func->u.func.ret = ret;
 	func->u.func.variadic = variadic;
@@ -357,6 +364,7 @@ type *type_get_struct(uniq_type_list *us, dynarray *membs)
 		type *ent = dynarray_ent(&us->structs, i);
 
 		if(dynarray_refeq(&ent->u.struct_.membs, membs)){
+			dynarray_reset(membs);
 			return ent;
 		}
 	}
@@ -575,4 +583,96 @@ unsigned type_align(type *t)
 	unsigned sz, align;
 	type_size_align(t, &sz, &align);
 	return align;
+}
+
+static void uptype_free(struct uptype *up)
+{
+	if(!up)
+		return;
+
+	type_free_1(up->ptrto);
+	up->ptrto = NULL;
+
+	type_free_dynarray_1(&up->arrays);
+
+	type_free_dynarray_1(&up->funcs);
+}
+
+static void type_free_1(type *t)
+{
+	if(!t)
+		return;
+
+	uptype_free(&t->up);
+
+	/* a function, array and pointer's sub-types will always be
+	 * below them in the tree, so we don't free them */
+	switch(t->kind){
+		case PRIMITIVE:
+			break;
+		case STRUCT:
+			dynarray_reset(&t->u.struct_.membs);
+			break;
+		case ALIAS:
+			free(t->u.alias.name);
+			break;
+		case PTR:
+			break;
+		case ARRAY:
+			break;
+		case FUNC:
+			dynarray_reset(&t->u.func.args);
+			break;
+		case VOID:
+			break;
+	}
+	free(t);
+}
+
+static void type_free_dynarray_1(dynarray *da)
+{
+	size_t i;
+	dynarray_iter(da, i){
+		type *ent = dynarray_ent(da, i);
+		type_free_1(ent);
+	}
+	dynarray_reset(da);
+}
+
+static void type_free_r(type *t)
+{
+	uptype_free(&t->up);
+}
+
+static void type_free_dynarray_r(dynarray *ar)
+{
+	size_t i;
+	dynarray_iter(ar, i){
+		type *ent = dynarray_ent(ar, i);
+		type_free_r(ent);
+	}
+	/* no reset */
+}
+
+void uniq_type_list_free(uniq_type_list *utl)
+{
+	type *t;
+	size_t i;
+
+	/* free everything but the top levels - those
+	 * in uniq_type_list */
+	for(i = 0; i < countof(utl->primitives); i++)
+		type_free_r(utl->primitives[i]);
+	type_free_r(utl->tvoid);
+	type_free_dynarray_r(&utl->structs);
+
+	for(i = 0; i < countof(utl->primitives); i++)
+		type_free_1(utl->primitives[i]);
+	type_free_1(utl->tvoid);
+	type_free_dynarray_1(&utl->structs);
+
+	for(i = 0; (t = dynmap_value(type *, utl->aliases, i)); i++)
+		type_free_1(t); /* this frees 'spel' */
+
+	dynmap_free(utl->aliases);
 }

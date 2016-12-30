@@ -36,7 +36,6 @@ block *block_new(char *lbl)
 static void branch_free(block *b)
 {
 	val_release(b->u.branch.cond);
-	dynarray_reset(&b->preds);
 }
 
 void block_free(block *b)
@@ -46,6 +45,8 @@ void block_free(block *b)
 
 	if(b->type == BLK_BRANCH)
 		branch_free(b);
+
+	dynarray_reset(&b->preds);
 
 	for(i = 0; (lt = dynmap_value(struct lifetime *, b->val_lifetimes, i)); i++)
 		free(lt);

@@ -95,6 +95,7 @@ static void isn_free_1(isn *isn)
 			dynarray_iter(&isn->u.call.args, i){
 				val_release(dynarray_ent(&isn->u.call.args, i));
 			}
+			dynarray_reset(&isn->u.call.args);
 			break;
 		}
 	}

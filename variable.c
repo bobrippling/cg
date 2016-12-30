@@ -8,20 +8,13 @@
 #include "variable_internal.h"
 #include "variable_struct.h"
 
-static void variable_new_at(variable *v, const char *name, struct type *ty)
+static void variable_new_at(variable *v, char *name, struct type *ty)
 {
-	v->name = xstrdup(name);
+	v->name = name;
 	v->ty = ty;
 }
 
-variable *variable_new(const char *name, struct type *ty)
-{
-	variable *v = xmalloc(sizeof *v);
-	variable_new_at(v, name, ty);
-	return v;
-}
-
-variable_global *variable_global_new(const char *name, struct type *ty)
+variable_global *variable_global_new(char *name, struct type *ty)
 {
 	variable_global *v = xmalloc(sizeof *v);
 	variable_new_at(&v->var, name, ty);
@@ -29,9 +22,14 @@ variable_global *variable_global_new(const char *name, struct type *ty)
 	return v;
 }
 
-void variable_free(variable *v)
+void variable_deinit(variable *v)
 {
 	free(v->name);
+}
+
+void variable_free(variable *v)
+{
+	variable_deinit(v);
 	free(v);
 }
 

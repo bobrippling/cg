@@ -59,26 +59,35 @@ const char *unit_lbl_private_prefix(unit *u)
 	return u->target_info->sys.lbl_priv_prefix;
 }
 
-static void unit_function_free(function *f, void *ctx)
-{
-	(void)ctx;
-	function_free(f);
-}
-
 void unit_free(unit *unit)
 {
 	size_t i;
 	char *str;
 
-	unit_on_functions(unit, unit_function_free, NULL);
+	uniq_type_list_free(unit_uniqtypes(unit));
 
-	for(i = 0; i < unit->nglobals; i++)
-		free(unit->globals[i]);
+	for(i = 0; i < unit->nglobals; i++){
+		global *g = unit->globals[i];
+
+		switch(g->kind){
+			case GLOBAL_FUNC:
+				function_free(g->u.fn);
+				break;
+			case GLOBAL_VAR:
+				variable_global_free(g->u.var);
+				break;
+			case GLOBAL_TYPE:
+				break;
+		}
+
+		free(g);
+	}
 
 	for(i = 0; (str = dynmap_key(char *, unit->names2types, i)); i++)
 		free(str);
 	dynmap_free(unit->names2types);
 
+	free(unit->globals);
 	free(unit);
 }
 
@@ -124,7 +133,7 @@ static void unit_add_global(unit *u, void *global, enum global_kind kind)
 }
 
 function *unit_function_new(
-		unit *u, const char *lbl,
+		unit *u, char *lbl,
 		struct type *fnty, struct dynarray *toplvl_args)
 {
 	function *fn = function_new(lbl, fnty, toplvl_args, &u->uniq_counter);
@@ -134,7 +143,7 @@ function *unit_function_new(
 	return fn;
 }
 
-variable_global *unit_variable_new(unit *u, const char *lbl, struct type *ty)
+variable_global *unit_variable_new(unit *u, char *lbl, struct type *ty)
 {
 	variable_global *var = variable_global_new(lbl, ty);
 

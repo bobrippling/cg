@@ -123,6 +123,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(isn_is_noop(isn, &src, &dest)){
 		if(v == src){
 			/* if we're the source register, we need allocation */
+#if 0
 		}else{
 			if(SHOW_REGALLOC){
 				fprintf(stderr, "regalloc(%s) => reuse of source register\n", val_str(v));
@@ -132,6 +133,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			regalloc_mirror(dest, src);
 			isn->skip = 1;
 			return;
+#endif
 		}
 	}
 
