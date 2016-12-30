@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "init.h"
@@ -68,4 +69,47 @@ void init_dump(struct init_toplvl *init)
 		printf("weak ");
 
 	init_dump_r(init->init);
+}
+
+static void init_free_r(struct init *init)
+{
+	switch(init->type){
+		case init_str:
+			free(init->u.str.str);
+			break;
+
+		case init_array:
+		case init_struct:
+		{
+			size_t i;
+			dynarray_iter(&init->u.elem_inits, i){
+				struct init *sub = dynarray_ent(&init->u.elem_inits, i);
+				init_free_r(sub);
+			}
+			dynarray_reset(&init->u.elem_inits);
+			break;
+		}
+
+		case init_ptr:
+			if(init->u.ptr.is_label){
+				free(init->u.ptr.u.ident.label.ident);
+			}
+			break;
+
+		case init_int:
+			break;
+
+		case init_alias:
+			init_free_r(init->u.alias.init);
+			break;
+	}
+	free(init);
+}
+
+void init_free(struct init_toplvl *init)
+{
+	if(!init)
+		return;
+	init_free_r(init->init);
+	free(init);
 }
