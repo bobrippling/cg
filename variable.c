@@ -29,9 +29,14 @@ variable_global *variable_global_new(const char *name, struct type *ty)
 	return v;
 }
 
-void variable_free(variable *v)
+void variable_deinit(variable *v)
 {
 	free(v->name);
+}
+
+void variable_free(variable *v)
+{
+	variable_deinit(v);
 	free(v);
 }
 

@@ -59,23 +59,29 @@ const char *unit_lbl_private_prefix(unit *u)
 	return u->target_info->sys.lbl_priv_prefix;
 }
 
-static void unit_function_free(function *f, void *ctx)
-{
-	(void)ctx;
-	function_free(f);
-}
-
 void unit_free(unit *unit)
 {
 	size_t i;
 	char *str;
 
-	unit_on_functions(unit, unit_function_free, NULL);
-
 	uniq_type_list_free(unit_uniqtypes(unit));
 
-	for(i = 0; i < unit->nglobals; i++)
-		free(unit->globals[i]);
+	for(i = 0; i < unit->nglobals; i++){
+		global *g = unit->globals[i];
+
+		switch(g->kind){
+			case GLOBAL_FUNC:
+				function_free(g->u.fn);
+				break;
+			case GLOBAL_VAR:
+				variable_global_free(g->u.var);
+				break;
+			case GLOBAL_TYPE:
+				break;
+		}
+
+		free(g);
+	}
 
 	for(i = 0; (str = dynmap_key(char *, unit->names2types, i)); i++)
 		free(str);

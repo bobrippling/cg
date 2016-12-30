@@ -13,4 +13,6 @@ struct init_toplvl *variable_global_init(variable_global *);
 
 bool variable_global_is_forward_decl(variable_global *);
 
+void variable_global_free(variable_global *);
+
 #endif

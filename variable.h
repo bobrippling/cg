@@ -4,6 +4,7 @@
 typedef struct variable variable;
 
 void variable_free(variable *);
+void variable_deinit(variable *);
 
 const char *variable_name(variable *);
 struct type *variable_type(variable *);
