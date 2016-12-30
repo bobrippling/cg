@@ -143,7 +143,7 @@ function *unit_function_new(
 	return fn;
 }
 
-variable_global *unit_variable_new(unit *u, const char *lbl, struct type *ty)
+variable_global *unit_variable_new(unit *u, char *lbl, struct type *ty)
 {
 	variable_global *var = variable_global_new(lbl, ty);
 

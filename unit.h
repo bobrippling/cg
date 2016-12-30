@@ -22,9 +22,7 @@ function *unit_function_new(
 		unit *u, char *lbl /*consumed*/,
 		struct type *fnty, struct dynarray *toplvl_args);
 
-variable_global *unit_variable_new(
-		unit *u, const char *lbl,
-		struct type *ty);
+variable_global *unit_variable_new(unit *u, char *lbl, struct type *ty);
 
 void unit_type_new(unit *u, struct type *alias);
 
