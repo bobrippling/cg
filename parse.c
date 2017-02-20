@@ -181,7 +181,7 @@ static void eat(parse *p, const char *desc, enum token expect)
 	parse_error(p, "expected %s%s%s, got %s",
 			token_to_str(expect),
 			desc ? " for " : "",
-			desc,
+			desc ? desc : "",
 			token_to_str(got));
 }
 
