@@ -50,6 +50,7 @@ type *type_get_ptr(uniq_type_list *, type *);
 type *type_get_array(uniq_type_list *, type *, unsigned long);
 type *type_get_func(uniq_type_list *, type *, /*consumed*/dynarray *, bool variadic);
 type *type_get_struct(uniq_type_list *, dynarray *);
+type *type_get_sizet(uniq_type_list *);
 
 /* --- aliases --- */
 struct typealias *type_alias_add(uniq_type_list *, char * /* consumed */);

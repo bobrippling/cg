@@ -328,6 +328,19 @@ type *type_get_primitive(uniq_type_list *us, enum type_primitive prim)
 	return us->primitives[prim];
 }
 
+type *type_get_sizet(uniq_type_list *us)
+{
+	enum type_primitive p;
+	switch(us->ptrsz){
+		case 1: p = i1; break;
+		case 2: p = i2; break;
+		case 4: p = i4; break;
+		case 8: p = i8; break;
+		default: assert(0);
+	}
+	return type_get_primitive(us, p);
+}
+
 type *type_get_ptr(uniq_type_list *us, type *t)
 {
 	if(t->up.ptrto)
