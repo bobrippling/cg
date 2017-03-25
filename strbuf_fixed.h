@@ -26,4 +26,6 @@ bool strbuf_fixed_vprintf(strbuf_fixed *, const char *, va_list);
 
 char *strbuf_fixed_detach(strbuf_fixed *);
 
+#define strbuf_fixed_str(s) ((s)->str)
+
 #endif
