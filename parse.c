@@ -507,9 +507,14 @@ static void parse_call(parse *p, char *ident)
 	dynarray_reset(&args);
 }
 
-static bool op_types_valid(type *a, type *b)
+static bool cmp_types_valid(enum op_cmp cmp, type *a, type *b)
 {
-	return a == b;
+	return type_eq(a, b);
+}
+
+static bool op_types_valid(enum op op, type *a, type *b)
+{
+	return (type_is_int(a) || type_is_float(a, true)) && type_eq(a, b);
 }
 
 static void parse_ident(parse *p, char *spel)
@@ -713,14 +718,33 @@ static void parse_ident(parse *p, char *spel)
 				val *vrhs = (eat(p, "operator", tok_comma), parse_val(p));
 				val *vres;
 				type *opty;
+				uniq_type_list *utl = unit_uniqtypes(p->unit);
 
-				if(!op_types_valid(val_type(vlhs), val_type(vrhs))){
-					sema_error(p, "mismatching types in op");
+				if(is_cmp){
+					if(!cmp_types_valid(cmp, val_type(vlhs), val_type(vrhs))){
+						sema_error(p, "mismatching types in cmp");
+					}
+				}else{
+					switch(op){
+						default:
+							if(!op_types_valid(op, val_type(vlhs), val_type(vrhs))){
+								sema_error(p, "invalid types for op");
+							}
+							break;
+						case op_shiftl:
+						case op_shiftr_logic:
+						case op_shiftr_arith:
+							break;
+					}
 				}
 
-				opty = (is_cmp
-						? type_get_primitive(unit_uniqtypes(p->unit), i1)
-						: val_type(vlhs));
+				if(is_cmp){
+					opty = type_get_primitive(utl, i1);
+				}else if(tok == tok_ptrsub){
+					opty = type_get_sizet(utl);
+				}else{
+					opty = val_type(vlhs);
+				}
 
 				vres = uniq_val(p, spel, opty, VAL_CREATE);
 
