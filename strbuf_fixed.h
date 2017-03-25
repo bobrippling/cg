@@ -16,6 +16,8 @@ typedef struct strbuf_fixed {
 #define STRBUF_FIXED_INIT(str, len) { str, 0, len }
 #define STRBUF_FIXED_INIT_ARRAY(str) STRBUF_FIXED_INIT(str, sizeof(str))
 
+void strbuf_fixed_init(strbuf_fixed *, char *, size_t);
+
 compiler_printf(2, 3)
 bool strbuf_fixed_printf(strbuf_fixed *, const char *, ...);
 
