@@ -129,10 +129,31 @@ static void isn_replace_read_with_load(
 	*read = tmp;
 }
 
-static void isn_replace_read_with_store(
+static void isn_replace_write_with_store(
 		isn *at_isn, val *old, val *spill, val **const write,
 		const struct replace_ctx *ctx)
 {
+	/* FIXME: unique name */
+	type *ty = val_type(old);
+	val *tmp = val_new_localf(ty, "spill.tmp.%u", ctx->isn_count);
+	isn *store;
+	struct lifetime *lt = xmalloc(sizeof *lt);
+
+	assert(type_eq(type_deref(val_type(spill)), ty));
+
+	store = isn_store(tmp, spill);
+
+	isn_insert_after(at_isn, store);
+
+	lt->start = ctx->isn_count;
+	lt->end = ctx->isn_count + 1;
+	dynmap_set(
+			val *, struct lifetime *,
+			block_lifetime_map(ctx->block),
+			tmp, lt);
+
+	/* update the out param, which will end up replacing the value in at_isn */
+	*write = tmp;
 }
 
 void isn_replace_uses_with_load_store(
@@ -162,7 +183,7 @@ void isn_replace_uses_with_load_store(
 			writeback = true;
 		}
 		if(write == old){
-			isn_replace_read_with_store(any_isn, old, spill, &write, &ctx);
+			isn_replace_write_with_store(any_isn, old, spill, &write, &ctx);
 			writeback = true;
 		}
 
