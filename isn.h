@@ -18,6 +18,7 @@ isn *isn_alloca(struct val *);
 
 isn *isn_elem(struct val *lval, struct val *index, struct val *res);
 isn *isn_ptradd(struct val *lhs, struct val *rhs, struct val *out);
+isn *isn_ptrsub(struct val *lhs, struct val *rhs, struct val *out);
 
 isn *isn_copy(struct val *to, struct val *from);
 

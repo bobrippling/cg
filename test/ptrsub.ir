@@ -1,0 +1,4 @@
+$sub = i8(i4* $a, i4* $b){
+	$diff = ptrsub $a, $b
+	ret $diff
+}

@@ -621,28 +621,44 @@ static void parse_ident(parse *p, char *spel)
 		}
 
 		case tok_ptradd:
+		case tok_ptrsub:
 		{
 			val *vlhs, *vrhs, *vout;
 
 			vlhs = parse_val(p);
 
-			eat(p, "ptradd-comma", tok_comma);
+			eat(p, "ptradd/sub-comma", tok_comma);
 
 			vrhs = parse_val(p);
 
 			if(!type_deref(val_type(vlhs))){
-				sema_error(p, "ptradd requires pointer type (lhs)");
+				sema_error(p, "ptradd/sub requires pointer type (lhs)");
 			}
-			if(!type_is_int(val_type(vrhs))){
-				sema_error(p, "ptradd requires integer type (rhs)");
+			if(tok == tok_ptradd){
+				if(!type_is_int(val_type(vrhs))){
+					sema_error(p, "ptradd requires integer type (rhs)");
+				}
+			}else{
+				if(!type_eq(val_type(vlhs), val_type(vrhs))){
+					sema_error(p, "ptrsub type mismatch");
+				}
 			}
 			if(type_is_void(type_deref(val_type(vlhs)))){
-				sema_error(p, "can't increment void*");
+				sema_error(p, "can't increment/decrement void*");
 			}
 
-			vout = uniq_val(p, spel, val_type(vlhs), VAL_CREATE);
+			vout = uniq_val(
+					p,
+					spel,
+					tok == tok_ptradd
+					? val_type(vlhs)
+					: type_get_sizet(unit_uniqtypes(p->unit)),
+					VAL_CREATE);
 
-			block_add_isn(p->entry, isn_ptradd(vlhs, vrhs, vout));
+			block_add_isn(p->entry,
+					(tok == tok_ptradd
+					? isn_ptradd
+					: isn_ptrsub)(vlhs, vrhs, vout));
 			break;
 		}
 

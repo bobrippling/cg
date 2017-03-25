@@ -37,9 +37,10 @@ struct replace_ctx
 			RW(*write, i->u.elem.res);       \
 			break;                           \
 		case ISN_PTRADD:                   \
-			RW(reads[0], i->u.ptradd.lhs);   \
-			RW(reads[1], i->u.ptradd.rhs);   \
-			RW(*write, i->u.ptradd.out);     \
+		case ISN_PTRSUB:                   \
+			RW(reads[0], i->u.ptraddsub.lhs);\
+			RW(reads[1], i->u.ptraddsub.rhs);\
+			RW(*write, i->u.ptraddsub.out);  \
 			break;                           \
 		case ISN_CMP:                      \
 			RW(reads[0], i->u.cmp.lhs);      \

@@ -139,9 +139,10 @@ static void isn_free_1(isn *isn)
 			val_release(isn->u.elem.res);
 			break;
 		case ISN_PTRADD:
-			val_release(isn->u.ptradd.lhs);
-			val_release(isn->u.ptradd.rhs);
-			val_release(isn->u.ptradd.out);
+		case ISN_PTRSUB:
+			val_release(isn->u.ptraddsub.lhs);
+			val_release(isn->u.ptraddsub.rhs);
+			val_release(isn->u.ptraddsub.out);
 			break;
 		case ISN_OP:
 			val_release(isn->u.op.lhs);
@@ -222,6 +223,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_ALLOCA: return "alloca";
 		case ISN_ELEM:   return "elem";
 		case ISN_PTRADD: return "ptradd";
+		case ISN_PTRSUB: return "ptrsub";
 		case ISN_OP:     return "op";
 		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
@@ -403,9 +405,24 @@ isn *isn_ptradd(val *lhs, val *rhs, val *out)
 	val_retain(out);
 
 	isn = isn_new(ISN_PTRADD);
-	isn->u.ptradd.lhs = lhs;
-	isn->u.ptradd.rhs = rhs;
-	isn->u.ptradd.out = out;
+	isn->u.ptraddsub.lhs = lhs;
+	isn->u.ptraddsub.rhs = rhs;
+	isn->u.ptraddsub.out = out;
+	return isn;
+}
+
+isn *isn_ptrsub(val *lhs, val *rhs, val *out)
+{
+	isn *isn;
+
+	val_retain(lhs);
+	val_retain(rhs);
+	val_retain(out);
+
+	isn = isn_new(ISN_PTRSUB);
+	isn->u.ptraddsub.lhs = lhs;
+	isn->u.ptraddsub.rhs = rhs;
+	isn->u.ptraddsub.out = out;
 	return isn;
 }
 
@@ -532,6 +549,7 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 		case ISN_ALLOCA:
 		case ISN_ELEM:
 		case ISN_PTRADD:
+		case ISN_PTRSUB:
 		case ISN_OP:
 		case ISN_CMP:
 		case ISN_COPY:
@@ -592,9 +610,10 @@ static void isn_on_vals(
 			break;
 
 		case ISN_PTRADD:
-			fn(current->u.ptradd.lhs, current, ctx);
-			fn(current->u.ptradd.rhs, current, ctx);
-			fn(current->u.ptradd.out, current, ctx);
+		case ISN_PTRSUB:
+			fn(current->u.ptraddsub.lhs, current, ctx);
+			fn(current->u.ptraddsub.rhs, current, ctx);
+			fn(current->u.ptraddsub.out, current, ctx);
 			break;
 
 		case ISN_OP:
@@ -714,11 +733,13 @@ static void isn_dump1(isn *i)
 		}
 
 		case ISN_PTRADD:
+		case ISN_PTRSUB:
 		{
-			printf("\t%s = ptradd %s, %s\n",
-					val_str_rn(0, i->u.ptradd.out),
-					val_str_rn(1, i->u.ptradd.lhs),
-					val_str_rn(2, i->u.ptradd.rhs));
+			printf("\t%s = ptr%s %s, %s\n",
+					val_str_rn(0, i->u.ptraddsub.out),
+					i->type == ISN_PTRADD ? "add" : "sub",
+					val_str_rn(1, i->u.ptraddsub.lhs),
+					val_str_rn(2, i->u.ptraddsub.rhs));
 			break;
 		}
 

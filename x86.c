@@ -1061,9 +1061,7 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	const unsigned ptrsz = type_size(val_type(lhs));
 	const unsigned step = type_size(type_deref(val_type(lhs)));
 	type *rhs_ty = val_type(rhs);
-	type *intptr_ty = type_get_primitive(
-			unit_uniqtypes(octx->unit),
-			x86_target_switch(unit_target_info(octx->unit), i4, i8));
+	type *intptr_ty = type_get_sizet(unit_uniqtypes(octx->unit));
 	val ext_rhs;
 	val reg;
 
@@ -1131,6 +1129,36 @@ static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
 	}
 
 	x86_op(op_add, lhs, rhs, out, octx);
+}
+
+static void emit_ptrsub(val *lhs, val *rhs, val *out, x86_octx *octx)
+{
+	const unsigned step = type_size(type_deref(val_type(lhs)));
+	type *intptr_ty = type_get_sizet(unit_uniqtypes(octx->unit));
+	val reg;
+	val *tmp;
+
+	if(step == 1){
+		tmp = out;
+	}else{
+		tmp = &reg;
+		make_val_temporary_reg(tmp, intptr_ty);
+	}
+
+	x86_op(op_sub, lhs, rhs, tmp, octx);
+
+	if(step != 1){
+		val divider;
+
+		assert(step > 0);
+
+		val_temporary_init(&divider, intptr_ty);
+		divider.kind = LITERAL;
+		divider.u.i = step;
+
+		/* FIXME: this should be done at isel */
+		x86_op(op_udiv, tmp, &divider, out, octx);
+	}
 }
 
 static void x86_cmp(
@@ -1274,7 +1302,11 @@ static void x86_out_block1(block *blk, void *vctx)
 				break;
 
 			case ISN_PTRADD:
-				emit_ptradd(i->u.ptradd.lhs, i->u.ptradd.rhs, i->u.ptradd.out, octx);
+				emit_ptradd(i->u.ptraddsub.lhs, i->u.ptraddsub.rhs, i->u.ptraddsub.out, octx);
+				break;
+
+			case ISN_PTRSUB:
+				emit_ptrsub(i->u.ptraddsub.lhs, i->u.ptraddsub.rhs, i->u.ptraddsub.out, octx);
 				break;
 
 			case ISN_OP:

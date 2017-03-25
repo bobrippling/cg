@@ -33,6 +33,7 @@
 	KW(alloca)          \
 	KW(elem)            \
 	KW(ptradd)          \
+	KW(ptrsub)          \
 	KW(ptr2int)         \
 	KW(int2ptr)         \
 	KW(ptrcast)         \

@@ -17,6 +17,7 @@ struct isn
 		ISN_CMP,
 		ISN_ELEM,
 		ISN_PTRADD,
+		ISN_PTRSUB,
 		ISN_COPY,
 		ISN_EXT_TRUNC,
 		ISN_PTR2INT,
@@ -60,7 +61,7 @@ struct isn
 		struct
 		{
 			struct val *lhs, *rhs, *out;
-		} ptradd;
+		} ptraddsub;
 
 		struct
 		{
