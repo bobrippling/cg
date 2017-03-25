@@ -7,7 +7,7 @@
 
 #include "compiler.h"
 
-typedef struct {
+typedef struct strbuf_fixed {
 	char *str;
 	size_t current;
 	size_t max;
