@@ -712,7 +712,12 @@ static void parse_ident(parse *p, char *spel)
 			}
 
 			if(!(extend ? sz_from < sz_to : sz_from > sz_to)){
-				sema_error(p, "ext/trunc has incorrect operand sizes");
+				sema_error(
+						p,
+						"%s has incorrect operand sizes, from=%d, to=%d",
+						extend ? "extend" : "truncate",
+						sz_from,
+						sz_to);
 			}
 
 			block_add_isn(p->entry, isn_make(from, vres));
