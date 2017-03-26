@@ -659,7 +659,7 @@ static isn *convert_return_isn(
 		val *abiv;
 		isn *movret;
 
-		assert(type_is_int(retty));
+		assert(type_is_int(retty) || type_deref(retty));
 
 		abiv = val_new_abi_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
 		movret = isn_copy(abiv, retval);
