@@ -638,6 +638,9 @@ static void parse_ident(parse *p, char *spel)
 				if(!type_is_int(val_type(vrhs))){
 					sema_error(p, "ptradd requires integer type (rhs)");
 				}
+				if(type_size(val_type(vrhs)) != type_size(type_get_sizet(unit_uniqtypes(p->unit)))){
+					sema_error(p, "ptradd requires pointer-sized integer type (rhs)");
+				}
 			}else{
 				if(!type_eq(val_type(vlhs), val_type(vrhs))){
 					sema_error(p, "ptrsub type mismatch");
