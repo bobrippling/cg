@@ -11,6 +11,7 @@
 #include "isn.h"
 #include "isn_replace.h"
 #include "type.h"
+#include "unit.h"
 
 /* FIXME: this is all x86(_64) specific */
 enum {
@@ -249,6 +250,81 @@ static void isel_reserve_cisc(block *entry, const struct target *target)
 	blocks_traverse(entry, isel_reserve_cisc_block, NULL, NULL);
 }
 
+static void isel_create_ptradd_isn(isn *i, unit *unit)
+{
+	val *lhs = i->u.ptraddsub.lhs;
+	val *rhs = i->u.ptraddsub.rhs;
+	const unsigned step = type_size(type_deref(val_type(lhs)));
+	type *rhs_ty = val_type(rhs);
+	isn *mul;
+	val *tmp;
+
+	if(step == 1)
+		return;
+	assert(step > 0);
+
+	/* TODO: replace literal with literal instead of using a fresh reg */
+
+	tmp = val_new_localf(rhs_ty, "ptradd.mul");
+	mul = isn_op(op_mul, rhs, val_new_i(step, rhs_ty), tmp);
+	isn_insert_before(i, mul);
+
+	isn_replace_val_with_val(i, rhs, tmp, REPLACE_READS);
+}
+
+static void isel_create_ptrsub_isn(isn *i, unit *unit)
+{
+	val *lhs = i->u.ptraddsub.lhs;
+	val *out = i->u.ptraddsub.out;
+	const unsigned step = type_size(type_deref(val_type(lhs)));
+	isn *div;
+	val *tmp;
+
+	if(step == 1)
+		return;
+	assert(step > 0);
+
+	/* TODO: replace literal with literal instead of using a fresh reg */
+
+	tmp = val_new_localf(val_type(out), "ptrsub.div");
+
+	isn_replace_val_with_val(i, out, tmp, REPLACE_WRITES);
+
+	div = isn_op(op_udiv, tmp, val_new_i(step, val_type(out)), out);
+	isn_insert_after(i, div);
+}
+
+static void isel_create_ptrmath_isn(isn *i, unit *unit)
+{
+	switch(i->type){
+		default:
+			return;
+		case ISN_PTRADD:
+			isel_create_ptradd_isn(i, unit);
+			break;
+		case ISN_PTRSUB:
+			isel_create_ptrsub_isn(i, unit);
+			break;
+	}
+}
+
+static void isel_create_ptrmath_blk(block *block, void *vctx)
+{
+	isn *i;
+	unit *unit = vctx;
+
+	(void)vctx;
+
+	for(i = block_first_isn(block); i; i = i->next){
+		isel_create_ptrmath_isn(i, unit);
+	}
+}
+
+static void isel_create_ptrmath(block *const entry, unit *unit)
+{
+	blocks_traverse(entry, isel_create_ptrmath_blk, unit, NULL);
+}
+
 static void isel_create_spills(function *fn, const struct target *target)
 {
 }
@@ -270,6 +346,7 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 		return;
 	}
 
+	isel_create_ptrmath(entry, unit);
 	isel_reserve_cisc(entry, target);
 	isel_create_spills(fn, target);
 }

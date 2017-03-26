@@ -57,8 +57,6 @@ enum deref_type
 };
 
 
-static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx);
-
 static int x86_target_switch(const struct target *target, int b32, int b64)
 {
 	switch(target->arch.ptr.size){
@@ -357,15 +355,6 @@ void x86_make_reg(val *reg, int regidx, type *ty)
 void x86_make_eax(val *out, type *ty)
 {
 	x86_make_reg(out, /* XXX: hard coded eax: */ 0, ty);
-}
-
-static void make_val_temporary_reg(val *valp, type *ty)
-{
-	val_temporary_init(valp, ty);
-
-	/* use scratch register */
-	valp->u.local.loc.where = NAME_IN_REG;
-	valp->u.local.loc.u.reg = SCRATCH_REG; /* FIXME: regt indexing */
 }
 
 static void make_val_temporary_store(
@@ -881,9 +870,7 @@ loc:
 		}
 	}
 
-	/* worst case - emit an add */
-	x86_comment(octx, "worst case lea:");
-	emit_ptradd(lval, i->u.elem.index, i->u.elem.res, octx);
+	assert(0 && "TODO: isel-level pointer arithmetic");
 }
 
 static void x86_op(
@@ -1056,111 +1043,6 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 	}
 }
 
-static void emit_ptradd(val *lhs, val *rhs, val *out, x86_octx *octx)
-{
-	const unsigned ptrsz = type_size(val_type(lhs));
-	const unsigned step = type_size(type_deref(val_type(lhs)));
-	type *rhs_ty = val_type(rhs);
-	type *intptr_ty = type_get_sizet(unit_uniqtypes(octx->unit));
-	val ext_rhs;
-	val reg;
-
-	if(type_size(rhs_ty) != ptrsz){
-		bool need_temp_reg = false;
-		val ext_from_temp;
-
-		assert(type_size(rhs_ty) < ptrsz);
-
-		switch(rhs->kind){
-			case LITERAL:
-				need_temp_reg = true;
-				break;
-			case GLOBAL:
-				need_temp_reg = true;
-				break;
-			case ARGUMENT:
-			case FROM_ISN:
-			case ALLOCA:
-			case ABI_TEMP:
-			case BACKEND_TEMP:
-			{
-				struct location *loc = val_location(rhs);
-				need_temp_reg = (!loc || loc->where == NAME_SPILT);
-				break;
-			}
-		}
-
-		if(need_temp_reg){
-			/* use scratch for the ext */
-			x86_make_reg(&ext_rhs, SCRATCH_REG, val_type(lhs));
-
-			/* smaller scratch */
-			ext_from_temp = ext_rhs;
-			ext_from_temp.ty = rhs_ty;
-
-			/* populate smaller scratch */
-			x86_mov(rhs, &ext_from_temp, octx);
-
-			/* extend to bigger scratch */
-			x86_ext(&ext_from_temp, &ext_rhs, /*sign:*/false, octx);
-
-		}else{
-			ext_rhs = *rhs;
-			ext_rhs.ty = intptr_ty;
-			x86_ext(rhs, &ext_rhs, /*sign:*/false, octx);
-		}
-
-		rhs = &ext_rhs;
-	}
-
-	if(step != 1){
-		val multiplier;
-
-		assert(step > 0);
-
-		val_temporary_init(&multiplier, intptr_ty);
-		multiplier.kind = LITERAL;
-		multiplier.u.i = step;
-
-		make_val_temporary_reg(&reg, intptr_ty);
-		x86_op(op_mul, &multiplier, rhs, &reg, octx);
-
-		rhs = &reg;
-	}
-
-	x86_op(op_add, lhs, rhs, out, octx);
-}
-
-static void emit_ptrsub(val *lhs, val *rhs, val *out, x86_octx *octx)
-{
-	const unsigned step = type_size(type_deref(val_type(lhs)));
-	type *intptr_ty = type_get_sizet(unit_uniqtypes(octx->unit));
-	val reg;
-	val *tmp;
-
-	if(step == 1){
-		tmp = out;
-	}else{
-		tmp = &reg;
-		make_val_temporary_reg(tmp, intptr_ty);
-	}
-
-	x86_op(op_sub, lhs, rhs, tmp, octx);
-
-	if(step != 1){
-		val divider;
-
-		assert(step > 0);
-
-		val_temporary_init(&divider, intptr_ty);
-		divider.kind = LITERAL;
-		divider.u.i = step;
-
-		/* FIXME: this should be done at isel */
-		x86_op(op_udiv, tmp, &divider, out, octx);
-	}
-}
-
 static void x86_cmp(
 		enum op_cmp cmp,
 		val *lhs, val *rhs, val *res,
@@ -1302,11 +1184,13 @@ static void x86_out_block1(block *blk, void *vctx)
 				break;
 
 			case ISN_PTRADD:
-				emit_ptradd(i->u.ptraddsub.lhs, i->u.ptraddsub.rhs, i->u.ptraddsub.out, octx);
-				break;
-
 			case ISN_PTRSUB:
-				emit_ptrsub(i->u.ptraddsub.lhs, i->u.ptraddsub.rhs, i->u.ptraddsub.out, octx);
+				x86_op(
+						i->type == ISN_PTRADD ? op_add : op_sub,
+						i->u.ptraddsub.lhs,
+						i->u.ptraddsub.rhs,
+						i->u.ptraddsub.out,
+						octx);
 				break;
 
 			case ISN_OP:
