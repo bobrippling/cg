@@ -148,14 +148,28 @@ static void gen_constraint_isns(
 	if(req->req & REQ_REG){
 		struct location *loc = val_location(v);
 		struct location desired;
-		assert(loc);
+
+		if(!loc){
+			val *reg = val_new_localf(val_type(v), "reg.for.lit");
+			isn *copy;
+
+			assert(v->kind == LITERAL);
+			copy = isn_copy(reg, v);
+			isn_insert_before(isn_to_constrain, copy);
+			isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_READS);
+
+			v = reg;
+			loc = val_location(v);
+		}
 
 		/* TODO: assert(!regt_is_valid(req->reg[1]) && "todo"); */
 
 		desired.where = NAME_IN_REG;
 		memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
 
-		if(loc->where == NAME_NOWHERE){
+		if(loc->where == NAME_NOWHERE
+		|| (loc->where == NAME_IN_REG && !regt_is_valid(loc->u.reg)))
+		{
 			/* we can set the value directly to be what we want */
 			memcpy(loc, &desired, sizeof(*loc));
 
@@ -166,6 +180,8 @@ static void gen_constraint_isns(
 			/* need to go via an ABI temp */
 			val *abi = val_new_abi_reg(req->reg[0], val_type(v));
 			isn *copy;
+
+			assert(regt_is_valid(req->reg[0]));
 
 			if(postisn){
 				copy = isn_copy(v, abi);
