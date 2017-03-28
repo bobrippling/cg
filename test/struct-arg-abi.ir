@@ -1,0 +1,28 @@
+
+type $struct_1 = { i4, i8 }             # i, i
+type $struct_2 = { i8, i8 }             # i, i
+type $struct_3 = { i1 }                 # i, n/a
+type $struct_4 = { f4, i2 }             # s, i
+type $struct_5 = { f8, f4, f4 }         # s, s
+type $struct_6 = { f4, f4, f4, f4 }     # s, s
+type $struct_7 = { f4, f4, f4, f4, f4 } # inmem
+type $struct_8 = { }                    # inmem
+
+# tcc bug? struct A { struct { float x; } a; double d; } typedef A; A f(A a){a.a.x++;return a;}
+
+$f = i8($struct_1 $a)
+{
+	$store = alloca $struct_1
+	store $store, $a
+
+	$p = elem $store, i4 0
+	$l = load $p
+	$e = zext i8, $l
+
+	$p2 = elem $store, i4 1
+	$l2 = load $p2
+
+	$s = add $e, $l2
+
+	ret $s
+}
