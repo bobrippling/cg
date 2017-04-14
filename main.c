@@ -138,12 +138,13 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 			usage(argv0);
 		}
 
+		if(pat->show_intermediates)
+			printf("------- %s -------\n", passes[j].spel);
+
 		passes[j].fn(fn, unit, pat->target);
 
-		if(pat->show_intermediates){
-			printf("------- after %s -------\n", passes[j].spel);
+		if(pat->show_intermediates)
 			unit_on_globals(unit, global_dump);
-		}
 	}
 }
 
