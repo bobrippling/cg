@@ -154,11 +154,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		return;
 
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
-	if(!lt){
-		fprintf(stderr, "%s doesn't have a lifetime\n", val_str(v));
-		return;
-	}
-	assert(lt);
+	assert(lt && "val doesn't have a lifetime");
 
 	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == ctx->isn_num;
 
