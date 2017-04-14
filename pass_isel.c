@@ -162,6 +162,12 @@ static void gen_constraint_isns(
 			loc = val_location(v);
 		}
 
+		if(!regt_is_valid(req->reg[0])){
+			/* it's in a reg, done */
+			assert(!regt_is_valid(req->reg[1]));
+			return;
+		}
+
 		/* TODO: assert(!regt_is_valid(req->reg[1]) && "todo"); */
 
 		desired.where = NAME_IN_REG;
@@ -170,16 +176,26 @@ static void gen_constraint_isns(
 		if(loc->where == NAME_NOWHERE
 		|| (loc->where == NAME_IN_REG && !regt_is_valid(loc->u.reg)))
 		{
-			/* we can set the value directly to be what we want */
-			memcpy(loc, &desired, sizeof(*loc));
+			/* We can set the value directly to be what we want.
+			 * ... in the optimal case, but generally we need to be more indirect.
+			 * See isel.md
+			 */
+			/*memcpy(loc, &desired, sizeof(*loc)); - optimal */
+			goto via_temp; /* - general */
 
 		}else if(location_eq(loc, &desired)){
 			/* fine */
 
 		}else{
-			/* need to go via an ABI temp */
-			val *abi = val_new_abi_reg(req->reg[0], val_type(v));
+			/* Need to go via an ABI temp.
+			 * We can be sure this reg isn't in use/overlapping as isel will never
+			 * generate values with a lifetime greater than the instruction for which
+			 * they're used.
+			 */
+			val *abi;
 			isn *copy;
+via_temp:
+			abi = val_new_abi_reg(req->reg[0], val_type(v));
 
 			assert(regt_is_valid(req->reg[0]));
 
