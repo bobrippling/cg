@@ -931,12 +931,7 @@ static void x86_op(
 		}
 	}
 
-	/* no instruction selection / register merging. just this for now */
-#if 0
-	x86_comment(octx, "pre-op x86_mov:");
 	x86_mov(lhs, res, octx);
-#endif
-
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
 
