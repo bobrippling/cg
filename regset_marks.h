@@ -5,11 +5,11 @@
 
 #include "reg.h"
 
-#define REGSET_MARK_MAX 32
+#define REGSET_MARK_MAX 32 /* aka max number of registers */
 
 struct regset;
 
-typedef unsigned char *regset_marks;
+typedef bool *regset_marks;
 
 regset_marks regset_marks_new(void);
 void regset_marks_free(regset_marks);

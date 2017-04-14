@@ -27,17 +27,11 @@ static regset_marks regset_mark_pos(regset_marks marks, regt reg)
 
 void regset_mark(regset_marks marks, regt reg, bool mark)
 {
-	unsigned char *const ent = regset_mark_pos(marks, reg);
-
-	if(mark){
-		++*ent;
-	}else{
-		assert(*ent > 0);
-		--*ent;
-	}
+  bool *p = regset_mark_pos(marks, reg);
+	*p = mark;
 }
 
 bool regset_is_marked(regset_marks marks, regt reg)
 {
-	return !!*regset_mark_pos(marks, reg);
+	return *regset_mark_pos(marks, reg);
 }
