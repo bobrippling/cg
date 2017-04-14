@@ -242,11 +242,11 @@ static void isel_reserve_cisc_isn(isn *isn)
 static void isel_pad_cisc_isn(isn *i)
 {
 	if(i->type == ISN_OP){
-		/* need a zero/sign-extension of the value into edx */
 		switch(i->u.op.op){
 			case op_sdiv:
 			case op_smod:
 			{
+				/* FIXME: need a zero/sign-extension of the value into edx */
 				break;
 			}
 			case op_udiv:
