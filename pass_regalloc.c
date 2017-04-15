@@ -71,13 +71,13 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	struct location *val_locn;
 	val *src, *dest;
 
+	if(isn->type == ISN_IMPLICIT_USE)
+		return;
+
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
 			/* not something we need to regalloc */
-			return;
-
-		case ABI_TEMP:
 			return;
 
 		case ALLOCA:
@@ -88,6 +88,14 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		case FROM_ISN:
 			val_locn = val_location(v);
 			assert(val_locn);
+			break;
+
+		case ABI_TEMP:
+			/* Not something we need to regalloc,
+			 * but we need to account for its register usage.
+			 *
+			 * A second regalloc won't occur because of the
+			 * regt_is_valid() check lower down */
 			break;
 
 		case BACKEND_TEMP:
@@ -165,6 +173,9 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			val_locn->where = NAME_IN_REG;
 			val_locn->u.reg = reg;
 		}
+	}else if(v->kind == ABI_TEMP){
+		assert(regt_is_valid(val_locn->u.reg));
+		regset_mark(&ctx->in_use, val_locn->u.reg, true);
 	}
 
 	assert(!v->live_across_blocks);

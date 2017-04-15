@@ -240,7 +240,11 @@ static void isel_pad_cisc_isn(isn *i)
 				val *edx = val_new_abi_reg(regt_make(REG_EDX, 0), opty);
 				val *zero = val_new_i(0, opty);
 				isn *copy = isn_copy(edx, zero);
+				isn *use = isn_implicit_use();
+				isn_implicit_use_add(use, edx);
+
 				isn_insert_before(i, copy);
+				isn_insert_after(i, use);
 				break;
 			}
 			default:
