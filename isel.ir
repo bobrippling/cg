@@ -1,0 +1,32 @@
+#$div = i4(i4 $a, i4 $b)
+#{
+#	$d = udiv $a, $b
+#	ret $d
+#}
+
+$div = i4(i4 $a, i4 $b)
+{
+	$d = udiv $a, $b
+	$e = udiv $b, i4 2
+
+	$s = add $d, $e
+	ret $s
+}
+
+#$shift = i4(i4 $a, i4 $b)
+#{
+#	$x = shiftl $a, $b
+#	$x2 = shiftl $x, i4 5
+#	ret $x2
+#}
+#
+#$mem = i4
+#
+#$cmp = i1(i4 $a, i4 $b)
+#{
+#	$x = eq $a, $b
+#	$mem_loaded = load $mem
+#	$x2 = eq $a, $mem_loaded
+#	ret $x2
+#}
+#
