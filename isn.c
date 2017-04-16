@@ -119,6 +119,13 @@ isn *isn_next(isn *i)
 	return i->next;
 }
 
+size_t isns_count(isn *i)
+{
+	size_t n = 0;
+	for(; i; n++, i = isn_next(i));
+	return n;
+}
+
 static void isn_free_1(isn *isn)
 {
 	switch(isn->type){

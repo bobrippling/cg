@@ -45,21 +45,3 @@ regt regset_nth(const struct regset *rs, unsigned index, int is_fp)
 {
 	return rs->regs[regset_index(rs, index, is_fp)];
 }
-
-static_assert(sizeof(regset_marks) * 8 >= 32, space_for_regset_marks);
-
-void regset_mark(regset_marks *marks, regt reg, bool mark)
-{
-	/* enough space for 16 ints and 16 floats */
-	assert(regt_index(reg) < 16);
-
-	if(mark)
-		*marks |= 1 << (regt_index(reg) * 2 + regt_is_fp(reg));
-	else
-		*marks &= ~(1 << (regt_index(reg) * 2 + regt_is_fp(reg)));
-}
-
-bool regset_is_marked(regset_marks marks, regt reg)
-{
-	return marks & (1 << (regt_index(reg) * 2 + regt_is_fp(reg)));
-}

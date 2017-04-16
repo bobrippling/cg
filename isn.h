@@ -72,6 +72,8 @@ void isn_insert_after(isn *, isn *);
 void isns_insert_before(isn *, isn *list);
 void isns_insert_after(isn *, isn *list);
 
+size_t isns_count(isn *);
+
 void isn_free_r(struct isn *);
 
 void isn_dump(struct isn *, struct block *);
