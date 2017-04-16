@@ -50,6 +50,7 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 			/*something unique:*/ctx->isn_num);
 	isn *alloca = isn_alloca(spill);
 
+	/* FIXME: need to adjust ctx->isn_num to accoun for this */
 	isn_insert_before(use_isn, alloca);
 
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk);
