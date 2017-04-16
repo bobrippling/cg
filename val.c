@@ -337,6 +337,8 @@ static void val_free(val *v)
 		case FROM_ISN:
 			free(v->u.local.name);
 			break;
+		case ABI_TEMP:
+			break;
 		case ALLOCA:
 			free(v->u.alloca.name);
 			break;
