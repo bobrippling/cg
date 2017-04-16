@@ -31,6 +31,7 @@ struct greedy_ctx
 	const struct regset *scratch_regs;
 	uniq_type_list *utl;
 	regset_marks *in_use; /* 0..<n, n: isn count */
+	dynarray spill_isns;
 	unsigned *spill_space;
 	unsigned isn_num, isn_count;
 };
@@ -40,6 +41,12 @@ struct regalloc_ctx
 	const struct target *target;
 	uniq_type_list *utl;
 	unsigned spill_space;
+};
+
+struct to_insert
+{
+  struct isn *isn;
+  struct isn *insert_before_this;
 };
 
 static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
@@ -52,12 +59,17 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	isn *alloca = isn_alloca(spill);
+	struct to_insert *spill_insert = xmalloc(sizeof(*spill_insert));
 
 	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
 	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
 
-	/* FIXME: need to adjust ctx->isn_num to accoun for this */
-	isn_insert_before(use_isn, alloca);
+	/* Adding new isns in this pass raises problems with val-lifetimes and
+	 * isn_num/count. To fix this we don't insert this isn into the chain until
+	 * after regalloc */
+	spill_insert->isn = alloca;
+	spill_insert->insert_before_this = use_isn;
+	dynarray_add(&ctx->spill_isns, spill_insert);
 
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk);
 
@@ -268,6 +280,7 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	struct greedy_ctx alloc_ctx = { 0 };
 	isn *head = block_first_isn(blk);
 	isn *isn_iter;
+	size_t i;
 
 	alloc_ctx.blk = blk;
 	alloc_ctx.scratch_regs = &ctx->target->abi.scratch_regs;
@@ -291,6 +304,13 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter), alloc_ctx.isn_num++){
 		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
 	}
+
+	dynarray_iter(&alloc_ctx.spill_isns, i){
+		struct to_insert *spill = dynarray_ent(&alloc_ctx.spill_isns, i);
+		isn_insert_before(spill->insert_before_this, spill->isn);
+		free(spill);
+	}
+	dynarray_reset(&alloc_ctx.spill_isns);
 
 	free_in_use(alloc_ctx.in_use, alloc_ctx.isn_count);
 }
