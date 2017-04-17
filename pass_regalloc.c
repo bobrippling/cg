@@ -201,7 +201,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	assert(!v->live_across_blocks);
 	assert(val_locn->where == NAME_IN_REG);
 
-	assert(regt_is_valid(val_locn->u.reg) == regset_is_marked(this_isn_marks, val_locn->u.reg));
+	assert(!regt_is_valid(val_locn->u.reg) || regset_is_marked(this_isn_marks, val_locn->u.reg));
 
 	val_release(v);
 }
