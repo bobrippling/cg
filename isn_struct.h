@@ -5,6 +5,7 @@
 
 #include "dynarray.h"
 #include "op.h"
+#include "regset_marks.h"
 
 struct isn
 {
@@ -105,6 +106,7 @@ struct isn
 	} u;
 
 	struct isn *next, *prev;
+	regset_marks regusemarks;
 
 	bool skip;
 };

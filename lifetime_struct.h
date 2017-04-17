@@ -5,9 +5,7 @@
 
 struct lifetime
 {
-	unsigned start, end;
+	struct isn *start, *end;
 };
-
-#define LIFETIME_INIT_INF { 0, UINT_MAX }
 
 #endif

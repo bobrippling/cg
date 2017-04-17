@@ -22,4 +22,10 @@
 #  define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
+#ifdef NDEBUG
+#  define DEBUGGING 0
+#else
+#  define DEBUGGING 1
+#endif
+
 #endif

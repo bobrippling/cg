@@ -30,10 +30,8 @@ struct greedy_ctx
 	block *blk;
 	const struct regset *scratch_regs;
 	uniq_type_list *utl;
-	regset_marks *in_use; /* 0..<n, n: isn count */
 	dynarray spill_isns;
 	unsigned *spill_space;
-	unsigned isn_num, isn_count;
 };
 
 struct regalloc_ctx
@@ -54,8 +52,8 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 	type *const ty = val_type(v);
 	val *spill = val_new_localf(
 			type_get_ptr(ctx->utl, ty),
-			"spill.%u",
-			/*something unique:*/ctx->isn_num);
+			"spill.%d",
+			/*something unique:*/(int)v);
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	isn *alloca = isn_alloca(spill);
@@ -65,12 +63,17 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
 
 	/* Adding new isns in this pass raises problems with val-lifetimes and
-	 * isn_num/count. To fix this we don't insert this isn into the chain until
-	 * after regalloc */
+	 * isn_num/count (amongst other things like whereever we use isn_num as an
+	 * index, e.g. ctx->in_use - this should be moved to per-isn?). To fix this
+	 * we don't insert this isn into the chain until after regalloc */
 	spill_insert->isn = alloca;
 	spill_insert->insert_before_this = use_isn;
 	dynarray_add(&ctx->spill_isns, spill_insert);
 
+	/* FIXME: the below creates isns - need to either exclude them from the chain
+	 * and handle later (as above), or handle now.
+	 * Likely need to handle now, since it generates values that need regallocing
+	 */
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk);
 
 	return spill;
@@ -84,16 +87,15 @@ static void regalloc_mirror(val *dest, val *src)
 #endif
 }
 
-static void mark_in_use_isns(
-		regset_marks *const isnmarks,
-		regt reg,
-		struct lifetime *lt,
-		unsigned isncount)
+static void mark_in_use_isns(regt reg, struct lifetime *lt)
 {
-	unsigned i;
+	isn *i;
 
-	for(i = lt->start; i < MIN(isncount, lt->end+1); i++){
-		regset_mark(isnmarks[i], reg, true);
+	for(i = lt->start; i; i = isn_next(i)){
+		regset_mark(i->regusemarks, reg, true);
+
+		if(i == lt->end)
+			break;
 	}
 }
 
@@ -104,8 +106,9 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	struct lifetime *lt;
 	struct location *val_locn;
 	val *src, *dest;
+	val *spill = NULL;
 	regset_marks this_isn_marks;
-	this_isn_marks = ctx->in_use[ctx->isn_num];
+	this_isn_marks = isn->regusemarks;
 
 	if(isn->type == ISN_IMPLICIT_USE)
 		return;
@@ -146,6 +149,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	/* if the instruction is a no-op (e.g. ptrcast, ptr2int/int2ptr where the sizes match),
 	 * then we reuse the source register/spill */
+	/* FIXME: don't think this is safe because of lifetime checks for the earlier val */
 	if(isn_is_noop(isn, &src, &dest)){
 		if(v == src){
 			/* if we're the source register, we need allocation */
@@ -175,7 +179,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt && "val doesn't have a lifetime");
 
-	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == ctx->isn_num;
+	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == isn;
 
 	val_retain(v);
 
@@ -192,7 +196,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->scratch_regs->count){
 			/* no reg available */
-			val *spill = regalloc_spill(v, isn, ctx); /* releases 'v' */
+			spill = regalloc_spill(v, isn, ctx); /* releases 'v' */
 
 			if(SHOW_REGALLOC){
 				fprintf(stderr, "regalloc_spill(%s) => ", val_str(v));
@@ -202,7 +206,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		}else{
 			assert(regt_is_valid(reg));
 
-			mark_in_use_isns(ctx->in_use, reg, lt, ctx->isn_count);
+			mark_in_use_isns(reg, lt);
 
 			if(SHOW_REGALLOC)
 				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
@@ -212,13 +216,20 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		}
 	}else if(v->kind == ABI_TEMP){
 		assert(regt_is_valid(val_locn->u.reg));
-		mark_in_use_isns(ctx->in_use, val_locn->u.reg, lt, ctx->isn_count);
+		mark_in_use_isns(val_locn->u.reg, lt);
 	}
 
 	assert(!v->live_across_blocks);
 	assert(val_locn->where == NAME_IN_REG);
 
-	assert(!regt_is_valid(val_locn->u.reg) || regset_is_marked(this_isn_marks, val_locn->u.reg));
+	if(!spill){
+		/* HACK: we should populate a spill val's regset-marks when spilling */
+		int good = (!regt_is_valid(val_locn->u.reg) || regset_is_marked(this_isn_marks, val_locn->u.reg));
+		/*assert(good);*/
+		if(!good){
+			fprintf(stderr, "!good\n");
+		}
+	}
 
 	val_release(v);
 }
@@ -239,39 +250,20 @@ static void regalloc_greedy_pre(val *v, isn *isn, void *vctx)
 	if(loc->where == NAME_IN_REG
 	&& regt_is_valid(loc->u.reg))
 	{
-		mark_in_use_isns(ctx->in_use, loc->u.reg, lt, ctx->isn_count);
+		mark_in_use_isns(loc->u.reg, lt);
 	}
 }
 
-static void mark_callee_save_as_used(
-		regset_marks *marks, const struct regset *callee_saves, unsigned isncount)
+static void mark_callee_save_as_used(isn *begin, const struct regset *callee_saves)
 {
-	struct lifetime forever = LIFETIME_INIT_INF;
+	struct lifetime all;
 	size_t i;
+
+	all.start = begin;
+	all.end = NULL;
+
 	for(i = 0; i < callee_saves->count; i++)
-		mark_in_use_isns(marks, regset_get(callee_saves, i), &forever, isncount);
-}
-
-static regset_marks *allocate_in_use(size_t isncount)
-{
-	regset_marks *marks;
-	size_t i;
-
-	marks = xmalloc(isncount * sizeof *marks);
-
-	for(i = 0; i < isncount; i++)
-		marks[i] = regset_marks_new();
-
-	return marks;
-}
-
-static void free_in_use(regset_marks *marks, size_t isncount)
-{
-	size_t i;
-	for(i = 0; i < isncount; i++)
-		regset_marks_free(marks[i]);
-
-	free(marks);
+		mark_in_use_isns(regset_get(callee_saves, i), &all);
 }
 
 static void blk_regalloc_pass(block *blk, void *vctx)
@@ -287,21 +279,14 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	alloc_ctx.spill_space = &ctx->spill_space;
 	alloc_ctx.utl = ctx->utl;
 
-	alloc_ctx.isn_count = isns_count(head);
-	alloc_ctx.in_use = allocate_in_use(alloc_ctx.isn_count);
-
-	mark_callee_save_as_used(
-			alloc_ctx.in_use,
-			&ctx->target->abi.callee_saves,
-			alloc_ctx.isn_count);
+	mark_callee_save_as_used(head, &ctx->target->abi.callee_saves);
 
 	/* pre-scan - mark any existing abi regs as used across their lifetime */
-	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter), alloc_ctx.isn_num++){
+	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
 		isn_on_live_vals(isn_iter, regalloc_greedy_pre, &alloc_ctx);
 	}
 
-	alloc_ctx.isn_num = 0;
-	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter), alloc_ctx.isn_num++){
+	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
 		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
 	}
 
@@ -311,8 +296,6 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 		free(spill);
 	}
 	dynarray_reset(&alloc_ctx.spill_isns);
-
-	free_in_use(alloc_ctx.in_use, alloc_ctx.isn_count);
 }
 
 void pass_regalloc(function *fn, struct unit *unit, const struct target *target)

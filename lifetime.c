@@ -19,7 +19,6 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 {
 	struct lifetime_assign_ctx *ctx = vctx;
 	struct lifetime *lt;
-	unsigned start;
 
 	(void)isn;
 
@@ -34,7 +33,6 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 			 * i.e. pass_abi's first assignment from
 			 * an ABI register
 			 */
-			start = ctx->isn_count;
 			break;
 		case LITERAL:
 		case GLOBAL:
@@ -48,10 +46,23 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 		lt = xcalloc(1, sizeof *lt);
 		dynmap_set(val *, struct lifetime *, ctx->blk->val_lifetimes, v, lt);
 
-		lt->start = start;
+		lt->start = isn;
 	}
 
-	lt->end = ctx->isn_count;
+	lt->end = isn;
+}
+
+bool lifetime_contains(const struct lifetime *lt, isn *needle, bool include_last)
+{
+	isn *i;
+	for(i = lt->start; i != lt->end; i = isn_next(i))
+		if(i == needle)
+			return true;
+
+	if(include_last && i == lt->end && lt->end)
+		return true;
+
+	return false;
 }
 
 static void lifetime_fill_block(block *b)

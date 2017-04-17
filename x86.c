@@ -1226,7 +1226,7 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_CALL:
 			{
-				x86_emit_call(blk, idx,
+				x86_emit_call(blk, i,
 						i->u.call.into,
 						i->u.call.fn,
 						&i->u.call.args,

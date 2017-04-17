@@ -13,6 +13,7 @@
 #include "function.h"
 #include "unit.h"
 #include "lifetime_struct.h"
+#include "lifetime.h"
 #include "block_struct.h"
 #include "val_struct.h"
 #include "val_internal.h"
@@ -37,12 +38,11 @@ struct x86_spill_ctx
 	dynmap *spill;
 	block *blk;
 	unsigned long spill_alloca;
-	unsigned call_isn_idx;
+	isn *call_isn;
 };
 
 static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 {
-	const struct lifetime lt_inf = LIFETIME_INIT_INF;
 	const struct lifetime *lt;
 	bool spill = false;
 
@@ -53,14 +53,13 @@ static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 		return;
 
 	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
-	if(!lt)
-		lt = &lt_inf;
+	assert(lt);
 
 	if(v->live_across_blocks)
 		spill = true;
 
 	/* don't spill if the value ends on the isn */
-	if(lt->start <= ctx->call_isn_idx && ctx->call_isn_idx < lt->end)
+	if(lifetime_contains(lt, ctx->call_isn, false))
 		spill = true;
 
 	if(spill){
@@ -171,7 +170,7 @@ static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
 static dynmap *x86_spillregs(
 		block *blk,
 		val *except[],
-		unsigned call_isn_idx,
+		isn *call_isn,
 		x86_octx *octx)
 {
 	struct x86_spill_ctx spillctx = { 0 };
@@ -179,7 +178,7 @@ static dynmap *x86_spillregs(
 
 	spillctx.spill     = dynmap_new(val *, NULL, val_hash);
 	spillctx.dontspill = dynmap_new(val *, NULL, val_hash);
-	spillctx.call_isn_idx = call_isn_idx;
+	spillctx.call_isn = call_isn;
 	spillctx.blk = blk;
 
 	for(vi = except; *vi; vi++){
@@ -427,7 +426,7 @@ static void x86_call_assign_arg_regs(dynarray *args, x86_octx *octx)
 #endif
 
 void x86_emit_call(
-		block *blk, unsigned isn_idx,
+		block *blk, isn *isn,
 		val *into_or_null, val *fn,
 		dynarray *args,
 		x86_octx *octx)
@@ -441,7 +440,7 @@ void x86_emit_call(
 
 	octx->max_align = 16; /* ensure 16-byte alignment for calls */
 
-	spilt = x86_spillregs(blk, except, isn_idx, octx);
+	spilt = x86_spillregs(blk, except, isn, octx);
 
 	/* all regs spilt, can now shift arguments into arg regs */
 #if 0

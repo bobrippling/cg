@@ -18,6 +18,7 @@ isn *isn_new(enum isn_type t)
 {
 	isn *isn = xcalloc(1, sizeof *isn);
 	isn->type = t;
+	isn->regusemarks = regset_marks_new();
 	return isn;
 }
 
@@ -210,6 +211,7 @@ static void isn_free_1(isn *isn)
 		}
 	}
 
+	regset_marks_free(isn->regusemarks);
 	free(isn);
 }
 
@@ -935,6 +937,8 @@ void isn_dump(isn *const head, block *blk)
 
 		if(SHOW_LIFE)
 			printf("[%zu] ", idx++);
+		if(SHOW_LIFE)
+			printf("[%p] ", i);
 
 		isn_dump1(i);
 	}
@@ -959,7 +963,7 @@ void isn_dump(isn *const head, block *blk)
 						v);
 
 				if(lt){
-					printf(" %u - %u. inter-block = %d",
+					printf(" %p - %p. inter-block = %d",
 							lt->start,
 							lt->end,
 							v->live_across_blocks);
