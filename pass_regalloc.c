@@ -49,7 +49,12 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 			type_get_ptr(ctx->utl, ty),
 			"spill.%u",
 			/*something unique:*/ctx->isn_num);
+	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
+	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	isn *alloca = isn_alloca(spill);
+
+	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
+	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
 
 	/* FIXME: need to adjust ctx->isn_num to accoun for this */
 	isn_insert_before(use_isn, alloca);
