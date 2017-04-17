@@ -119,8 +119,12 @@ static void isn_replace_read_with_load(
 
 	isn_insert_before(at_isn, load);
 
-	lt->start = ctx->isn_count;
-	lt->end = ctx->isn_count + 1;
+	memcpy(
+			lt,
+			dynmap_get(
+				val *, struct lifetime *, block_lifetime_map(ctx->block),
+				old),
+			sizeof(*lt));
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
@@ -146,8 +150,12 @@ static void isn_replace_write_with_store(
 
 	isn_insert_after(at_isn, store);
 
-	lt->start = ctx->isn_count;
-	lt->end = ctx->isn_count + 1;
+	memcpy(
+			lt,
+			dynmap_get(
+				val *, struct lifetime *, block_lifetime_map(ctx->block),
+				old),
+			sizeof(*lt));
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
