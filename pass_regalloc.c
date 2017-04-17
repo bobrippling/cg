@@ -10,6 +10,7 @@
 
 #include "backend.h"
 #include "val_struct.h"
+#include "val_internal.h"
 #include "type.h"
 #include "isn.h"
 #include "isn_replace.h"
@@ -159,6 +160,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == ctx->isn_num;
 
+	val_retain(v);
+
 	if(needs_regalloc){
 		const bool is_fp = type_is_float(val_type(v), 1);
 		unsigned i;
@@ -172,7 +175,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 		if(i == ctx->scratch_regs->count){
 			/* no reg available */
-			val *spill = regalloc_spill(v, isn, ctx);
+			val *spill = regalloc_spill(v, isn, ctx); /* releases 'v' */
 
 			if(SHOW_REGALLOC){
 				fprintf(stderr, "regalloc_spill(%s) => ", val_str(v));
@@ -199,6 +202,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	assert(val_locn->where == NAME_IN_REG);
 
 	assert(regt_is_valid(val_locn->u.reg) == regset_is_marked(this_isn_marks, val_locn->u.reg));
+
+	val_release(v);
 }
 
 static void regalloc_greedy_pre(val *v, isn *isn, void *vctx)
