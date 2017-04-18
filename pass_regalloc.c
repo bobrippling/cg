@@ -22,8 +22,8 @@
 #include "lifetime.h"
 #include "lifetime_struct.h"
 
-#define SHOW_REGALLOC 1
-#define SHOW_STACKALLOC 1
+#define SHOW_REGALLOC 0
+#define SHOW_STACKALLOC 0
 
 struct greedy_ctx
 {
