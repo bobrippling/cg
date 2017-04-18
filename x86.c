@@ -127,8 +127,9 @@ static const char *name_in_reg_str(const struct location *loc, const int size)
 
 	assert(loc->where == NAME_IN_REG);
 
-	if(!regt_is_valid(reg))
-		return NULL;
+	if(!regt_is_valid(reg)){
+		return "<invalid reg>";
+	}
 
 	assert(reg < (int)countof(regs));
 
