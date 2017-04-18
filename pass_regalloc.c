@@ -32,6 +32,7 @@ struct greedy_ctx
 	uniq_type_list *utl;
 	dynarray spill_isns;
 	unsigned *spill_space;
+	bool spilt;
 };
 
 struct regalloc_ctx
@@ -58,6 +59,7 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
 	isn_insert_before(use_isn, alloca);
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk, using_reg);
 
+	ctx->spilt = true;
 
 	return spill;
 }
@@ -268,10 +270,29 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 		isn_on_live_vals(isn_iter, regalloc_greedy_pre, &alloc_ctx);
 	}
 
-	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
-		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
-	}
+#ifdef TWO_PASSES
+	bool second = false;
+	for(;;){
+#endif
+		for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
+			isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
+		}
 
+#ifdef TWO_PASSES
+		if(!alloc_ctx.spilt){
+			fprintf(stderr, "no spills - done\n");
+			break;
+		}
+		if(second){
+			fprintf(stderr, "second pass - done\n");
+			break;
+		}
+
+		fprintf(stderr, "second pass...\n");
+		alloc_ctx.spilt = false;
+		second = true;
+	}
+#endif
 }
 
 void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
