@@ -1148,13 +1148,6 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_RET:
 			{
-				if(!type_is_void(i->u.ret->ty)){
-					val veax;
-					x86_make_eax(&veax, i->u.ret->ty);
-
-					x86_mov(i->u.ret, &veax, octx);
-				}
-
 				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
 				break;
 			}
