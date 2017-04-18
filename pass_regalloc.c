@@ -42,7 +42,7 @@ struct regalloc_ctx
 	unsigned spill_space;
 };
 
-static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx)
+static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt using_reg)
 {
 	type *const ty = val_type(v);
 	val *spill = val_new_localf(
@@ -153,7 +153,8 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(v->live_across_blocks){
 		/* optimisation - ensure the value is in the same register for all blocks
 		 * mem2reg or something similar should do this */
-		regalloc_spill(v, isn, ctx);
+		assert(0 && "TODO: grab a free reg for live_across_blocks spill");
+		/*regalloc_spill(v, isn, ctx);*/
 		return;
 	}
 
@@ -171,17 +172,23 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(needs_regalloc){
 		const bool is_fp = type_is_float(val_type(v), 1);
 		unsigned i;
-		regt reg = regt_make_invalid();
+		unsigned freecount = 0;
+		regt foundreg = regt_make_invalid();
 
 		for(i = 0; i < ctx->scratch_regs->count; i++){
-			reg = regt_make(i, is_fp);
-			if(!regset_is_marked(this_isn_marks, reg))
-				break;
+			regt reg = regt_make(i, is_fp);
+			if(!regset_is_marked(this_isn_marks, reg)){
+				foundreg = reg;
+				freecount++;
+			}
 		}
 
-		if(i == ctx->scratch_regs->count){
-			/* no reg available */
-			spill = regalloc_spill(v, isn, ctx); /* releases 'v' */
+		/* should always find at least one register free (for spilling) */
+		assert(regt_is_valid(foundreg));
+
+		if(freecount == 1){
+			/* no reg available / only one available for spill */
+			spill = regalloc_spill(v, isn, ctx, foundreg); /* releases 'v' */
 
 			if(SHOW_REGALLOC){
 				fprintf(stderr, "regalloc_spill(%s) => ", val_str(v));
@@ -189,15 +196,14 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			}
 
 		}else{
-			assert(regt_is_valid(reg));
-
-			mark_in_use_isns(reg, lt);
+			assert(freecount > 1);
+			mark_in_use_isns(foundreg, lt);
 
 			if(SHOW_REGALLOC)
-				fprintf(stderr, "regalloc(%s) => reg %d\n", val_str(v), i);
+				fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
 
 			val_locn->where = NAME_IN_REG;
-			val_locn->u.reg = reg;
+			val_locn->u.reg = foundreg;
 		}
 	}else if(v->kind == ABI_TEMP){
 		assert(regt_is_valid(val_locn->u.reg));

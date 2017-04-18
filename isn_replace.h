@@ -1,6 +1,8 @@
 #ifndef ISN_REPLACE_H
 #define ISN_REPLACE_H
 
+#include "reg.h"
+
 struct val;
 struct isn;
 struct block;
@@ -12,7 +14,8 @@ enum replace_mode
 };
 
 void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *, struct block *);
+		struct val *old, struct val *spill, struct isn *, struct block *,
+		regt using_reg);
 
 void isn_replace_val_with_val(
 		struct isn *,
