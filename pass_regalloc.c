@@ -150,23 +150,6 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	if(type_is_void(val_type(v)))
 		return;
 
-	/* if the instruction is a no-op (e.g. ptrcast, ptr2int/int2ptr where the sizes match),
-	 * then we reuse the source register/spill */
-	/* FIXME: don't think this is safe because of lifetime checks for the earlier val */
-	if(isn_is_noop(isn, &src, &dest)){
-		if(v == src){
-			/* if we're the source register, we need allocation */
-		}else{
-			if(SHOW_REGALLOC){
-				fprintf(stderr, "regalloc(%s) => reuse of source register\n", val_str(v));
-			}
-
-			assert(v == dest);
-			regalloc_mirror(dest, src);
-			return;
-		}
-	}
-
 	/* if it lives across blocks we use memory */
 	if(v->live_across_blocks){
 		/* optimisation - ensure the value is in the same register for all blocks
