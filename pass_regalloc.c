@@ -102,8 +102,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	struct location *val_locn;
 	val *src, *dest;
 	val *spill = NULL;
-	regset_marks this_isn_marks;
-	this_isn_marks = isn->regusemarks;
+	regset_marks this_isn_marks = isn->regusemarks;
 
 	if(isn->type == ISN_IMPLICIT_USE)
 		return;
