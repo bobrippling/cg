@@ -25,12 +25,15 @@
 #define SHOW_REGALLOC 0
 #define SHOW_STACKALLOC 0
 
+#define MAP_GUARDED_VALS 0
+
 struct greedy_ctx
 {
 	block *blk;
 	const struct regset *scratch_regs;
 	uniq_type_list *utl;
 	dynarray spill_isns;
+	dynmap *alloced_vars;
 	unsigned *spill_space;
 	bool spilt;
 };
@@ -106,6 +109,12 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	if(isn->type == ISN_IMPLICIT_USE)
 		return;
+
+	if(MAP_GUARDED_VALS){
+		if(dynmap_get(val *, long, ctx->alloced_vars, v))
+			return;
+		dynmap_set(val *, long, ctx->alloced_vars, v, 1L);
+	}
 
 	switch(v->kind){
 		case LITERAL:
@@ -268,6 +277,8 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	alloc_ctx.scratch_regs = &ctx->target->abi.scratch_regs;
 	alloc_ctx.spill_space = &ctx->spill_space;
 	alloc_ctx.utl = ctx->utl;
+	if(MAP_GUARDED_VALS)
+		alloc_ctx.alloced_vars = dynmap_new(val *, NULL, val_hash);
 
 	mark_callee_save_as_used(head, &ctx->target->abi.callee_saves);
 
@@ -299,6 +310,9 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 		second = true;
 	}
 #endif
+
+	if(MAP_GUARDED_VALS)
+		dynmap_free(alloc_ctx.alloced_vars);
 }
 
 void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
