@@ -22,6 +22,8 @@ struct life_check_ctx
 	dynmap *values_to_block;
 };
 
+static void block_dump_r(block *);
+
 
 block *block_new(char *lbl)
 {
@@ -281,10 +283,10 @@ static void block_dump_lbl(block *blk)
 	blk->emitted = 1;
 
 	printf("\n$%s:\n", blk->lbl);
-	block_dump(blk);
+	block_dump_r(blk);
 }
 
-void block_dump(block *blk)
+static void block_dump_r(block *blk)
 {
 	block_dump1(blk);
 
@@ -302,4 +304,19 @@ void block_dump(block *blk)
 			block_dump_lbl(blk->u.jmp.target);
 			break;
 	}
+}
+
+static void block_unmark_emitted(block *blk, void *vctx)
+{
+	blk->emitted = 0;
+}
+
+void block_dump(block *blk)
+{
+	dynmap *markers = BLOCK_DYNMAP_NEW();
+
+	block_dump_r(blk);
+	blocks_traverse(blk, block_unmark_emitted, NULL, markers);
+
+	dynmap_free(markers);
 }
