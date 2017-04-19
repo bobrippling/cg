@@ -119,12 +119,15 @@ unsigned val_hash(val *v)
 		}
 
 		case ARGUMENT:
+			spel = v->u.argument.name;
 			break;
 
 		case ALLOCA:
+			spel = v->u.alloca.name;
 			break;
 
 		case FROM_ISN:
+			spel = v->u.local.name;
 			break;
 
 		case BACKEND_TEMP:
