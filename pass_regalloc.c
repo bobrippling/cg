@@ -42,6 +42,12 @@ struct regalloc_ctx
 	unsigned spill_space;
 };
 
+static unsigned get_spill_space(unsigned *const spill_space, type *ty)
+{
+	*spill_space += type_size(ty);
+	return *spill_space;
+}
+
 static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt using_reg)
 {
 	type *const ty = val_type(v);
@@ -51,7 +57,11 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt us
 			/*something unique:*/(int)v);
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
+	struct location *spill_loc = val_location(spill);
 	isn *alloca = isn_alloca(spill);
+
+	spill_loc->where = NAME_SPILT;
+	spill_loc->u.off = get_spill_space(ctx->spill_space, val_type(v));
 
 	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
 	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
@@ -211,16 +221,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	}
 
 	assert(!v->live_across_blocks);
-	assert(val_locn->where == NAME_IN_REG);
-
-	if(!spill){
-		/* HACK: we should populate a spill val's regset-marks when spilling */
-		int good = (!regt_is_valid(val_locn->u.reg) || regset_is_marked(this_isn_marks, val_locn->u.reg));
-		/*assert(good);*/
-		if(!good){
-			fprintf(stderr, "!good\n");
-		}
-	}
+	assert(spill || (val_locn->where == NAME_IN_REG && regt_is_valid(val_locn->u.reg)));
 
 	val_release(v);
 }
@@ -319,8 +320,7 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 
 	blocks_traverse(entry, blk_regalloc_pass, &ctx, alloc_markers);
 
-	/* not sure what to do with this for now...
-	 *alloca = ctx.spill_space; */
+	/* FIXME: deal with ctx.spill_space */
 
 	dynmap_free(alloc_markers);
 }
