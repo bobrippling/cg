@@ -176,8 +176,18 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		regt foundreg = regt_make_invalid();
 
 		for(i = 0; i < ctx->scratch_regs->count; i++){
-			regt reg = regt_make(i, is_fp);
-			if(!regset_is_marked(this_isn_marks, reg)){
+			const regt reg = regt_make(i, is_fp);
+			struct isn *isn_iter;
+			bool used = false;
+
+			for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
+				if(regset_is_marked(isn_iter->regusemarks, reg)){
+					used = true;
+					break;
+				}
+			}
+
+			if(!used){
 				foundreg = reg;
 				freecount++;
 			}
