@@ -109,6 +109,7 @@ struct isn
 	regset_marks regusemarks;
 
 	bool skip;
+	bool flag; /* for spills */
 };
 
 const char *isn_type_to_str(enum isn_type);

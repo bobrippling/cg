@@ -7,6 +7,7 @@
 #include "function.h"
 
 #include "pass_regalloc.h"
+#include "pass_spill.h"
 
 #include "backend.h"
 #include "val_struct.h"
@@ -44,44 +45,6 @@ struct regalloc_ctx
 	uniq_type_list *utl;
 	unsigned spill_space;
 };
-
-static unsigned get_spill_space(unsigned *const spill_space, type *ty)
-{
-	*spill_space += type_size(ty);
-	return *spill_space;
-}
-
-static void assign_spill(val *spill, unsigned *const spill_space)
-{
-	struct location *spill_loc = val_location(spill);
-
-	spill_loc->where = NAME_SPILT;
-	spill_loc->u.off = get_spill_space(spill_space, type_deref(val_type(spill)));
-}
-
-static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt using_reg)
-{
-	type *const ty = val_type(v);
-	val *spill = val_new_localf(
-			type_get_ptr(ctx->utl, ty),
-			"spill.%d",
-			/*something unique:*/(int)v);
-	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
-	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
-	isn *alloca = isn_alloca(spill);
-
-	assign_spill(spill, ctx->spill_space);
-
-	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
-	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
-
-	isn_insert_before(use_isn, alloca);
-	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk, using_reg);
-
-	ctx->spilt = true;
-
-	return spill;
-}
 
 static void mark_in_use_isns(regt reg, struct lifetime *lt)
 {
@@ -145,7 +108,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			if(val_locn->where == NAME_SPILT)
 				return;
 
-			assign_spill(v, ctx->spill_space);
+			spill_assign(v, ctx->spill_space);
 			return;
 
 		case ARGUMENT:
@@ -215,28 +178,16 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			}
 		}
 
-		/* should always find at least one register free (for spilling) */
 		assert(regt_is_valid(foundreg));
+		assert(freecount > 0);
 
-		if(freecount == 1){
-			/* no reg available / only one available for spill */
-			spill = regalloc_spill(v, isn, ctx, foundreg); /* releases 'v' */
+		mark_in_use_isns(foundreg, lt);
 
-			if(SHOW_REGALLOC){
-				fprintf(stderr, "regalloc_spill(%s) => ", val_str(v));
-				fprintf(stderr, "%s\n", val_str(spill));
-			}
+		if(SHOW_REGALLOC)
+			fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
 
-		}else{
-			assert(freecount > 1);
-			mark_in_use_isns(foundreg, lt);
-
-			if(SHOW_REGALLOC)
-				fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
-
-			val_locn->where = NAME_IN_REG;
-			val_locn->u.reg = foundreg;
-		}
+		val_locn->where = NAME_IN_REG;
+		val_locn->u.reg = foundreg;
 	}
 
 	assert(!v->live_across_blocks);
