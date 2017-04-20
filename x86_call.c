@@ -52,15 +52,15 @@ static void gather_for_spill(val *v, const struct x86_spill_ctx *ctx)
 	if(!val_is_volatile(v))
 		return;
 
-	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
-	assert(lt);
-
 	if(v->live_across_blocks)
 		spill = true;
 
-	/* don't spill if the value ends on the isn */
-	if(lifetime_contains(lt, ctx->call_isn, false))
+	lt = dynmap_get(val *, struct lifetime *, ctx->blk->val_lifetimes, v);
+	if(lt /* value lives in this block */
+	&& lifetime_contains(lt, ctx->call_isn, false) /* don't spill if the value ends on the isn */)
+	{
 		spill = true;
+	}
 
 	if(spill){
 		dynmap_set(val *, void *, ctx->spill, v, (void *)NULL);
