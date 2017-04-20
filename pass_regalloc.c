@@ -51,6 +51,14 @@ static unsigned get_spill_space(unsigned *const spill_space, type *ty)
 	return *spill_space;
 }
 
+static void assign_spill(val *spill, unsigned *const spill_space)
+{
+	struct location *spill_loc = val_location(spill);
+
+	spill_loc->where = NAME_SPILT;
+	spill_loc->u.off = get_spill_space(spill_space, type_deref(val_type(spill)));
+}
+
 static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt using_reg)
 {
 	type *const ty = val_type(v);
@@ -60,11 +68,9 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt us
 			/*something unique:*/(int)v);
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
-	struct location *spill_loc = val_location(spill);
 	isn *alloca = isn_alloca(spill);
 
-	spill_loc->where = NAME_SPILT;
-	spill_loc->u.off = get_spill_space(ctx->spill_space, val_type(v));
+	assign_spill(spill, ctx->spill_space);
 
 	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
 	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
@@ -75,14 +81,6 @@ static val *regalloc_spill(val *v, isn *use_isn, struct greedy_ctx *ctx, regt us
 	ctx->spilt = true;
 
 	return spill;
-}
-
-static void regalloc_mirror(val *dest, val *src)
-{
-	fprintf(stderr, "TODO: regalloc_mirror()\n");
-#if 0
-	val_mirror(dest, src);
-#endif
 }
 
 static void mark_in_use_isns(regt reg, struct lifetime *lt)
@@ -99,13 +97,10 @@ static void mark_in_use_isns(regt reg, struct lifetime *lt)
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
-	bool needs_regalloc;
 	struct greedy_ctx *ctx = vctx;
 	struct lifetime *lt;
 	struct location *val_locn;
-	val *src, *dest;
 	val *spill = NULL;
-	regset_marks this_isn_marks = isn->regusemarks;
 
 	if(isn->type == ISN_IMPLICIT_USE)
 		return;
@@ -122,29 +117,28 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			/* not something we need to regalloc */
 			return;
 
+		case BACKEND_TEMP:
+			assert(0 && "BACKEND_TEMP unreachable at this stage");
+			return;
+
 		case ALLOCA:
-			/* stack automatically */
+			/* if already spilt, return */
+			val_locn = val_location(v);
+			if(val_locn->where == NAME_SPILT)
+				return;
+
+			assign_spill(v, ctx->spill_space);
 			return;
 
 		case ARGUMENT:
 		case FROM_ISN:
-			val_locn = val_location(v);
-			assert(val_locn);
-			break;
-
 		case ABI_TEMP:
 			/* Not something we need to regalloc,
 			 * but we need to account for its register usage.
-			 *
-			 * A second regalloc won't occur because of the
-			 * regt_is_valid() check lower down */
+			 */
 			val_locn = val_location(v);
 			assert(val_locn);
-			assert(regt_is_valid(val_locn->u.reg));
 			break;
-
-		case BACKEND_TEMP:
-			return;
 	}
 
 	if(type_is_void(val_type(v)))
@@ -159,18 +153,23 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		return;
 	}
 
-	/* if already spilt, return */
-	if(val_locn->where == NAME_SPILT)
-		return;
-
 	lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	assert(lt && "val doesn't have a lifetime");
 
-	needs_regalloc = !regt_is_valid(val_locn->u.reg) && lt->start == isn;
+	if(v->kind == ABI_TEMP){
+		assert(val_locn->where == NAME_IN_REG && regt_is_valid(val_locn->u.reg));
+		/* should've been marked by the pre-pass */
+		assert(regset_is_marked(isn->regusemarks, val_locn->u.reg));
+		return;
+	}
+
+	if(lt->start != isn){
+		return;
+	}
 
 	val_retain(v);
 
-	if(needs_regalloc){
+	if(!regt_is_valid(val_locn->u.reg)){
 		const bool is_fp = type_is_float(val_type(v), 1);
 		unsigned i;
 		unsigned freecount = 0;
@@ -206,9 +205,6 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			val_locn->where = NAME_IN_REG;
 			val_locn->u.reg = foundreg;
 		}
-	}else if(v->kind == ABI_TEMP){
-		assert(regt_is_valid(val_locn->u.reg));
-		mark_in_use_isns(val_locn->u.reg, lt);
 	}
 
 	assert(!v->live_across_blocks);
