@@ -374,6 +374,7 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 	 * - load fp constants from memory (TODO)
 	 * - check constant size - if too large, need movabs (TODO)
 	 * - recognise 1(%rdi, %rax, 4) ? (TODO)
+	 * - constrain adds, etc (e.g. add -4(%rbp), %eax) - perform spills?
 	 */
 	block *const entry = function_entry_block(fn, false);
 
