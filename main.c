@@ -20,6 +20,7 @@
 
 #include "pass_abi.h"
 #include "pass_isel.h"
+#include "pass_spill.h"
 #include "pass_regalloc.h"
 
 #include "opt_cprop.h"
@@ -44,6 +45,7 @@ static const struct
 } passes[] = {
 	{ "_abi", pass_abi },
 	{ "_isel", pass_isel },
+	{ "_spill", pass_spill },
 	{ "_regalloc", pass_regalloc },
 #define X(n) { #n, opt_ ## n },
 	OPTS
@@ -254,6 +256,7 @@ int main(int argc, char *argv[])
 	/* ensure the final passes are: */
 	dynarray_add(&passes, "_abi");
 	dynarray_add(&passes, "_isel");
+	dynarray_add(&passes, "_spill");
 	dynarray_add(&passes, "_regalloc");
 
 	pat.passes = &passes;
