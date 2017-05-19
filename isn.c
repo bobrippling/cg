@@ -24,7 +24,7 @@ isn *isn_new(enum isn_type t)
 
 static bool isn_in_list(isn *list, isn *candidate)
 {
-	for(; list; list = isn_next(list))
+	for(list = isn_first(list); list; list = isn_next(list))
 		if(candidate == list)
 			return true;
 
@@ -73,9 +73,12 @@ void isns_insert_before(isn *target, isn *list)
 {
 	isn *head = isn_first(list);
 	isn *tail = isn_last(list);
+	isn *i;
 
 	assert(!head->prev);
 	assert(!tail->next);
+	for(i = isn_first(list); i; i = isn_next(i))
+		assert(!isn_in_list(target, i));
 
 	head->prev = target->prev;
 	if(target->prev)
@@ -89,9 +92,12 @@ void isns_insert_after(isn *target, isn *list)
 {
 	isn *head = isn_first(list);
 	isn *tail = isn_last(list);
+	isn *i;
 
 	assert(!head->prev);
 	assert(!tail->next);
+	for(i = isn_first(list); i; i = isn_next(i))
+		assert(!isn_in_list(target, i));
 
 	tail->next = target->next;
 	if(target->next)
