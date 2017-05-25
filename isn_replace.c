@@ -16,7 +16,6 @@
 struct replace_ctx
 {
 	block *block;
-	regt using_reg;
 	unsigned isn_count;
 };
 
@@ -112,12 +111,8 @@ static void isn_replace_read_with_load(
 	/* FIXME: unique name */
 	type *ty = val_type(old);
 	val *tmp = val_new_localf(ty, "spill.tmp.%u", ctx->isn_count);
-	struct location *tmp_locn = val_location(tmp);
 	isn *load;
 	struct lifetime *lt = xmalloc(sizeof *lt);
-
-	tmp_locn->where = NAME_IN_REG;
-	tmp_locn->u.reg = ctx->using_reg;
 
 	assert(type_eq(type_deref(val_type(spill)), ty));
 
@@ -125,12 +120,8 @@ static void isn_replace_read_with_load(
 
 	isn_insert_before(at_isn, load);
 
-	memcpy(
-			lt,
-			dynmap_get(
-				val *, struct lifetime *, block_lifetime_map(ctx->block),
-				old),
-			sizeof(*lt));
+	lt->start = load;
+	lt->end = at_isn;
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
@@ -147,25 +138,17 @@ static void isn_replace_write_with_store(
 	/* FIXME: unique name */
 	type *ty = val_type(old);
 	val *tmp = val_new_localf(ty, "spill.tmp.%u", ctx->isn_count);
-	struct location *tmp_locn = val_location(tmp);
 	isn *store;
 	struct lifetime *lt = xmalloc(sizeof *lt);
 
 	assert(type_eq(type_deref(val_type(spill)), ty));
 
-	tmp_locn->where = NAME_IN_REG;
-	tmp_locn->u.reg = ctx->using_reg;
-
 	store = isn_store(tmp, spill);
 
 	isn_insert_after(at_isn, store);
 
-	memcpy(
-			lt,
-			dynmap_get(
-				val *, struct lifetime *, block_lifetime_map(ctx->block),
-				old),
-			sizeof(*lt));
+	lt->start = at_isn;
+	lt->end = store;
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
@@ -176,14 +159,12 @@ static void isn_replace_write_with_store(
 }
 
 void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *any_isn, block *blk,
-		regt using_reg)
+		struct val *old, struct val *spill, struct isn *any_isn, block *blk)
 {
 	struct replace_ctx ctx = { 0 };
 
 	ctx.block = blk;
 	ctx.isn_count = 0;
-	ctx.using_reg = using_reg;
 
 	for(any_isn = isn_first(any_isn);
 			any_isn;
