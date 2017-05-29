@@ -185,6 +185,10 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 					used = true;
 					break;
 				}
+
+				if(isn_iter == lt->end){
+					break;
+				}
 			}
 
 			if(!used){
