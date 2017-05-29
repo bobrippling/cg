@@ -146,7 +146,7 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 		passes[j].fn(fn, unit, pat->target);
 
 		if(pat->show_intermediates)
-			unit_on_globals(unit, global_dump);
+			function_dump(fn);
 	}
 }
 
