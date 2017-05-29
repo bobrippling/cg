@@ -932,7 +932,7 @@ static void x86_op(
 		}
 	}
 
-	x86_mov(lhs, res, octx);
+	x86_mov(lhs, res, octx); /* FIXME: what if they're both in memory? */
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
 
