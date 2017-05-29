@@ -95,6 +95,25 @@ static void mark_in_use_isns(regt reg, struct lifetime *lt)
 	}
 }
 
+bool regalloc_applies_to(val *v)
+{
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
+			return false;
+
+		case BACKEND_TEMP:
+			assert(0 && "BACKEND_TEMP unreachable at this stage");
+
+		case ALLOCA:
+		case ARGUMENT:
+		case FROM_ISN:
+		case ABI_TEMP:
+			break;
+	}
+	return true;
+}
+
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
@@ -102,24 +121,23 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	struct location *val_locn;
 	val *spill = NULL;
 
-	if(isn->type == ISN_IMPLICIT_USE)
-		return;
-
 	if(MAP_GUARDED_VALS){
 		if(dynmap_get(val *, long, ctx->alloced_vars, v))
 			return;
 		dynmap_set(val *, long, ctx->alloced_vars, v, 1L);
 	}
 
+	if(isn->type == ISN_IMPLICIT_USE)
+		return;
+
+	if(!regalloc_applies_to(v))
+		return;
+
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
-			/* not something we need to regalloc */
-			return;
-
 		case BACKEND_TEMP:
-			assert(0 && "BACKEND_TEMP unreachable at this stage");
-			return;
+			assert(0 && "unreachable");
 
 		case ALLOCA:
 			/* if already spilt, return */
