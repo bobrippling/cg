@@ -34,7 +34,7 @@ static unsigned get_spill_space(unsigned *const spill_space, type *ty)
 	return *spill_space;
 }
 
-void spill_assign(val *spill, unsigned *const spill_space)
+static void spill_assign(val *spill, unsigned *const spill_space)
 {
 	struct location *spill_loc = val_location(spill);
 
@@ -68,6 +68,11 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 {
 	struct spill_ctx *ctx = vctx;
 	const struct lifetime *lt;
+
+	if(v->kind == ALLOCA && isn->type == ISN_ALLOCA){
+		spill_assign(v, &ctx->spill_space);
+		return;
+	}
 
 	if(!regalloc_applies_to(v))
 		return;

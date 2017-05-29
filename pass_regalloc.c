@@ -35,7 +35,6 @@ struct greedy_ctx
 	uniq_type_list *utl;
 	dynarray spill_isns;
 	dynmap *alloced_vars;
-	unsigned *spill_space;
 	bool spilt;
 };
 
@@ -43,7 +42,6 @@ struct regalloc_ctx
 {
 	const struct target *target;
 	uniq_type_list *utl;
-	unsigned spill_space;
 };
 
 static void mark_in_use_isns(regt reg, struct lifetime *lt)
@@ -103,12 +101,6 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 			assert(0 && "unreachable");
 
 		case ALLOCA:
-			/* if already spilt, return */
-			val_locn = val_location(v);
-			if(val_locn->where == NAME_SPILT)
-				return;
-
-			spill_assign(v, ctx->spill_space);
 			return;
 
 		case ARGUMENT:
@@ -237,7 +229,6 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 
 	alloc_ctx.blk = blk;
 	alloc_ctx.scratch_regs = &ctx->target->abi.scratch_regs;
-	alloc_ctx.spill_space = &ctx->spill_space;
 	alloc_ctx.utl = ctx->utl;
 	if(MAP_GUARDED_VALS)
 		alloc_ctx.alloced_vars = dynmap_new(val *, NULL, val_hash);
@@ -274,8 +265,6 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 	lifetime_fill_func(fn);
 
 	blocks_traverse(entry, blk_regalloc_pass, &ctx, alloc_markers);
-
-	/* FIXME: deal with ctx.spill_space */
 
 	dynmap_free(alloc_markers);
 }
