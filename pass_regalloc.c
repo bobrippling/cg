@@ -249,29 +249,9 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 		isn_on_live_vals(isn_iter, regalloc_greedy_pre, &alloc_ctx);
 	}
 
-#ifdef TWO_PASSES
-	bool second = false;
-	for(;;){
-#endif
-		for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
-			isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
-		}
-
-#ifdef TWO_PASSES
-		if(!alloc_ctx.spilt){
-			fprintf(stderr, "no spills - done\n");
-			break;
-		}
-		if(second){
-			fprintf(stderr, "second pass - done\n");
-			break;
-		}
-
-		fprintf(stderr, "second pass...\n");
-		alloc_ctx.spilt = false;
-		second = true;
+	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
+		isn_on_live_vals(isn_iter, regalloc_greedy1, &alloc_ctx);
 	}
-#endif
 
 	if(MAP_GUARDED_VALS)
 		dynmap_free(alloc_ctx.alloced_vars);
