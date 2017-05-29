@@ -1,7 +1,7 @@
-spill: spill_call.s spill.s
+spill: spill.s spill_call.s
 	${CC} -o $@ $^
 
-spill_call.s: spill_call.ir
+spill_call.s: spill_call.ir ir
 	./ir $< >$@.tmp
 	mv $@.tmp $@
 
