@@ -34,7 +34,7 @@ struct replace_ctx
 			break;                           \
 		case ISN_ELEM:                     \
 			RW(reads[0], i->u.elem.index);   \
-			RW(reads[0], i->u.elem.lval);    \
+			RW(reads[1], i->u.elem.lval);    \
 			RW(*write, i->u.elem.res);       \
 			break;                           \
 		case ISN_PTRADD:                   \
