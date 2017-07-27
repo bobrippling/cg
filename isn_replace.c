@@ -110,7 +110,7 @@ static void isn_replace_read_with_load(
 {
 	/* FIXME: unique name */
 	type *ty = val_type(old);
-	val *tmp = val_new_localf(ty, "spill.tmp.%u", ctx->isn_count);
+	val *tmp = val_new_localf(ty, "reload.%u", ctx->isn_count);
 	isn *load;
 	struct lifetime *lt = xmalloc(sizeof *lt);
 
@@ -137,7 +137,7 @@ static void isn_replace_write_with_store(
 {
 	/* FIXME: unique name */
 	type *ty = val_type(old);
-	val *tmp = val_new_localf(ty, "spill.tmp.%u", ctx->isn_count);
+	val *tmp = val_new_localf(ty, "reload.%u", ctx->isn_count);
 	isn *store;
 	struct lifetime *lt = xmalloc(sizeof *lt);
 
