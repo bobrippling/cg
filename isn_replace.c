@@ -23,7 +23,7 @@ struct replace_ctx
 	switch(i->type){                     \
 		case ISN_STORE:                    \
 			RW(reads[0], i->u.store.from);   \
-			RW(*write, i->u.store.lval);     \
+			RW(reads[1], i->u.store.lval);     \
 			break;                           \
 		case ISN_LOAD:                     \
 			RW(reads[0], i->u.load.lval);    \
