@@ -23,7 +23,7 @@ struct spill_ctx
 {
 	block *blk;
 	struct uniq_type_list *utl;
-	unsigned free_count;
+	unsigned used_count;
 	unsigned regcount;
 	unsigned spill_space;
 };
@@ -92,14 +92,14 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 	}
 
 	if(lt->start == isn){
-		ctx->free_count++;
+		ctx->used_count++;
 
-		if(ctx->free_count >= ctx->regcount - 2){
+		if(ctx->used_count >= ctx->regcount - 2){
 			spill(v, isn, ctx);
 		}
 
 	}else if(lt->end == isn){
-		ctx->free_count--;
+		ctx->used_count--;
 	}
 }
 
