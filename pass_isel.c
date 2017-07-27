@@ -286,11 +286,9 @@ static void isel_reserve_cisc(block *entry, const struct target *target)
 	blocks_traverse(entry, isel_reserve_cisc_block, NULL, NULL);
 }
 
-static void isel_create_ptradd_isn(isn *i, unit *unit)
+static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
 {
-	val *lhs = i->u.ptraddsub.lhs;
-	val *rhs = i->u.ptraddsub.rhs;
-	const unsigned step = type_size(type_deref(val_type(lhs)));
+	const unsigned step = type_size(steptype);
 	type *rhs_ty = val_type(rhs);
 	isn *mul;
 	val *tmp;
@@ -336,10 +334,21 @@ static void isel_create_ptrmath_isn(isn *i, unit *unit)
 		default:
 			return;
 		case ISN_PTRADD:
-			isel_create_ptradd_isn(i, unit);
+			isel_create_ptradd_isn(
+					i,
+					unit,
+					type_deref(val_type(i->u.ptraddsub.lhs)),
+					i->u.ptraddsub.rhs);
 			break;
 		case ISN_PTRSUB:
 			isel_create_ptrsub_isn(i, unit);
+			break;
+		case ISN_ELEM:
+			isel_create_ptradd_isn(
+					i,
+					unit,
+					type_deref(val_type(i->u.elem.res)),
+					i->u.elem.index);
 			break;
 	}
 }

@@ -933,7 +933,12 @@ loc:
 		}
 	}
 
-	assert(0 && "TODO: isel-level pointer arithmetic");
+	x86_op(
+			op_add,
+			lval,
+			i->u.elem.index,
+			i->u.elem.res,
+			octx);
 }
 
 static void x86_trunc(val *from, val *to, x86_octx *octx)
