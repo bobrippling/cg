@@ -771,6 +771,68 @@ static bool elem_get_offset(val *maybe_int, type *elem_ty, long *const offset)
 	return true;
 }
 
+static void x86_op(
+		enum op op, val *lhs, val *rhs,
+		val *res, x86_octx *octx)
+{
+	struct x86_isn opisn;
+
+	if(op == op_mul){
+		/* use the three-operand mode */
+		emit_isn_operand operands[3] = { 0 };
+
+		operands[0].val = lhs;
+		operands[1].val = rhs;
+		operands[2].val = res;
+
+		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
+			return;
+		}
+
+		/* try swapping lhs and rhs */
+		operands[0].val = rhs;
+		operands[1].val = lhs;
+		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
+			return;
+		}
+
+		/* else fall back to 2-operand mode */
+	}
+
+	opisn = x86_isn_add;
+
+	switch(op){
+		case op_add: break;
+
+		case op_sub:          opisn.mnemonic = "sub"; break;
+		case op_mul:          opisn.mnemonic = "imul"; break;
+		case op_and:          opisn.mnemonic = "and"; break;
+		case op_or:           opisn.mnemonic = "or"; break;
+		case op_xor:          opisn.mnemonic = "xor"; break;
+
+		case op_shiftl:       opisn.mnemonic = "shl"; break;
+		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
+		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
+
+		case op_sdiv:
+		case op_smod:
+		case op_udiv:
+		case op_umod:
+		{
+			emit_isn_operand op;
+			op.val = rhs;
+			op.dereference = false;
+			opisn.mnemonic = "idiv";
+			opisn.arg_count = 1; /* idiv takes an implicit second operand */
+			x86_emit_isn(&opisn, octx, &op, 1, NULL);
+			return;
+		}
+	}
+
+	x86_mov(lhs, res, octx); /* FIXME: what if they're both in memory? */
+	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
+}
+
 static void emit_elem(isn *i, x86_octx *octx)
 {
 	val *const lval = i->u.elem.lval;
@@ -872,68 +934,6 @@ loc:
 	}
 
 	assert(0 && "TODO: isel-level pointer arithmetic");
-}
-
-static void x86_op(
-		enum op op, val *lhs, val *rhs,
-		val *res, x86_octx *octx)
-{
-	struct x86_isn opisn;
-
-	if(op == op_mul){
-		/* use the three-operand mode */
-		emit_isn_operand operands[3] = { 0 };
-
-		operands[0].val = lhs;
-		operands[1].val = rhs;
-		operands[2].val = res;
-
-		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
-			return;
-		}
-
-		/* try swapping lhs and rhs */
-		operands[0].val = rhs;
-		operands[1].val = lhs;
-		if(emit_isn_try(&x86_isn_imul, octx, operands, 3, NULL)){
-			return;
-		}
-
-		/* else fall back to 2-operand mode */
-	}
-
-	opisn = x86_isn_add;
-
-	switch(op){
-		case op_add: break;
-
-		case op_sub:          opisn.mnemonic = "sub"; break;
-		case op_mul:          opisn.mnemonic = "imul"; break;
-		case op_and:          opisn.mnemonic = "and"; break;
-		case op_or:           opisn.mnemonic = "or"; break;
-		case op_xor:          opisn.mnemonic = "xor"; break;
-
-		case op_shiftl:       opisn.mnemonic = "shl"; break;
-		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
-		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
-
-		case op_sdiv:
-		case op_smod:
-		case op_udiv:
-		case op_umod:
-		{
-			emit_isn_operand op;
-			op.val = rhs;
-			op.dereference = false;
-			opisn.mnemonic = "idiv";
-			opisn.arg_count = 1; /* idiv takes an implicit second operand */
-			x86_emit_isn(&opisn, octx, &op, 1, NULL);
-			return;
-		}
-	}
-
-	x86_mov(lhs, res, octx); /* FIXME: what if they're both in memory? */
-	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
 }
 
 static void x86_trunc(val *from, val *to, x86_octx *octx)
