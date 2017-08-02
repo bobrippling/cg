@@ -281,7 +281,7 @@ static void isel_reserve_cisc_block(block *block, void *vctx)
 	}
 }
 
-static void isel_reserve_cisc(block *entry, const struct target *target)
+static void isel_reserve_cisc(block *entry)
 {
 	blocks_traverse(entry, isel_reserve_cisc_block, NULL, NULL);
 }
@@ -394,5 +394,5 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 	}
 
 	isel_create_ptrmath(entry, unit);
-	isel_reserve_cisc(entry, target);
+	isel_reserve_cisc(entry);
 }
