@@ -370,20 +370,21 @@ static void isel_create_ptrmath(block *const entry, unit *unit)
 	blocks_traverse(entry, isel_create_ptrmath_blk, unit, NULL);
 }
 
-static void isel_create_spills(function *fn, const struct target *target)
-{
-}
-
 void pass_isel(function *fn, struct unit *unit, const struct target *target)
 {
 	/*
-	 * - expand struct copy isns (TODO)
-	 * - reserve specific instructions to use certain registers (TODO)
+	 * # isel
+	 * - reserve specific instructions to use certain registers
 	 *   e.g. x86 idiv, shift, cmp
+	 * - constrain all isns, e.g. imul
+	 *
+	 * # housekeeping after other passes
+	 * - expand struct copy isns (TODO)
 	 * - load fp constants from memory (TODO)
 	 * - check constant size - if too large, need movabs (TODO)
+	 *
+	 * # optimisation
 	 * - recognise 1(%rdi, %rax, 4) ? (TODO)
-	 * - constrain adds, etc (e.g. add -4(%rbp), %eax) - perform spills?
 	 */
 	block *const entry = function_entry_block(fn, false);
 
@@ -394,5 +395,4 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 
 	isel_create_ptrmath(entry, unit);
 	isel_reserve_cisc(entry, target);
-	isel_create_spills(fn, target);
 }
