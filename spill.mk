@@ -1,5 +1,8 @@
-spill: spill.s spill_call.s
+spill: spill.s spill_call.o
 	${CC} -o $@ $^
+
+spill_call.o: spill_call.s
+	${AS} -o $@ $<
 
 spill_call.s: spill_call.ir ir
 	./ir $< >$@.tmp
