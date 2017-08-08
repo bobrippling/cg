@@ -156,7 +156,7 @@ static void gen_constraint_isns(
 			assert(v->kind == LITERAL);
 			copy = isn_copy(reg, v);
 			isn_insert_before(isn_to_constrain, copy);
-			isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_READS);
+			isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_INPUTS);
 
 			v = reg;
 			loc = val_location(v);
@@ -202,11 +202,11 @@ via_temp:
 			if(postisn){
 				copy = isn_copy(v, abi);
 				isn_insert_after(isn_to_constrain, copy);
-				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_WRITES);
+				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_OUTPUTS);
 			}else{
 				copy = isn_copy(abi, v);
 				isn_insert_before(isn_to_constrain, copy);
-				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_READS);
+				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_INPUTS);
 			}
 		}
 		return;
@@ -303,7 +303,7 @@ static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
 	mul = isn_op(op_mul, rhs, val_new_i(step, rhs_ty), tmp);
 	isn_insert_before(i, mul);
 
-	isn_replace_val_with_val(i, rhs, tmp, REPLACE_READS);
+	isn_replace_val_with_val(i, rhs, tmp, REPLACE_INPUTS);
 }
 
 static void isel_create_ptrsub_isn(isn *i, unit *unit)
@@ -322,7 +322,7 @@ static void isel_create_ptrsub_isn(isn *i, unit *unit)
 
 	tmp = val_new_localf(val_type(out), "ptrsub.div");
 
-	isn_replace_val_with_val(i, out, tmp, REPLACE_WRITES);
+	isn_replace_val_with_val(i, out, tmp, REPLACE_OUTPUTS);
 
 	div = isn_op(op_udiv, tmp, val_new_i(step, val_type(out)), out);
 	isn_insert_after(i, div);

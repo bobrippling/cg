@@ -9,8 +9,8 @@ struct block;
 
 enum replace_mode
 {
-	REPLACE_READS = 1 << 0,
-	REPLACE_WRITES = 1 << 1
+	REPLACE_INPUTS = 1 << 0,
+	REPLACE_OUTPUTS = 1 << 1
 };
 
 void isn_replace_uses_with_load_store(

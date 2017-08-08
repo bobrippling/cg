@@ -19,93 +19,93 @@ struct replace_ctx
 	unsigned isn_count;
 };
 
-#define ISN_SWITCH_RW()                \
+#define ISN_SWITCH_IO()                \
 	switch(i->type){                     \
 		case ISN_STORE:                    \
-			RW(reads[0], i->u.store.from);   \
-			RW(reads[1], i->u.store.lval);     \
+			IO(inputs[0], i->u.store.from);   \
+			IO(inputs[1], i->u.store.lval);     \
 			break;                           \
 		case ISN_LOAD:                     \
-			RW(reads[0], i->u.load.lval);    \
-			RW(*write, i->u.load.to);        \
+			IO(inputs[0], i->u.load.lval);    \
+			IO(*output, i->u.load.to);        \
 			break;                           \
 		case ISN_ALLOCA:                   \
-			RW(*write, i->u.alloca.out);     \
+			IO(*output, i->u.alloca.out);     \
 			break;                           \
 		case ISN_ELEM:                     \
-			RW(reads[0], i->u.elem.index);   \
-			RW(reads[1], i->u.elem.lval);    \
-			RW(*write, i->u.elem.res);       \
+			IO(inputs[0], i->u.elem.index);   \
+			IO(inputs[1], i->u.elem.lval);    \
+			IO(*output, i->u.elem.res);       \
 			break;                           \
 		case ISN_PTRADD:                   \
 		case ISN_PTRSUB:                   \
-			RW(reads[0], i->u.ptraddsub.lhs);\
-			RW(reads[1], i->u.ptraddsub.rhs);\
-			RW(*write, i->u.ptraddsub.out);  \
+			IO(inputs[0], i->u.ptraddsub.lhs);\
+			IO(inputs[1], i->u.ptraddsub.rhs);\
+			IO(*output, i->u.ptraddsub.out);  \
 			break;                           \
 		case ISN_CMP:                      \
-			RW(reads[0], i->u.cmp.lhs);      \
-			RW(reads[1], i->u.cmp.rhs);      \
-			RW(*write, i->u.cmp.res);        \
+			IO(inputs[0], i->u.cmp.lhs);      \
+			IO(inputs[1], i->u.cmp.rhs);      \
+			IO(*output, i->u.cmp.res);        \
 			break;                           \
 		case ISN_OP:                       \
-			RW(reads[0], i->u.op.lhs);       \
-			RW(reads[1], i->u.op.rhs);       \
-			RW(*write, i->u.cmp.res);        \
+			IO(inputs[0], i->u.op.lhs);       \
+			IO(inputs[1], i->u.op.rhs);       \
+			IO(*output, i->u.cmp.res);        \
 			break;                           \
 		case ISN_COPY:                     \
-			RW(reads[0], i->u.copy.from);    \
-			RW(*write, i->u.copy.to);        \
+			IO(inputs[0], i->u.copy.from);    \
+			IO(*output, i->u.copy.to);        \
 			break;                           \
 		case ISN_EXT_TRUNC:                \
-			RW(reads[0], i->u.ext.from);     \
-			RW(*write, i->u.ext.to);         \
+			IO(inputs[0], i->u.ext.from);     \
+			IO(*output, i->u.ext.to);         \
 			break;                           \
 		case ISN_INT2PTR:                  \
 		case ISN_PTR2INT:                  \
-			RW(reads[0], i->u.ptr2int.from); \
-			RW(*write, i->u.ptr2int.to);     \
+			IO(inputs[0], i->u.ptr2int.from); \
+			IO(*output, i->u.ptr2int.to);     \
 			break;                           \
 		case ISN_PTRCAST:                  \
-			RW(reads[0], i->u.ptrcast.from); \
-			RW(*write, i->u.ptrcast.to);     \
+			IO(inputs[0], i->u.ptrcast.from); \
+			IO(*output, i->u.ptrcast.to);     \
 			break;                           \
 		case ISN_RET:                      \
-			RW(reads[0], i->u.ret);          \
+			IO(inputs[0], i->u.ret);          \
 			break;                           \
 		case ISN_JMP:                      \
 			break;                           \
 		case ISN_CALL:                     \
-			RW(reads[0], i->u.call.fn);      \
-			RW(*write, i->u.call.into);      \
+			IO(inputs[0], i->u.call.fn);      \
+			IO(*output, i->u.call.into);      \
 			break;                           \
 		case ISN_BR:                       \
-			RW(reads[0], i->u.branch.cond);  \
+			IO(inputs[0], i->u.branch.cond);  \
 			break;                           \
 		case ISN_IMPLICIT_USE:             \
 			break;                           \
 	}
 
-static void isn_vals_get(isn *i, val *reads[2], val **const write)
+void isn_vals_get(isn *i, val *inputs[2], val **const output)
 {
-	reads[0] = NULL;
-	reads[1] = NULL;
-	*write = NULL;
+	inputs[0] = NULL;
+	inputs[1] = NULL;
+	*output = NULL;
 
-#define RW(ar, val) ar = val
-	ISN_SWITCH_RW()
-#undef RW
+#define IO(ar, val) ar = val
+	ISN_SWITCH_IO()
+#undef IO
 }
 
-static void isn_vals_set(isn *i, val *reads[2], val **const write)
+static void isn_vals_set(isn *i, val *inputs[2], val **const output)
 {
-#define RW(ar, val) if(ar && ar != val){ val_release(val); val = val_retain(ar); }
-	ISN_SWITCH_RW()
-#undef RW
+#define IO(ar, val) if(ar && ar != val){ val_release(val); val = val_retain(ar); }
+	ISN_SWITCH_IO()
+#undef IO
 }
 
-static void isn_replace_read_with_load(
-		isn *at_isn, val *old, val *spill, val **const read,
+static void isn_replace_input_with_load(
+		isn *at_isn, val *old, val *spill, val **const input,
 		const struct replace_ctx *ctx)
 {
 	/* FIXME: unique name */
@@ -128,11 +128,11 @@ static void isn_replace_read_with_load(
 			tmp, lt);
 
 	/* update the out param, which will end up replacing the value in at_isn */
-	*read = tmp;
+	*input = tmp;
 }
 
-static void isn_replace_write_with_store(
-		isn *at_isn, val *old, val *spill, val **const write,
+static void isn_replace_output_with_store(
+		isn *at_isn, val *old, val *spill, val **const output,
 		const struct replace_ctx *ctx)
 {
 	/* FIXME: unique name */
@@ -155,7 +155,7 @@ static void isn_replace_write_with_store(
 			tmp, lt);
 
 	/* update the out param, which will end up replacing the value in at_isn */
-	*write = tmp;
+	*output = tmp;
 }
 
 void isn_replace_uses_with_load_store(
@@ -170,42 +170,42 @@ void isn_replace_uses_with_load_store(
 			any_isn;
 			any_isn = isn_next(any_isn), ctx.isn_count++)
 	{
-		val *reads[2];
-		val *write;
+		val *inputs[2];
+		val *output;
 		bool writeback = false;
 
-		isn_vals_get(any_isn, reads, &write);
+		isn_vals_get(any_isn, inputs, &output);
 
-		if(reads[0] == old){
-			isn_replace_read_with_load(any_isn, old, spill, &reads[0], &ctx);
+		if(inputs[0] == old){
+			isn_replace_input_with_load(any_isn, old, spill, &inputs[0], &ctx);
 			writeback = true;
 		}
-		if(reads[1] == old){
-			isn_replace_read_with_load(any_isn, old, spill, &reads[1], &ctx);
+		if(inputs[1] == old){
+			isn_replace_input_with_load(any_isn, old, spill, &inputs[1], &ctx);
 			writeback = true;
 		}
-		if(write == old){
-			isn_replace_write_with_store(any_isn, old, spill, &write, &ctx);
+		if(output == old){
+			isn_replace_output_with_store(any_isn, old, spill, &output, &ctx);
 			writeback = true;
 		}
 
 		if(writeback)
-			isn_vals_set(any_isn, reads, &write);
+			isn_vals_set(any_isn, inputs, &output);
 	}
 }
 
 void isn_replace_val_with_val(isn *isn, val *old, val *new, enum replace_mode mode)
 {
-	val *reads[2], *write;
+	val *inputs[2], *output;
 
-	isn_vals_get(isn, reads, &write);
+	isn_vals_get(isn, inputs, &output);
 
-	if(mode & REPLACE_READS){
-		if(reads[0] == old) reads[0] = new;
-		if(reads[1] == old) reads[1] = new;
+	if(mode & REPLACE_INPUTS){
+		if(inputs[0] == old) inputs[0] = new;
+		if(inputs[1] == old) inputs[1] = new;
 	}
-	if(mode & REPLACE_WRITES)
-		if(write == old) write = new;
+	if(mode & REPLACE_OUTPUTS)
+		if(output == old) output = new;
 
-	isn_vals_set(isn, reads, &write);
+	isn_vals_set(isn, inputs, &output);
 }
