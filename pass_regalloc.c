@@ -75,6 +75,51 @@ bool regalloc_applies_to(val *v)
 	return true;
 }
 
+static void regalloc_val(
+		val *v,
+		struct location *val_locn,
+		struct lifetime *lt,
+		struct greedy_ctx *ctx)
+{
+	const bool is_fp = type_is_float(val_type(v), 1);
+	unsigned i;
+	unsigned freecount = 0;
+	regt foundreg = regt_make_invalid();
+
+	for(i = 0; i < ctx->scratch_regs->count; i++){
+		const regt reg = regt_make(i, is_fp);
+		struct isn *isn_iter;
+		bool used = false;
+
+		for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
+			if(regset_is_marked(isn_iter->regusemarks, reg)){
+				used = true;
+				break;
+			}
+
+			if(isn_iter == lt->end){
+				break;
+			}
+		}
+
+		if(!used){
+			foundreg = reg;
+			freecount++;
+		}
+	}
+
+	assert(regt_is_valid(foundreg));
+	assert(freecount > 0);
+
+	mark_in_use_isns(foundreg, lt);
+
+	if(SHOW_REGALLOC)
+		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
+
+	val_locn->where = NAME_IN_REG;
+	val_locn->u.reg = foundreg;
+}
+
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 {
 	struct greedy_ctx *ctx = vctx;
@@ -143,43 +188,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	val_retain(v);
 
 	if(!regt_is_valid(val_locn->u.reg)){
-		const bool is_fp = type_is_float(val_type(v), 1);
-		unsigned i;
-		unsigned freecount = 0;
-		regt foundreg = regt_make_invalid();
-
-		for(i = 0; i < ctx->scratch_regs->count; i++){
-			const regt reg = regt_make(i, is_fp);
-			struct isn *isn_iter;
-			bool used = false;
-
-			for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
-				if(regset_is_marked(isn_iter->regusemarks, reg)){
-					used = true;
-					break;
-				}
-
-				if(isn_iter == lt->end){
-					break;
-				}
-			}
-
-			if(!used){
-				foundreg = reg;
-				freecount++;
-			}
-		}
-
-		assert(regt_is_valid(foundreg));
-		assert(freecount > 0);
-
-		mark_in_use_isns(foundreg, lt);
-
-		if(SHOW_REGALLOC)
-			fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
-
-		val_locn->where = NAME_IN_REG;
-		val_locn->u.reg = foundreg;
+		regalloc_val(v, val_locn, lt, ctx);
 	}
 
 	assert(!v->live_across_blocks);
