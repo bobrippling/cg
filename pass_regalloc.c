@@ -89,7 +89,7 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 		fprintf(stderr, "  [%p]: ", isn_iter);
 
 		for(i = 0; i < ctx->scratch_regs->count; i++){
-			const regt reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
+			const regt reg = regt_make(regset_get(ctx->scratch_regs, i), is_fp);
 			if(regset_is_marked(isn_iter->regusemarks, reg)){
 				fprintf(stderr, "%s<reg %d>", space, reg);
 				space = ", ";
@@ -117,7 +117,7 @@ static void regalloc_val(
 		regalloc_debug(v, is_fp, lt, ctx);
 
 	for(i = 0; i < ctx->scratch_regs->count; i++){
-		const regt reg = regt_make(i, is_fp);
+		const regt reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
 		struct isn *isn_iter;
 		bool used = false;
 
