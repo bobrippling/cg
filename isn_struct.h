@@ -29,6 +29,7 @@ struct isn
 		ISN_RET,
 		ISN_CALL,
 		ISN_IMPLICIT_USE
+#define ISN_TYPE_COUNT (ISN_IMPLICIT_USE+1)
 	} type;
 
 	union

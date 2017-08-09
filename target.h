@@ -6,6 +6,8 @@
 #include "unit.h" /* global_emit_func */
 #include "regset.h"
 
+typedef void isel_func(struct isn *, const struct target *);
+
 /* <arch><sub>-<vendor>-<sys>-<abi>
  * arch affects target_arch
  * vendor affects nothing
@@ -20,6 +22,12 @@ struct target
 		{
 			unsigned size, align;
 		} ptr;
+
+		const struct target_arch_isn
+		{
+			const struct backend_isn *backend_isn; /* indexed by isn_type */
+			isel_func *custom_isel;
+		} *instructions;
 
 		/* pic, pie, etc */
 	} arch;

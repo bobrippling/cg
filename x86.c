@@ -14,6 +14,7 @@
 #include "x86.h"
 #include "x86_internal.h"
 #include "target.h"
+#include "backend_isn.h"
 
 #include "isn.h"
 #include "isn_struct.h"
@@ -73,7 +74,7 @@ static char x86_target_regch(const struct target *target)
 	return x86_target_switch(target, 'e', 'r');
 }
 
-static operand_category val_category(val *v, bool dereference)
+static enum operand_category val_category(val *v, bool dereference)
 {
 	switch(v->kind){
 		case LITERAL:
@@ -361,8 +362,8 @@ void x86_make_eax(val *out, type *ty)
 static void make_val_temporary_store(
 		val *from,
 		val *write_to,
-		operand_category from_cat,
-		operand_category to_cat,
+		enum operand_category from_cat,
+		enum operand_category to_cat,
 		bool const deref_val,
 		x86_octx *octx)
 {
@@ -405,87 +406,11 @@ static void make_val_temporary_store(
 	assert(val_size(write_to) == type_size(temporary_ty));
 }
 
-static bool operand_type_convertible(
-		operand_category from, operand_category to)
-{
-	if(to == OPERAND_INT)
-		return from == OPERAND_INT;
-
-	return true;
-}
-
-static const struct x86_isn_constraint *find_isn_bestmatch(
-		const struct x86_isn *isn,
-		const operand_category arg_cats[],
-		const size_t nargs,
-		unsigned *const out_conversions_required)
-{
-	const int max = countof(isn->constraints);
-	int i, bestmatch_i = -1;
-	unsigned bestmatch_conversions = ~0u;
-
-	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
-		bool matches[MAX_OPERANDS];
-		unsigned nmatches = 0;
-		unsigned conversions_required;
-		unsigned conversions_left;
-		unsigned j;
-
-		/* how many conversions for this constrant-set? */
-		for(j = 0; j < nargs; j++){
-			if(j == isn->arg_count)
-				break;
-
-			matches[j] = (arg_cats[j] == isn->constraints[i].category[j]);
-
-			if(matches[j])
-				nmatches++;
-		}
-
-		conversions_required = (nargs - nmatches);
-
-		if(conversions_required == 0){
-			bestmatch_conversions = conversions_required;
-			bestmatch_i = i;
-			break;
-		}
-
-		/* we can only have the best match if the non-matched operand
-		 * is convertible to the required operand type */
-		conversions_left = conversions_required;
-		for(j = 0; j < nargs; j++){
-			if(matches[j])
-				continue;
-
-			if(operand_type_convertible(
-						arg_cats[j], isn->constraints[i].category[j]))
-			{
-				conversions_left--;
-			}
-		}
-
-		/* if we can convert all operands, we may have a new best match */
-		if(conversions_left == 0 /* feasible */
-		&& conversions_required < bestmatch_conversions /* best */)
-		{
-			bestmatch_conversions = conversions_required;
-			bestmatch_i = i;
-		}
-	}
-
-	*out_conversions_required = bestmatch_conversions;
-
-	if(bestmatch_i != -1)
-		return &isn->constraints[bestmatch_i];
-
-	return NULL;
-}
-
 static void ready_input(
 		val *orig_val,
 		val *temporary_store,
-		operand_category orig_val_category,
-		operand_category operand_category,
+		enum operand_category orig_val_category,
+		enum operand_category operand_category,
 		bool *const deref_val,
 		x86_octx *octx)
 {
@@ -514,8 +439,8 @@ static void ready_input(
 static void ready_output(
 		val *orig_val,
 		val *temporary_store,
-		operand_category orig_val_category,
-		operand_category operand_category,
+		enum operand_category orig_val_category,
+		enum operand_category operand_category,
 		bool *const deref_val,
 		x86_octx *octx)
 {
@@ -558,23 +483,25 @@ static const char *maybe_generate_isn_suffix(
 }
 
 static bool emit_isn_try(
-		const struct x86_isn *isn, x86_octx *octx,
+		const struct backend_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
 		unsigned operand_count,
 		const char *x86_isn_suffix)
 {
 	val *emit_vals[MAX_OPERANDS];
 	bool orig_dereference[MAX_OPERANDS];
-	operand_category op_categories[MAX_OPERANDS] = { 0 };
+	enum operand_category op_categories[MAX_OPERANDS] = { 0 };
 	struct {
 		val val;
 		variable var;
 	} temporaries[MAX_OPERANDS];
-	unsigned conversions_required, conversions_left;
+	unsigned conversions_required = 0, conversions_left;
+#if 0
 	const struct x86_isn_constraint *operands_target = NULL;
+#endif
 	unsigned j;
 
-	assert(operand_count == isn->arg_count);
+	assert(operand_count == isn->operand_count);
 	assert(operand_count <= MAX_OPERANDS);
 
 	for(j = 0; j < operand_count; j++){
@@ -584,18 +511,35 @@ static bool emit_isn_try(
 		op_categories[j] = val_category(operands[j].val, operands[j].dereference);
 	}
 
+#if 0
 	operands_target = find_isn_bestmatch(
 			isn, op_categories, operand_count, &conversions_required);
 
 	if(!operands_target)
 		return false;
+#endif
 
 	/* not satisfied - convert an operand to REG or MEM */
 	if(conversions_required && TEMPORARY_SHOW_MOVES)
 		x86_comment(octx, "temp(s) needed for %s (%u conversions)",
 				isn->mnemonic, conversions_required);
 
+	if(conversions_required){
+		fprintf(stderr, "conversions required, too late - should've been done in isel\n");
+		fprintf(stderr, "  isn: %s\n", isn->mnemonic);
+		fprintf(stderr, "  operands:\n");
+		for(j = 0; j < operand_count; j++){
+			fprintf(
+					stderr,
+					"    %s%s\n",
+					val_str(operands[j].val),
+					/*op_categories[j] == operands_target->category[j]*/0 ? "" : " (conversion required)");
+		}
+		abort();
+	}
+
 	conversions_left = conversions_required;
+#if 0
 	for(j = 0; j < operand_count; j++){
 		/* ready the operands if they're inputs */
 		if(isn->arg_ios[j] & OPERAND_INPUT
@@ -638,6 +582,7 @@ static bool emit_isn_try(
 			conversions_left--;
 		}
 	}
+#endif
 
 	if(!x86_isn_suffix && isn->may_suffix)
 		x86_isn_suffix = maybe_generate_isn_suffix(operand_count, emit_vals, operands);
@@ -667,6 +612,7 @@ static bool emit_isn_try(
 	}
 
 
+#if 0
 	/* store outputs after the instruction */
 	for(j = 0; j < operand_count; j++){
 		if(op_categories[j] != operands_target->category[j]
@@ -680,13 +626,14 @@ static bool emit_isn_try(
 			conversions_left--;
 		}
 	}
+#endif
 
 	assert(conversions_left == 0 && "should have converted all operands");
 	return true;
 }
 
 void x86_emit_isn(
-		const struct x86_isn *isn, x86_octx *octx,
+		const struct backend_isn *isn, x86_octx *octx,
 		emit_isn_operand operands[],
 		unsigned operand_count,
 		const char *x86_isn_suffix)
@@ -697,7 +644,7 @@ void x86_emit_isn(
 }
 
 static void emit_isn_binary(
-		const struct x86_isn *isn, x86_octx *octx,
+		const struct backend_isn *isn, x86_octx *octx,
 		val *const lhs, bool deref_lhs,
 		val *const rhs, bool deref_rhs,
 		const char *x86_isn_suffix)
@@ -719,7 +666,7 @@ static void mov_deref_force(
 		bool deref_from, bool deref_to,
 		bool const force)
 {
-	const struct x86_isn *chosen_isn = &x86_isn_mov;
+	const struct backend_isn *chosen_isn = &x86_isn_mov;
 
 	if(!force && !deref_from && !deref_to){
 		struct location *loc_from, *loc_to;
@@ -775,9 +722,9 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
-	struct x86_isn opisn;
+	struct backend_isn opisn;
 
-	if(op == op_mul){
+	if(op == op_mul && /* XXX: disabled */false){
 		/* use the three-operand mode */
 		emit_isn_operand operands[3] = { 0 };
 
@@ -823,7 +770,7 @@ static void x86_op(
 			op.val = rhs;
 			op.dereference = false;
 			opisn.mnemonic = "idiv";
-			opisn.arg_count = 1; /* idiv takes an implicit second operand */
+			opisn.operand_count = 1; /* idiv takes an implicit second operand */
 			x86_emit_isn(&opisn, octx, &op, 1, NULL);
 			return;
 		}

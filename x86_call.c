@@ -25,6 +25,9 @@
 #include "x86_isns.h"
 #include "x86_call.h"
 
+/* FIXME: hack */
+extern const struct backend_isn x86_isn_call;
+
 typedef struct dep
 {
 	int target, current; /* register indexes */

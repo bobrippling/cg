@@ -1,80 +1,93 @@
-#include "x86_isns.h"
+#include "backend_isn.h"
 
-/* semantically, OPERAND_MEM_CONTENTS and OPERAND_MEM_PTR are mostly the same
- * here, we use MEM_PTR for the lea operand, even though it takes syntactically
- * the same as a mov. The difference comes into play in the setup / isel code.
- */
+#include "macros.h"
+#include "isn_struct.h"
+#include "x86.h"
+#include "x86_isel.h"
 
-const struct x86_isn x86_isn_mov = {
+#define X86_CONSTRAINT(l, r) { l, r, r }
+
+#define op x86_isn_add
+#define call x86_isn_call
+#define cmp x86_isn_cmp
+#define imul3 x86_isn_imul
+#define lea x86_isn_lea
+#define mov x86_isn_mov
+#define movzx x86_isn_movzx
+#define set x86_isn_set
+#define test x86_isn_test
+#define static
+
+static const struct backend_isn mov = {
 	"mov",
 	2,
-	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
 		0
 	},
 	{
-		{ OPERAND_REG,          OPERAND_REG },
-		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
-		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
-		{ OPERAND_REG,          OPERAND_INT },
-		{ OPERAND_INT,          OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_MEM_CONTENTS }
-	}
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_MEM_CONTENTS),
+		X86_CONSTRAINT(OPERAND_MEM_CONTENTS, OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_INT),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_MEM_CONTENTS)
+	},
+	true
 };
 
-const struct x86_isn x86_isn_lea = {
+static const struct backend_isn lea = {
 	"lea",
 	2,
-	false,
 	{
-		OPERAND_INPUT | OPERAND_LEA,
+		OPERAND_INPUT | OPERAND_ADDRESSED,
 		OPERAND_OUTPUT,
 		0
 	},
 	{
 		{ OPERAND_MEM_PTR, OPERAND_REG },
-	}
+	},
+	false
 };
 
-const struct x86_isn x86_isn_movzx = {
-	"mov",
+static const struct backend_isn movzx = {
+	"mov", /* movzx */
 	2,
-	false,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
 		0
 	},
 	{
-		{ OPERAND_REG, OPERAND_REG },
-		{ OPERAND_REG, OPERAND_MEM_CONTENTS },
-	}
+		X86_CONSTRAINT(OPERAND_REG, OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG, OPERAND_MEM_CONTENTS),
+	},
+	false
 };
 
-const struct x86_isn x86_isn_add = {
+static const struct backend_isn op = {
 	"add",
 	2,
-	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT | OPERAND_OUTPUT,
 		0
 	},
 	{
-		{ OPERAND_REG,          OPERAND_REG },
-		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
-		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_MEM_CONTENTS }
-	}
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_MEM_CONTENTS),
+		X86_CONSTRAINT(OPERAND_MEM_CONTENTS, OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_REG),
+		{ OPERAND_REG, OPERAND_INT, OPERAND_REG },
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_MEM_CONTENTS)
+	},
+	true
 };
 
-const struct x86_isn x86_isn_imul = {
+static const struct backend_isn imul3 = {
 	"imul",
-	3,
-	true,
+	3, /* three-arg imul. all other ops reference "add" */
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT,
@@ -84,49 +97,49 @@ const struct x86_isn x86_isn_imul = {
 		/* imul{bwl} imm[16|32], r/m[16|32], reg[16|32] */
 		{ OPERAND_INT, OPERAND_REG,          OPERAND_REG },
 		{ OPERAND_INT, OPERAND_MEM_CONTENTS, OPERAND_REG }
-	}
+	},
+	true
 };
 
-const struct x86_isn x86_isn_cmp = {
+static const struct backend_isn cmp = {
 	"cmp",
 	2,
-	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT,
 		0
 	},
 	{
-		{ OPERAND_REG,          OPERAND_REG },
-		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
-		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_MEM_CONTENTS },
-	}
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_MEM_CONTENTS),
+		X86_CONSTRAINT(OPERAND_MEM_CONTENTS, OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_MEM_CONTENTS),
+	},
+	true
 };
 
-const struct x86_isn x86_isn_test = {
+static const struct backend_isn test = {
 	"test",
 	2,
-	true,
 	{
 		OPERAND_INPUT,
 		OPERAND_INPUT,
 		0
 	},
 	{
-		{ OPERAND_REG,          OPERAND_REG },
-		{ OPERAND_REG,          OPERAND_MEM_CONTENTS },
-		{ OPERAND_MEM_CONTENTS, OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_REG },
-		{ OPERAND_INT,          OPERAND_MEM_CONTENTS },
-	}
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_REG,          OPERAND_MEM_CONTENTS),
+		X86_CONSTRAINT(OPERAND_MEM_CONTENTS, OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_REG),
+		X86_CONSTRAINT(OPERAND_INT,          OPERAND_MEM_CONTENTS),
+	},
+	true
 };
 
-const struct x86_isn x86_isn_call = {
+static const struct backend_isn call = {
 	"call",
 	1,
-	false,
 	{
 		OPERAND_INPUT,
 		0,
@@ -135,13 +148,13 @@ const struct x86_isn x86_isn_call = {
 	{
 		{ OPERAND_REG },
 		{ OPERAND_MEM_CONTENTS },
-	}
+	},
+	false
 };
 
-const struct x86_isn x86_isn_set = {
+static const struct backend_isn set = {
 	"set",
 	1,
-	false,
 	{
 		OPERAND_OUTPUT,
 		0,
@@ -150,5 +163,29 @@ const struct x86_isn x86_isn_set = {
 	{
 		{ OPERAND_REG },
 		{ OPERAND_MEM_CONTENTS }, /* 1-byte */
-	}
+	},
+	false
 };
+
+const struct target_arch_isn backend_isns_x64[] = {
+	/*ISN_LOAD*/         { &mov, NULL },
+	/*ISN_STORE*/        { &mov, NULL },
+	/*ISN_ALLOCA*/       { NULL, NULL },
+	/*ISN_OP*/           { &op, NULL },
+	/*ISN_CMP*/          { &cmp, NULL },
+	/*ISN_ELEM*/         { &lea, &x86_isel_lea },
+	/*ISN_PTRADD*/       { &op, NULL },
+	/*ISN_PTRSUB*/       { &op, NULL },
+	/*ISN_COPY*/         { &mov, NULL },
+	/*ISN_EXT_TRUNC*/    { &movzx, NULL }, /* TODO */
+	/*ISN_PTR2INT*/      { &mov, NULL },
+	/*ISN_INT2PTR*/      { &mov, NULL },
+	/*ISN_PTRCAST*/      { &mov, NULL },
+	/*ISN_BR*/           { NULL, NULL },
+	/*ISN_JMP*/          { NULL, NULL },
+	/*ISN_RET*/          { NULL, NULL },
+	/*ISN_CALL*/         { &call, NULL },
+	/*ISN_IMPLICIT_USE*/ { NULL, NULL },
+};
+
+static_assert(countof(backend_isns_x64) == ISN_TYPE_COUNT, check_isn_count);

@@ -16,6 +16,7 @@
 #include "op.h"
 #include "global.h"
 #include "type.h"
+#include "backend_isn.h"
 
 #if 0
 static val *val_new(enum val_kind k);
@@ -166,6 +167,25 @@ struct location *val_location(val *v)
 			break;
 	}
 	return NULL;
+}
+
+enum operand_category val_operand_category(val *v, bool dereference)
+{
+	switch(v->kind){
+		case LITERAL:
+			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_INT;
+
+		case GLOBAL:
+		case ALLOCA:
+			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
+
+		case ABI_TEMP:
+		case BACKEND_TEMP:
+		case ARGUMENT:
+		case FROM_ISN:
+			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_REG;
+	}
+	assert(0);
 }
 
 #if 0

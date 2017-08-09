@@ -2,6 +2,7 @@
 #define ISN_REPLACE_H
 
 #include "reg.h"
+#include "macros.h"
 
 struct val;
 struct isn;
@@ -21,5 +22,10 @@ void isn_replace_val_with_val(
 		struct val *old,
 		struct val *new,
 		enum replace_mode mode);
+
+void isn_vals_get(
+		struct isn *i,
+		struct val *inputs[attr_static 2],
+		struct val **const outputs);
 
 #endif

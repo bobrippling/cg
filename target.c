@@ -68,7 +68,7 @@ static const struct
 } arches[] = {
 	{
 		"ir",
-		{ 8, 8 },
+		{ { 8, 8 }, backend_isns_x64 },
 		/* arbitrary ABI
 		 * this should be configurable to emit abi'd IR for a certain arch */
 		ARCH_ABI(x64),
@@ -76,7 +76,7 @@ static const struct
 	},
 	{
 		"x86_64",
-		{ 8, 8 },
+		{ { 8, 8 }, backend_isns_x64 },
 		ARCH_ABI(x64),
 		x86_out
 	}
