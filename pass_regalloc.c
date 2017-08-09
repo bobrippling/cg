@@ -24,6 +24,7 @@
 #include "lifetime_struct.h"
 
 #define SHOW_REGALLOC 0
+#define SHOW_REGALLOC_VERBOSE 0
 #define SHOW_STACKALLOC 0
 
 #define MAP_GUARDED_VALS 0
@@ -76,6 +77,31 @@ bool regalloc_applies_to(val *v)
 	return true;
 }
 
+static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greedy_ctx *ctx)
+{
+	struct isn *isn_iter;
+
+	fprintf(stderr, "pre-regalloc %s:\n", val_str(v));
+
+	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
+		const char *space = "";
+		unsigned i;
+		fprintf(stderr, "  [%p]: ", isn_iter);
+
+		for(i = 0; i < ctx->scratch_regs->count; i++){
+			const regt reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
+			if(regset_is_marked(isn_iter->regusemarks, reg)){
+				fprintf(stderr, "%s<reg %d>", space, reg);
+				space = ", ";
+			}
+		}
+		fprintf(stderr, "\n");
+
+		if(isn_iter == lt->end)
+			break;
+	}
+}
+
 static void regalloc_val(
 		val *v,
 		struct location *val_locn,
@@ -86,6 +112,9 @@ static void regalloc_val(
 	unsigned i;
 	unsigned freecount = 0;
 	regt foundreg = regt_make_invalid();
+
+	if(SHOW_REGALLOC_VERBOSE)
+		regalloc_debug(v, is_fp, lt, ctx);
 
 	for(i = 0; i < ctx->scratch_regs->count; i++){
 		const regt reg = regt_make(i, is_fp);
