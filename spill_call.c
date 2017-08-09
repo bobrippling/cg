@@ -14,6 +14,6 @@ int main(int argc, char **argv)
 	else
 		x = 3;
 #endif
-	printf("x=%d\n", x);
-	printf("f()=%d\n", f());
+	printf("x=%d (should be 3)\n", x);
+	printf("f()=%d (should be 15)\n", f());
 }
