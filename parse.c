@@ -594,7 +594,6 @@ static void parse_ident(parse *p, char *spel)
 			}
 
 			element_ty = type_array_element(array_ty);
-
 			if(!element_ty && type_is_struct(array_ty)){
 				size_t i;
 				if(val_is_int(idx, &i)){
@@ -610,6 +609,10 @@ static void parse_ident(parse *p, char *spel)
 			if(!element_ty){
 				sema_error(p, "elem requires (pointer to) array/struct type");
 				element_ty = default_type(p);
+			}
+
+			if(type_size(val_type(idx)) != type_size(type_get_sizet(unit_uniqtypes(p->unit)))){
+				sema_error(p, "elem (array-based) requires pointer-sized integer type (rhs)");
 			}
 
 			resolved_ty = type_get_ptr(uniqtypes, element_ty);

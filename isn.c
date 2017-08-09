@@ -404,6 +404,8 @@ isn *isn_elem(val *lval, val *index, val *res)
 	val_retain(index);
 	val_retain(res);
 
+	assert(type_size(val_type(lval)) == type_size(val_type(index)));
+
 	isn = isn_new(ISN_ELEM);
 	isn->u.elem.lval = lval;
 	isn->u.elem.index = index;
