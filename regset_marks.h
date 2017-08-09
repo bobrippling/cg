@@ -16,5 +16,6 @@ void regset_marks_free(regset_marks);
 
 void regset_mark(regset_marks, regt, bool mark);
 bool regset_is_marked(regset_marks, regt);
+unsigned char regset_mark_count(regset_marks, regt);
 
 #endif

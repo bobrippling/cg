@@ -31,7 +31,12 @@ void regset_mark(regset_marks marks, regt reg, bool mark)
 	*p += mark ? 1 : -1;
 }
 
+unsigned char regset_mark_count(regset_marks marks, regt reg)
+{
+	return *regset_mark_pos(marks, reg);
+}
+
 bool regset_is_marked(regset_marks marks, regt reg)
 {
-	return *regset_mark_pos(marks, reg) > 0;
+	return regset_mark_count(marks, reg) > 0;
 }

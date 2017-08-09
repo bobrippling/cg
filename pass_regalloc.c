@@ -102,7 +102,7 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 	}
 }
 
-static void regalloc_val(
+static void regalloc_val_noupdate(
 		val *v,
 		struct location *val_locn,
 		struct lifetime *lt,
@@ -140,8 +140,6 @@ static void regalloc_val(
 
 	assert(regt_is_valid(foundreg));
 	assert(freecount > 0);
-
-	mark_in_use_isns(foundreg, lt, false);
 
 	if(SHOW_REGALLOC)
 		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
@@ -218,7 +216,30 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	val_retain(v);
 
 	if(!regt_is_valid(val_locn->u.reg)){
-		regalloc_val(v, val_locn, lt, ctx);
+		struct location *abi_locn;
+
+		/* optimisation: $arg = <abi ...> - don't touch the abi assignment and keep the reg */
+		if(isn->type == ISN_COPY
+		&& isn->u.copy.from->kind == ABI_TEMP
+		&& (abi_locn = val_location(isn->u.copy.from))
+		&& abi_locn->where == NAME_IN_REG
+		&& regset_mark_count(isn->regusemarks, abi_locn->u.reg) < 2
+		/* ^ if the register's in use by something else (likely already having used this optimisation), ignore */
+		)
+		{
+			assert(regset_mark_count(isn->regusemarks, abi_locn->u.reg) == 1);
+
+			memcpy(val_locn, abi_locn, sizeof(*val_locn));
+			if(SHOW_REGALLOC){
+				fprintf(stderr, "regalloc(%s) => reg %#x (mirroring abi reg %s)\n",
+						val_str(v), val_locn->u.reg, val_str_rn(0, isn->u.copy.from));
+			}
+		}else{
+			regalloc_val_noupdate(v, val_locn, lt, ctx);
+		}
+
+		assert(val_locn->where == NAME_IN_REG);
+		mark_in_use_isns(val_locn->u.reg, lt, false);
 	}
 
 	assert(!v->live_across_blocks);
