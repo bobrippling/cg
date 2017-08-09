@@ -687,6 +687,7 @@ static void mov_deref_force(
 	 * we actually want its address*/
 	if(!deref_from && must_lea_val(from)){
 		chosen_isn = &x86_isn_lea;
+		deref_from = true;
 	}
 
 	emit_isn_binary(chosen_isn, octx,
