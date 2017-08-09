@@ -679,7 +679,7 @@ static void mov_deref_force(
 		&& loc_to->where == NAME_IN_REG
 		&& loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
 		{
-			fprintf(octx->fout, "\t;");
+			fprintf(octx->fout, "\t#");
 		}
 	}
 
