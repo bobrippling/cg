@@ -44,12 +44,13 @@ struct regalloc_ctx
 	uniq_type_list *utl;
 };
 
-static void mark_in_use_isns(regt reg, struct lifetime *lt)
+static void mark_in_use_isns(regt reg, struct lifetime *lt, bool saturate_only)
 {
 	isn *i;
 
 	for(i = lt->start; i; i = isn_next(i)){
-		regset_mark(i->regusemarks, reg, true);
+		if(!saturate_only || !regset_is_marked(i->regusemarks, reg))
+			regset_mark(i->regusemarks, reg, true);
 
 		if(i == lt->end)
 			break;
@@ -111,7 +112,7 @@ static void regalloc_val(
 	assert(regt_is_valid(foundreg));
 	assert(freecount > 0);
 
-	mark_in_use_isns(foundreg, lt);
+	mark_in_use_isns(foundreg, lt, false);
 
 	if(SHOW_REGALLOC)
 		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
@@ -213,7 +214,7 @@ static void regalloc_greedy_pre(val *v, isn *isn, void *vctx)
 	if(loc->where == NAME_IN_REG
 	&& regt_is_valid(loc->u.reg))
 	{
-		mark_in_use_isns(loc->u.reg, lt);
+		mark_in_use_isns(loc->u.reg, lt, true);
 	}
 }
 
@@ -226,7 +227,7 @@ static void mark_callee_save_as_used(isn *begin, const struct regset *callee_sav
 	all.end = NULL;
 
 	for(i = 0; i < callee_saves->count; i++)
-		mark_in_use_isns(regset_get(callee_saves, i), &all);
+		mark_in_use_isns(regset_get(callee_saves, i), &all, true);
 }
 
 static void blk_regalloc_pass(block *blk, void *vctx)
