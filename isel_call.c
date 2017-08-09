@@ -4,5 +4,5 @@ int printf(const char *, ...);
 int main()
 {
 	int x = div(10, 2);
-	printf("%d\n", x);
+	printf("%d (should be 6)\n", x);
 }
