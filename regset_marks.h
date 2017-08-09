@@ -9,7 +9,7 @@
 
 struct regset;
 
-typedef bool *regset_marks;
+typedef unsigned char *regset_marks;
 
 regset_marks regset_marks_new(void);
 void regset_marks_free(regset_marks);

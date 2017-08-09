@@ -27,11 +27,11 @@ static regset_marks regset_mark_pos(regset_marks marks, regt reg)
 
 void regset_mark(regset_marks marks, regt reg, bool mark)
 {
-  bool *p = regset_mark_pos(marks, reg);
-	*p = mark;
+	unsigned char *p = regset_mark_pos(marks, reg);
+	*p += mark ? 1 : -1;
 }
 
 bool regset_is_marked(regset_marks marks, regt reg)
 {
-	return *regset_mark_pos(marks, reg);
+	return *regset_mark_pos(marks, reg) > 0;
 }
