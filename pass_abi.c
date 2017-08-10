@@ -236,8 +236,8 @@ static void create_arg_reg_overlay_isns(
 		const int is_fp = !!(regclass->regs[i] & SSE);
 		unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
 		type *regty;
-		isn *elem_isn;
-		val *abiv, *elemp, *abi_copy;
+		isn *elem_isn, *ptrcast_isn;
+		val *abiv, *elemp, *ptrcast, *abi_copy;
 
 		regty = type_get_primitive(
 				utl,
@@ -256,7 +256,7 @@ static void create_arg_reg_overlay_isns(
 
 		/* compute spill position / elem for register */
 		elemp = val_new_localf(
-				type_get_ptr(utl, regty), /* using regty here ensures correct size */
+				type_get_ptr(utl, argty),
 				false,
 				"spill.%d.%d",
 				i,
@@ -269,6 +269,17 @@ static void create_arg_reg_overlay_isns(
 		isn_insert_after(current_isn, elem_isn);
 		current_isn = elem_isn;
 
+		ptrcast = val_new_localf(
+				type_get_ptr(utl, regty), /* using regty here ensures correct size */
+				false,
+				"spill_cast.%d.%d",
+				i,
+				(*state->uniq_index_per_func)++);
+		ptrcast_isn = isn_ptrcast(elemp, ptrcast);
+
+		isn_insert_after(current_isn, ptrcast_isn);
+		current_isn = ptrcast_isn;
+
 		/* copy from abiv -> local register,
 		 * or vice-versa */
 		if(overlay_direction == OVERLAY_FROM_REGS){
@@ -277,14 +288,14 @@ static void create_arg_reg_overlay_isns(
 			ISN_APPEND_OR_SET(state->abi_copies, copy);
 
 			/* copy from abiv -> spilt arg (inside struct) */
-			store = isn_store(abi_copy, elemp);
+			store = isn_store(abi_copy, ptrcast);
 			isn_insert_after(current_isn, store);
 			current_isn = store;
 		}else{
 			isn *load, *copy;
 
 			/* load from inside struct / arg */
-			load = isn_load(abi_copy, elemp);
+			load = isn_load(abi_copy, ptrcast);
 			isn_insert_after(current_isn, load);
 			current_isn = load;
 
