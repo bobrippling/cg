@@ -117,6 +117,24 @@ static bool reg_free_during(regt reg, struct lifetime *lt)
 	return true;
 }
 
+static bool reg_in_non_implicituse_during(regt reg, struct lifetime *lt)
+{
+	struct isn *isn_iter;
+
+	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
+		if(regset_is_marked(isn_iter->regusemarks, reg)
+		&& isn_iter->type != ISN_IMPLICIT_USE)
+		{
+			return true;
+		}
+
+		if(isn_iter == lt->end)
+			break;
+	}
+
+	return false;
+}
+
 static void regalloc_val_noupdate(
 		val *v,
 		struct location *val_locn,
@@ -219,17 +237,20 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	if(!regt_is_valid(val_locn->u.reg)){
 		struct location *abi_locn;
+		struct lifetime after_abi_lifetime;
+
+		after_abi_lifetime.start = lt->start->next;
+		after_abi_lifetime.end = lt->end;
 
 		/* optimisation: $arg = <abi ...> - don't touch the abi assignment and keep the reg */
 		if(isn->type == ISN_COPY
 		&& isn->u.copy.from->kind == ABI_TEMP
 		&& (abi_locn = val_location(isn->u.copy.from))
 		&& abi_locn->where == NAME_IN_REG
-		&& regset_mark_count(isn->regusemarks, abi_locn->u.reg) < 2
-		/* ^ if the register's in use by something else (likely already having used this optimisation), ignore */
-		)
+		&& !reg_in_non_implicituse_during(abi_locn->u.reg, &after_abi_lifetime))
 		{
-			assert(regset_mark_count(isn->regusemarks, abi_locn->u.reg) == 1);
+			assert(regset_mark_count(isn->regusemarks, abi_locn->u.reg) == 1
+					&& "the register should be in-use just by the abi-assignment isn");
 
 			memcpy(val_locn, abi_locn, sizeof(*val_locn));
 			if(SHOW_REGALLOC){
