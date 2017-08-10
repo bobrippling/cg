@@ -13,6 +13,7 @@
 #include "block_internal.h"
 #include "block.h"
 #include "type.h"
+#include "val_struct.h"
 
 isn *isn_new(enum isn_type t)
 {
@@ -479,6 +480,7 @@ isn *isn_alloca(val *v)
 			&& "pointer expected for alloca next type");
 
 	val_retain(v);
+	assert(v->kind == ALLOCA);
 
 	isn = isn_new(ISN_ALLOCA);
 	isn->u.alloca.out = v;

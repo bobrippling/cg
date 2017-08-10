@@ -47,6 +47,7 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	type *const ty = val_type(v);
 	val *spill = val_new_localf(
 			type_get_ptr(ctx->utl, ty),
+			true,
 			"spill.%d",
 			/*something unique:*/(int)v);
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);

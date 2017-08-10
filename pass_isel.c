@@ -155,7 +155,7 @@ static void gen_constraint_isns(
 		struct location desired;
 
 		if(!loc){
-			val *reg = val_new_localf(val_type(v), "reg.for.lit");
+			val *reg = val_new_localf(val_type(v), false, "reg.for.lit");
 			isn *copy;
 
 			assert(v->kind == LITERAL);
@@ -304,7 +304,7 @@ static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
 
 	/* TODO: replace literal with literal instead of using a fresh reg */
 
-	tmp = val_new_localf(rhs_ty, "ptradd.mul");
+	tmp = val_new_localf(rhs_ty, false, "ptradd.mul");
 	mul = isn_op(op_mul, rhs, val_new_i(step, rhs_ty), tmp);
 	isn_insert_before(i, mul);
 
@@ -325,7 +325,7 @@ static void isel_create_ptrsub_isn(isn *i, unit *unit)
 
 	/* TODO: replace literal with literal instead of using a fresh reg */
 
-	tmp = val_new_localf(val_type(out), "ptrsub.div");
+	tmp = val_new_localf(val_type(out), false, "ptrsub.div");
 
 	isn_replace_val_with_val(i, out, tmp, REPLACE_OUTPUTS);
 

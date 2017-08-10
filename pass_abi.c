@@ -213,6 +213,7 @@ static void create_arg_reg_overlay_isns(
 
 	spilt_arg = val_new_localf(
 			type_get_ptr(utl, argty),
+			true,
 			"spill.%d",
 			(*state->uniq_index_per_func)++);
 
@@ -249,12 +250,14 @@ static void create_arg_reg_overlay_isns(
 				regty);
 
 		abi_copy = val_new_localf(
-				regty, "abi.%d.%d",
+				regty, false,
+				"abi.%d.%d",
 				i, (*state->uniq_index_per_func)++);
 
 		/* compute spill position / elem for register */
 		elemp = val_new_localf(
 				type_get_ptr(utl, regty), /* using regty here ensures correct size */
+				false,
 				"spill.%d.%d",
 				i,
 				(*state->uniq_index_per_func)++);
@@ -403,7 +406,7 @@ static val *stret_ptr_stash(
 	val *abiv;
 	type *stptr_ty = type_get_ptr(utl, retty);
 
-	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), ".stret");
+	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), true, ".stret");
 	save_alloca = isn_alloca(alloca_val);
 
 	abiv = val_new_abi_reg(regset_nth(regs, 0, 0), stptr_ty);
@@ -482,6 +485,7 @@ static isn *convert_call(
 
 		stret_alloca = val_new_localf(
 				type_get_ptr(utl, val_type(fnret)),
+				true,
 				"stret.%d",
 				(*uniq_index_per_func)++);
 
@@ -616,6 +620,7 @@ static isn *convert_return_isn(
 			isn *load, *store;
 			val *loadtmp = val_new_localf(
 					type_get_ptr(utl, retty),
+					false,
 					"stret.val");
 
 			load = isn_load(loadtmp, stret_stash);
