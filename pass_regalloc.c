@@ -102,6 +102,21 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 	}
 }
 
+static bool reg_free_during(regt reg, struct lifetime *lt)
+{
+	struct isn *isn_iter;
+
+	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
+		if(regset_is_marked(isn_iter->regusemarks, reg))
+			return false;
+
+		if(isn_iter == lt->end)
+			break;
+	}
+
+	return true;
+}
+
 static void regalloc_val_noupdate(
 		val *v,
 		struct location *val_locn,
@@ -118,21 +133,8 @@ static void regalloc_val_noupdate(
 
 	for(i = 0; i < ctx->scratch_regs->count; i++){
 		const regt reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
-		struct isn *isn_iter;
-		bool used = false;
 
-		for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
-			if(regset_is_marked(isn_iter->regusemarks, reg)){
-				used = true;
-				break;
-			}
-
-			if(isn_iter == lt->end){
-				break;
-			}
-		}
-
-		if(!used){
+		if(reg_free_during(reg, lt)){
 			foundreg = reg;
 			freecount++;
 		}
