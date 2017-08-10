@@ -260,7 +260,7 @@ static void create_arg_reg_overlay_isns(
 				(*state->uniq_index_per_func)++);
 		elem_isn = isn_elem(
 				spilt_arg,
-				val_new_i(i, type_get_primitive(utl, i4)),
+				val_new_i(i, type_get_sizet(utl)),
 				elemp);
 
 		isn_insert_after(current_isn, elem_isn);
