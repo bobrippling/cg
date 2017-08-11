@@ -174,7 +174,7 @@ static enum token parse_string(tokeniser *t)
 					break;
 				}
 			}
-			buf[3] = '\0';
+			buf[i] = '\0';
 
 			if(sscanf(buf, "%o", &octval) != 1){
 				fprintf(stderr, "bad escape sequence in '%s'\n", start);
