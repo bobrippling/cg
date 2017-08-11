@@ -1,0 +1,12 @@
+type $a = {i4,i4}
+
+$f = $a() {
+	$stack = alloca $a
+	$p1 = elem $stack, i8 0
+	$p2 = elem $stack, i8 1
+	store $p1, i4 1
+	store $p2, i4 2
+
+	$tmp = load $stack
+	ret $tmp
+}
