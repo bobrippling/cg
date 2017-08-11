@@ -1,3 +1,6 @@
+all: spill
+	./$<
+
 spill: spill.s spill_call.o
 	${CC} -o $@ $^
 
@@ -18,4 +21,4 @@ spill.s: spill.ir ir
 clean:
 	rm -f spill spill_call.s spill_call.ir spill.s
 
-.PHONY: clean
+.PHONY: clean all
