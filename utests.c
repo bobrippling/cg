@@ -8,6 +8,7 @@
 #include "uniq_type_list_struct.h"
 #include "reg.h"
 #include "regset.h"
+#include "regset_marks.h"
 
 static unsigned failed, passed;
 
@@ -114,7 +115,7 @@ static void test_regset(void)
 
 static void test_regset_mark(void)
 {
-	regset_marks marks = 0;
+	regset_marks marks = regset_marks_new();
 	const regt regs[] = {
 		regt_make(0, true),
 		regt_make(7, true),
@@ -128,10 +129,10 @@ static void test_regset_mark(void)
 	 * {7,false}
 	 * {15,false}
 	 */
-	regset_mark(&marks, regs[0], true);
-	regset_mark(&marks, regs[1], true);
-	regset_mark(&marks, regs[2], true);
-	regset_mark(&marks, regs[3], true);
+	regset_mark(marks, regs[0], true);
+	regset_mark(marks, regs[1], true);
+	regset_mark(marks, regs[2], true);
+	regset_mark(marks, regs[3], true);
 
 	test(regset_is_marked(marks, regs[0]));
 	test(regset_is_marked(marks, regs[1]));
@@ -148,13 +149,15 @@ static void test_regset_mark(void)
 	test(!regset_is_marked(marks, regt_make(3, true)));
 	test(!regset_is_marked(marks, regt_make(15, true)));
 
-	regset_mark(&marks, regs[1], false);
-	regset_mark(&marks, regs[2], false);
+	regset_mark(marks, regs[1], false);
+	regset_mark(marks, regs[2], false);
 
 	test(regset_is_marked(marks, regs[0]));
 	test(!regset_is_marked(marks, regs[1]));
 	test(!regset_is_marked(marks, regs[2]));
 	test(regset_is_marked(marks, regs[3]));
+
+	regset_marks_free(marks);
 }
 
 int main(int argc, const char *argv[])
