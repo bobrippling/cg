@@ -117,14 +117,13 @@ static void populate_constraints(
 			 * cmp r/m,   r
 			 * cmp r/m,   r
 			 */
-			enum { REG_ECX = 2 };
 			req_lhs->req = REQ_REG | REQ_MEM;
 			req_lhs->reg[0] = regt_make_invalid();
 			req_lhs->reg[1] = regt_make_invalid();
 			req_lhs->val = isn->u.cmp.lhs;
 
 			req_rhs->req = REQ_CONST | REQ_REG | REQ_MEM;
-			req_rhs->reg[0] = regt_make(REG_ECX, 0);
+			req_rhs->reg[0] = regt_make_invalid();
 			req_rhs->reg[1] = regt_make_invalid();
 			req_rhs->val = isn->u.cmp.rhs;
 			break;
