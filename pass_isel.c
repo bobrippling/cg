@@ -562,9 +562,7 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 
 	isn *const first = block_first_isn(block);
 
-	for(i = block_first_isn(block); i; i = isn_next(i)){
-		i->flag = true;
-	}
+	isns_flag(first, true);
 
 	for(i = block_first_isn(block); i; i = i->next){
 		if(i->flag)

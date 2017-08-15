@@ -913,6 +913,12 @@ val *isn_is_ret(isn *i)
 	return i->u.ret;
 }
 
+void isns_flag(isn *start, bool f)
+{
+	for(; start; start = isn_next(start))
+		start->flag = f;
+}
+
 #include "dynmap.h"
 #include "val_struct.h"
 static void get_named_val(val *v, isn *isn, void *ctx)
