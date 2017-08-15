@@ -9,7 +9,8 @@ struct location
 {
 	enum
 	{
-		NAME_NOWHERE,
+		NAME_NOWHERE, /* incomplete */
+		NAME_IN_REG_ANY, /* partially complete */
 		NAME_IN_REG,
 		NAME_SPILT
 	} where;

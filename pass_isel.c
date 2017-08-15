@@ -172,7 +172,9 @@ static void gen_constraint_isns(
 		}
 
 		if(!regt_is_valid(req->reg[0])){
-			/* it's in a reg, done */
+			/* it's in a reg, done: */
+			loc->where = NAME_IN_REG_ANY;
+
 			assert(!regt_is_valid(req->reg[1]));
 			return;
 		}

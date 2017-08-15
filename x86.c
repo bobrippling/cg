@@ -235,7 +235,8 @@ static const char *x86_name_str(
 {
 	switch(loc->where){
 		case NAME_NOWHERE:
-			assert(0 && "NAME_NOWHERE in backend");
+		case NAME_IN_REG_ANY:
+			assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend");
 
 		case NAME_IN_REG:
 		{
@@ -815,7 +816,8 @@ loc:
 
 			switch(loc->where){
 				case NAME_NOWHERE:
-					assert(0 && "NAME_NOWHERE in backend");
+				case NAME_IN_REG_ANY:
+					assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend");
 
 				case NAME_IN_REG:
 				{

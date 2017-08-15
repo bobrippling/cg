@@ -183,7 +183,19 @@ enum operand_category val_operand_category(val *v, bool dereference)
 		case BACKEND_TEMP:
 		case ARGUMENT:
 		case FROM_ISN:
-			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_REG;
+		{
+			struct location *loc = val_location(v);
+			switch(loc->where){
+				case NAME_NOWHERE:
+				case NAME_IN_REG_ANY:
+				case NAME_IN_REG:
+					return dereference ? OPERAND_MEM_CONTENTS : OPERAND_REG;
+
+				case NAME_SPILT:
+					return OPERAND_MEM_CONTENTS;
+			}
+			break;
+		}
 	}
 	assert(0);
 }
@@ -264,6 +276,9 @@ static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct location *loc)
 	switch(loc->where){
 		case NAME_NOWHERE:
 			snprintf(buf, n, "<unlocated>");
+			break;
+		case NAME_IN_REG_ANY:
+			snprintf(buf, n, "<reg any>");
 			break;
 		case NAME_IN_REG:
 			snprintf(buf, n, "<reg %d>", loc->u.reg);
