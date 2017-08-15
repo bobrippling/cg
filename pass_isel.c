@@ -478,7 +478,7 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 	enum operand_category categories[MAX_OPERANDS] = { 0 };
 	val *inputs[2], *output;
 	unsigned valcount = 0;
-	unsigned input_index, category_index;
+	unsigned input_index, category_index, i;
 
 	isn_vals_get(fi, inputs, &output);
 
@@ -496,6 +496,7 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 	bestmatch = find_isn_bestmatch(bi, categories, valcount, &conversions_required);
 	if(conversions_required == 0)
 		return;
+	assert(bestmatch);
 
 	fprintf(stderr, "need to constrain %s (\"%s\"), conversions required = %d / %d\n",
 			isn_type_to_str(fi->type),
@@ -508,11 +509,33 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 			valcount > 1 && categories[1] ? operand_category_to_str(categories[1]) : "n/a",
 			valcount > 2 && categories[2] ? operand_category_to_str(categories[2]) : "n/a");
 
-	if(bestmatch){
-		fprintf(stderr, "  bestmatch = { %s, %s, %s }\n",
-				operand_category_to_str(bestmatch->category[0]),
-				valcount > 1 && bestmatch->category[1] ? operand_category_to_str(bestmatch->category[1]) : "n/a",
-				valcount > 2 && bestmatch->category[2] ? operand_category_to_str(bestmatch->category[2]) : "n/a");
+	for(i = 0; i < 3; i++){
+		const bool is_output = i >= 2;
+		struct constraint constraint;
+
+		constraint.val = is_output ? output : inputs[i];
+		if(!constraint.val)
+			continue;
+
+		switch(bestmatch->category[i]){
+			case OPERAND_REG:
+				constraint.req = REQ_REG;
+				constraint.reg[0] = regt_make_invalid();
+				constraint.reg[1] = regt_make_invalid();
+				break;
+			case OPERAND_MEM_PTR:
+			case OPERAND_MEM_CONTENTS:
+				constraint.req = REQ_MEM;
+				break;
+			case OPERAND_INT:
+				constraint.req = REQ_CONST;
+				break;
+			default:
+				/* no constraint */
+				continue;
+		}
+
+		gen_constraint_isns(fi, &constraint, is_output);
 	}
 }
 
