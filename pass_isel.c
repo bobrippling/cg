@@ -153,7 +153,7 @@ static void gen_constraint_isns(
 		struct location *loc = val_location(v);
 		struct location desired;
 
-		if(!loc){
+		if(!loc || loc->where == NAME_NOWHERE){
 			val *reg = val_new_localf(
 					val_type(v),
 					false,
