@@ -154,10 +154,15 @@ static void gen_constraint_isns(
 		struct location desired;
 
 		if(!loc){
-			val *reg = val_new_localf(val_type(v), false, "reg.for.lit");
+			val *reg = val_new_localf(
+					val_type(v),
+					false,
+					"reg.for.%s.%d",
+					v->kind == LITERAL ? "lit" : "alloca",
+					(int)v);
 			isn *copy;
 
-			assert(v->kind == LITERAL);
+			assert(v->kind == LITERAL || v->kind == ALLOCA);
 			copy = isn_copy(reg, v);
 			isn_insert_before(isn_to_constrain, copy);
 			isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_INPUTS);
