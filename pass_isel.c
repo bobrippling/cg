@@ -15,9 +15,6 @@
 #include "target.h"
 #include "backend_isn.h"
 
-/* XXX: temp */
-#include <stdio.h>
-
 /* FIXME: this is all x86(_64) specific */
 enum {
 	REG_EAX = 0,
@@ -503,17 +500,6 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 	if(conversions_required == 0)
 		return;
 	assert(bestmatch);
-
-	fprintf(stderr, "need to constrain %s (\"%s\"), conversions required = %d / %d\n",
-			isn_type_to_str(fi->type),
-			fi->type == ISN_OP ? op_to_str(fi->u.op.op) : bi->mnemonic,
-			conversions_required,
-			valcount);
-
-	fprintf(stderr, "  have = { %s, %s, %s }\n",
-			operand_category_to_str(categories[0]),
-			valcount > 1 && categories[1] ? operand_category_to_str(categories[1]) : "n/a",
-			valcount > 2 && categories[2] ? operand_category_to_str(categories[2]) : "n/a");
 
 	for(i = 0; i < 3; i++){
 		const bool is_output = i >= 2;
