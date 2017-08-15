@@ -284,9 +284,13 @@ static void isel_reserve_cisc_block(block *block, void *vctx)
 
 	(void)vctx;
 
+	isns_flag(block_first_isn(block), true);
+
 	for(i = block_first_isn(block); i; i = i->next){
-		isel_reserve_cisc_isn(i);
-		isel_pad_cisc_isn(i);
+		if(i->flag){
+			isel_reserve_cisc_isn(i);
+			isel_pad_cisc_isn(i);
+		}
 	}
 }
 
