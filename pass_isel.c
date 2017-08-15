@@ -560,8 +560,15 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 	const struct target *target = vctx;
 	isn *i;
 
+	isn *const first = block_first_isn(block);
+
+	for(i = block_first_isn(block); i; i = isn_next(i)){
+		i->flag = true;
+	}
+
 	for(i = block_first_isn(block); i; i = i->next){
-		isel_constrain_isn(i, target);
+		if(i->flag)
+			isel_constrain_isn(i, target);
 	}
 }
 
