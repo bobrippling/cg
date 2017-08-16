@@ -1016,6 +1016,9 @@ static void parse_function(
 	eat(p, "function close brace", tok_rbrace);
 
 	function_finalize(fn);
+
+	dynmap_free(p->names2vals);
+	p->names2vals = NULL;
 }
 
 static void parse_init_ptr(parse *p, type *ty, struct init *init)
