@@ -94,13 +94,13 @@ bool val_is_volatile(val *v)
 {
 	struct location *loc = val_location(v);
 
-	return loc && loc->where == NAME_IN_REG;
+	return loc && location_is_reg(loc->where);
 }
 
 bool val_is_abi_reg(val *v)
 {
 	return v->kind == ABI_TEMP
-		&& v->u.abi.where == NAME_IN_REG;
+		&& location_is_reg(v->u.abi.where);
 }
 
 unsigned val_hash(val *v)

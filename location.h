@@ -24,4 +24,6 @@ struct location
 unsigned location_hash(struct location const *);
 bool location_eq(struct location const *, struct location const *);
 
+#define location_is_reg(l) ((l) == NAME_IN_REG || (l) == NAME_IN_REG_ANY)
+
 #endif
