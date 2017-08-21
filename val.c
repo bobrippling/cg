@@ -146,6 +146,21 @@ unsigned val_hash(val *v)
 	return h;
 }
 
+const char *val_kind_to_str(enum val_kind k)
+{
+	switch(k){
+		case LITERAL: return "LITERAL";
+		case GLOBAL: return "GLOBAL";
+		case ARGUMENT: return "ARGUMENT";
+		case ALLOCA: return "ALLOCA";
+		case FROM_ISN: return "FROM_ISN";
+		case BACKEND_TEMP: return "BACKEND_TEMP";
+		case ABI_TEMP: return "ABI_TEMP";
+	}
+
+	return NULL;
+}
+
 struct location *val_location(val *v)
 {
 	switch(v->kind){

@@ -43,4 +43,6 @@ struct val
 
 typedef struct sym sym;
 
+const char *val_kind_to_str(enum val_kind);
+
 #endif
