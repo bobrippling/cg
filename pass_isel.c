@@ -131,6 +131,98 @@ static void populate_constraints(
 	}
 }
 
+static val *copy_val_to_reg(val *v, isn *isn_to_constrain)
+{
+	val *reg;
+	isn *copy;
+
+	reg = val_new_localf(
+			val_type(v),
+			false,
+			"reg.for.%s.%d",
+			val_kind_to_str(v->kind),
+			(int)v);
+
+	copy = isn_copy(reg, v);
+	isn_insert_before(isn_to_constrain, copy);
+	isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_INPUTS);
+
+	return reg;
+}
+
+static void constrain_to_reg_any(
+		val *v,
+		isn *isn_to_constrain)
+{
+	struct location *loc = val_location(v);
+
+	if(!loc){
+		val *reg = copy_val_to_reg(v, isn_to_constrain);
+		loc = val_location(reg);
+	}else{
+		assert(loc->where == NAME_NOWHERE);
+	}
+
+	/* put it in any reg: */
+	loc->where = NAME_IN_REG_ANY;
+}
+
+static void constrain_to_reg_specific(
+		const struct constraint *const req,
+		val *v,
+		isn *isn_to_constrain,
+		bool postisn)
+{
+	struct location *loc = val_location(v);
+	struct location desired;
+
+	if(!loc){
+		val *reg = copy_val_to_reg(v, isn_to_constrain);
+		loc = val_location(reg);
+	}
+
+	desired.where = NAME_IN_REG;
+	memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
+
+	if(loc->where == NAME_NOWHERE
+	|| loc->where == NAME_IN_REG_ANY
+	|| (loc->where == NAME_IN_REG && !regt_is_valid(loc->u.reg)))
+	{
+		/* We can set the value directly to be what we want.
+		 * ... in the optimal case, but generally we need to be more indirect.
+		 * See isel.md
+		 */
+		/*memcpy(loc, &desired, sizeof(*loc)); - optimal */
+		goto via_temp; /* - general */
+
+	}else if(location_eq(loc, &desired)){
+		/* fine */
+
+	}else{
+		/* Need to go via an ABI temp.
+		 * We can be sure this reg isn't in use/overlapping as isel will never
+		 * generate values with a lifetime greater than the instruction for which
+		 * they're used.
+		 */
+		val *abi;
+		isn *copy;
+via_temp:
+		abi = val_new_abi_reg(req->reg[0], val_type(v));
+
+		assert(regt_is_valid(req->reg[0]));
+
+		if(postisn){
+			copy = isn_copy(v, abi);
+			isn_insert_after(isn_to_constrain, copy);
+			isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_OUTPUTS);
+		}else{
+			copy = isn_copy(abi, v);
+			isn_insert_before(isn_to_constrain, copy);
+			isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_INPUTS);
+		}
+	}
+}
+
 static void gen_constraint_isns(
 		isn *isn_to_constrain, struct constraint const *req, bool postisn)
 {
@@ -147,30 +239,8 @@ static void gen_constraint_isns(
 	}
 
 	if(req->req & REQ_REG){
-		struct location *loc = val_location(v);
-		struct location desired;
-
-		if(!loc || loc->where == NAME_NOWHERE){
-			val *reg = val_new_localf(
-					val_type(v),
-					false,
-					"reg.for.%s.%d",
-					v->kind == LITERAL ? "lit" : "alloca",
-					(int)v);
-			isn *copy;
-
-			assert(v->kind == LITERAL || v->kind == ALLOCA);
-			copy = isn_copy(reg, v);
-			isn_insert_before(isn_to_constrain, copy);
-			isn_replace_val_with_val(isn_to_constrain, v, reg, REPLACE_INPUTS);
-
-			v = reg;
-			loc = val_location(v);
-		}
-
 		if(!regt_is_valid(req->reg[0])){
-			/* it's in a reg, done: */
-			loc->where = NAME_IN_REG_ANY;
+			constrain_to_reg_any(v, isn_to_constrain);
 
 			assert(!regt_is_valid(req->reg[1]));
 			return;
@@ -178,45 +248,7 @@ static void gen_constraint_isns(
 
 		/* TODO: assert(!regt_is_valid(req->reg[1]) && "todo"); */
 
-		desired.where = NAME_IN_REG;
-		memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
-
-		if(loc->where == NAME_NOWHERE
-		|| (loc->where == NAME_IN_REG && !regt_is_valid(loc->u.reg)))
-		{
-			/* We can set the value directly to be what we want.
-			 * ... in the optimal case, but generally we need to be more indirect.
-			 * See isel.md
-			 */
-			/*memcpy(loc, &desired, sizeof(*loc)); - optimal */
-			goto via_temp; /* - general */
-
-		}else if(location_eq(loc, &desired)){
-			/* fine */
-
-		}else{
-			/* Need to go via an ABI temp.
-			 * We can be sure this reg isn't in use/overlapping as isel will never
-			 * generate values with a lifetime greater than the instruction for which
-			 * they're used.
-			 */
-			val *abi;
-			isn *copy;
-via_temp:
-			abi = val_new_abi_reg(req->reg[0], val_type(v));
-
-			assert(regt_is_valid(req->reg[0]));
-
-			if(postisn){
-				copy = isn_copy(v, abi);
-				isn_insert_after(isn_to_constrain, copy);
-				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_OUTPUTS);
-			}else{
-				copy = isn_copy(abi, v);
-				isn_insert_before(isn_to_constrain, copy);
-				isn_replace_val_with_val(isn_to_constrain, v, abi, REPLACE_INPUTS);
-			}
-		}
+		constrain_to_reg_specific(req, v, isn_to_constrain, postisn);
 		return;
 	}
 
