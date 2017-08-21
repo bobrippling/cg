@@ -132,7 +132,7 @@ static void populate_constraints(
 }
 
 static void gen_constraint_isns(
-		isn *isn_to_constrain, struct constraint const *req, int postisn)
+		isn *isn_to_constrain, struct constraint const *req, bool postisn)
 {
 	/* We don't know where `req->val` will end up so we can pick any constraint,
 	 * within reason. Regalloc will work around us later on. Attempt to pick
@@ -240,11 +240,11 @@ static void isel_reserve_cisc_isn(isn *isn)
 	populate_constraints(isn, &req_lhs, &req_rhs, &req_ret);
 
 	if(req_lhs.val)
-		gen_constraint_isns(isn, &req_lhs, 0);
+		gen_constraint_isns(isn, &req_lhs, false);
 	if(req_rhs.val)
-		gen_constraint_isns(isn, &req_rhs, 0);
+		gen_constraint_isns(isn, &req_rhs, false);
 	if(req_ret.val)
-		gen_constraint_isns(isn, &req_ret, 1);
+		gen_constraint_isns(isn, &req_ret, true);
 }
 
 static void isel_pad_cisc_isn(isn *i)
