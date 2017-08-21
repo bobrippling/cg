@@ -38,6 +38,8 @@ static void spill_assign(val *spill, unsigned *const spill_space)
 {
 	struct location *spill_loc = val_location(spill);
 
+	assert(spill_loc->where == NAME_NOWHERE);
+
 	spill_loc->where = NAME_SPILT;
 	spill_loc->u.off = get_spill_space(spill_space, type_deref(val_type(spill)));
 }
