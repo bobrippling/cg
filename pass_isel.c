@@ -233,7 +233,7 @@ static void gen_constraint_isns(
 	val *v = req->val;
 
 	if(v->kind == LITERAL && req->req & REQ_CONST){
-		assert(type_is_int(v->ty));
+		assert(type_is_int(v->ty) || type_deref(v->ty));
 		/* constraint met */
 		return;
 	}
