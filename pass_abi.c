@@ -552,15 +552,16 @@ static isn *convert_outgoing_args_and_call_isn(
 {
 	struct regpass_state arg_state = { 0 };
 	size_t i;
+	isn *const next = isn_next(inst);
 	val *fnret; type *retty;
 	val *fnval; type *fnty;
 	dynarray *fnargs; dynarray *arg_tys;
 
 	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
-		return isn_next(inst);
+		return next;
 
 	if(type_is_void(val_type(fnret)))
-		return isn_next(inst);
+		return next;
 
 	regpass_state_init(&arg_state, uniq_index_per_func);
 
@@ -587,7 +588,7 @@ static isn *convert_outgoing_args_and_call_isn(
 	insert_state_isns(&arg_state, inst, true);
 	regpass_state_deinit(&arg_state);
 
-	return isn_next(inst);
+	return next;
 }
 
 static void convert_outgoing_args_and_call_block(block *blk, void *const vctx)
