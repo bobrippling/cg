@@ -147,17 +147,9 @@ static void blocks_traverse_r(
 		void *ctx,
 		dynmap *markers)
 {
-	bool *const flag = &blk->flag_iter;
-
-	if(markers){
-		if(dynmap_get(block *, int, markers, blk))
-			return;
-		(void)dynmap_set(block *, int, markers, blk, 1);
-	}else{
-		if(*flag)
-			return;
-		*flag = true;
-	}
+	if(dynmap_get(block *, int, markers, blk))
+		return;
+	(void)dynmap_set(block *, int, markers, blk, 1);
 
 	fn(blk, ctx);
 
@@ -175,22 +167,18 @@ static void blocks_traverse_r(
 			blocks_traverse_r(blk->u.jmp.target, fn, ctx, markers);
 			break;
 	}
-
-	if(markers)
-		(void)dynmap_rm(block *, int, markers, blk);
-	else
-		*flag = false;
 }
 
 void blocks_traverse(
 		block *blk,
 		void fn(block *, void *),
-		void *ctx,
-		dynmap *markers)
+		void *ctx)
 {
-	assert(!markers || dynmap_is_empty(markers));
+	dynmap *markers = BLOCK_DYNMAP_NEW();
+
 	blocks_traverse_r(blk, fn, ctx, markers);
-	assert(!markers || dynmap_is_empty(markers));
+
+	dynmap_free(markers);
 }
 
 void block_add_pred(block *b, block *pred)
@@ -242,7 +230,7 @@ void block_lifecheck(block *blk)
 	/* find out which values live outside their block */
 	dynmap *values_to_block = dynmap_new(val *, NULL, val_hash);
 
-	blocks_traverse(blk, check_val_life_block, values_to_block, NULL);
+	blocks_traverse(blk, check_val_life_block, values_to_block);
 
 	dynmap_free(values_to_block);
 }
@@ -313,10 +301,6 @@ static void block_unmark_emitted(block *blk, void *vctx)
 
 void block_dump(block *blk)
 {
-	dynmap *markers = BLOCK_DYNMAP_NEW();
-
 	block_dump_r(blk);
-	blocks_traverse(blk, block_unmark_emitted, NULL, markers);
-
-	dynmap_free(markers);
+	blocks_traverse(blk, block_unmark_emitted, NULL);
 }

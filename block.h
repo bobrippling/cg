@@ -25,7 +25,7 @@ void block_free(block *);
 
 int block_tenative(block *);
 
-void blocks_traverse(block *, void (block *, void *), void *, struct dynmap *);
+void blocks_traverse(block *, void (block *, void *), void *);
 
 struct isn *block_first_isn(block *);
 void block_add_isn(block *, struct isn *);

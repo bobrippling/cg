@@ -129,7 +129,6 @@ static void blk_spill(block *blk, void *vctx)
 void pass_spill(function *fn, struct unit *unit, const struct target *target)
 {
 	block *entry = function_entry_block(fn, false);
-	dynmap *alloc_markers;
 	struct spill_ctx ctx = { 0 };
 
 	if(!entry)
@@ -137,12 +136,8 @@ void pass_spill(function *fn, struct unit *unit, const struct target *target)
 
 	lifetime_fill_func(fn);
 
-	alloc_markers = BLOCK_DYNMAP_NEW();
-
 	/* FIXME: ctx.spill_space conflicts/overlaps with regalloc's */
 	ctx.regcount = target->abi.scratch_regs.count;
 	ctx.utl = unit_uniqtypes(unit);
-	blocks_traverse(entry, blk_spill, &ctx, alloc_markers);
-
-	dynmap_free(alloc_markers);
+	blocks_traverse(entry, blk_spill, &ctx);
 }

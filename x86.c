@@ -1237,7 +1237,6 @@ static void x86_out_fn(unit *unit, function *func)
 	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func, unit);
-	dynmap *markers = BLOCK_DYNMAP_NEW();
 
 	out_ctx.unit = unit;
 
@@ -1251,7 +1250,7 @@ static void x86_out_fn(unit *unit, function *func)
 	/* start at the bottom of allocas */
 	out_ctx.alloca_bottom = alloca_sum;
 
-	blocks_traverse(entry, x86_out_block1, &out_ctx, markers);
+	blocks_traverse(entry, x86_out_block1, &out_ctx);
 	x86_emit_epilogue(&out_ctx, exit);
 
 	/* now we spit out the prologue first */
@@ -1266,8 +1265,6 @@ static void x86_out_fn(unit *unit, function *func)
 
 	if(fclose(out_ctx.fout))
 		die("close:");
-
-	dynmap_free(markers);
 }
 
 static void x86_emit_space(unsigned space)

@@ -161,13 +161,10 @@ static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
 	 * we only spill arguments that are actually used, for the moment,
 	 * that's any argument used at all, regardless of blocks
 	 */
-	dynmap *markers = BLOCK_DYNMAP_NEW();
 	block *blk = function_entry_block(func, false);
 	assert(blk);
 
-	blocks_traverse(blk, find_args_in_block, spillctx, markers);
-
-	dynmap_free(markers);
+	blocks_traverse(blk, find_args_in_block, spillctx);
 }
 
 static dynmap *x86_spillregs(

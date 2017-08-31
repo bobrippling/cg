@@ -608,7 +608,7 @@ static void convert_outgoing_args_and_call(
 	ctx.target = target;
 	ctx.utl = utl;
 
-	blocks_traverse(entry, convert_outgoing_args_and_call_block, &ctx, NULL);
+	blocks_traverse(entry, convert_outgoing_args_and_call_block, &ctx);
 }
 
 static isn *convert_return_isn(
@@ -715,7 +715,7 @@ static void convert_returns(
 	ctx.target = target;
 	ctx.uniq_index_per_func = uniq_index_per_func;
 
-	blocks_traverse(entry, convert_return, &ctx, NULL);
+	blocks_traverse(entry, convert_return, &ctx);
 }
 
 void pass_abi(function *fn, unit *unit, const struct target *target)

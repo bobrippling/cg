@@ -327,7 +327,7 @@ static void isel_reserve_cisc_block(block *block, void *vctx)
 
 static void isel_reserve_cisc(block *entry)
 {
-	blocks_traverse(entry, isel_reserve_cisc_block, NULL, NULL);
+	blocks_traverse(entry, isel_reserve_cisc_block, NULL);
 }
 
 static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
@@ -411,7 +411,7 @@ static void isel_create_ptrmath_blk(block *block, void *vctx)
 
 static void isel_create_ptrmath(block *const entry, unit *unit)
 {
-	blocks_traverse(entry, isel_create_ptrmath_blk, unit, NULL);
+	blocks_traverse(entry, isel_create_ptrmath_blk, unit);
 }
 
 static bool operand_type_convertible(
@@ -596,7 +596,7 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 
 static void isel_constrain_isns(block *entry, const struct target *target)
 {
-	blocks_traverse(entry, isel_constrain_isns_block, (void *)target, NULL);
+	blocks_traverse(entry, isel_constrain_isns_block, (void *)target);
 }
 
 void pass_isel(function *fn, struct unit *unit, const struct target *target)

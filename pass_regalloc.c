@@ -347,7 +347,7 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 
 	lifetime_fill_func(fn);
 
-	blocks_traverse(entry, blk_regalloc_pass, &ctx, alloc_markers);
+	blocks_traverse(entry, blk_regalloc_pass, &ctx);
 
 	dynmap_free(alloc_markers);
 }
