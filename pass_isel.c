@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <assert.h>
 
 #include "function.h"
@@ -14,6 +15,8 @@
 #include "unit.h"
 #include "target.h"
 #include "backend_isn.h"
+
+#define ISEL_DEBUG 0
 
 /* FIXME: this is all x86(_64) specific */
 enum {
@@ -528,10 +531,28 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 		valcount++;
 	}
 
+	if(ISEL_DEBUG){
+		fprintf(stderr, "isel_generic() for \"%s\"\n", bi->mnemonic);
+		for(i = 0; i < bi->operand_count; i++)
+			fprintf(stderr, "  input categories[%d] = %s\n", i, operand_category_to_str(categories[i]));
+	}
+
 	bestmatch = find_isn_bestmatch(bi, categories, valcount, &conversions_required);
-	if(conversions_required == 0)
+	if(conversions_required == 0){
+		if(ISEL_DEBUG)
+			fprintf(stderr, "  no conversions required\n");
 		return;
+	}
 	assert(bestmatch);
+
+	if(ISEL_DEBUG){
+		fprintf(stderr, "  bestmatch:\n");
+		for(i = 0; i < bi->operand_count; i++)
+			fprintf(stderr, "    categories[%d] = %s\n",
+					i,
+					operand_category_to_str(bestmatch->category[i]));
+	}
+
 
 	for(i = 0; i < 3; i++){
 		const bool is_output = i >= 2;
