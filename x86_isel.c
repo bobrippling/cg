@@ -12,6 +12,7 @@
 void x86_isel_lea(isn *i, const struct target *target)
 {
 	val *v;
+	enum operand_category cat;
 
 	assert(i->type == ISN_ELEM);
 
@@ -29,7 +30,8 @@ void x86_isel_lea(isn *i, const struct target *target)
 			break;
 	}
 
-	switch(val_operand_category(v, false)){
+	cat = val_operand_category(v, false) & OPERAND_MASK_PLAIN;
+	switch(cat){
 		case OPERAND_REG:
 			return;
 
@@ -39,5 +41,10 @@ void x86_isel_lea(isn *i, const struct target *target)
 
 		case OPERAND_MEM_PTR:
 			assert(0 && "need to convert mem_ptr to reg");
+
+		case OPERAND_INPUT:
+		case OPERAND_OUTPUT:
+		case OPERAND_ADDRESSED:
+			assert(0 && "unreachable");
 	}
 }

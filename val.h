@@ -61,5 +61,6 @@ bool val_is_int(val *, size_t *);
 bool val_is_volatile(val *); /* e.g. reg */
 
 enum operand_category val_operand_category(val *v, bool dereference);
+bool val_operand_category_matches(enum operand_category, enum operand_category);
 
 #endif

@@ -420,74 +420,13 @@ static void isel_create_ptrmath(block *const entry, unit *unit)
 static bool operand_type_convertible(
 		enum operand_category from, enum operand_category to)
 {
+	from &= OPERAND_MASK_PLAIN;
+	to &= OPERAND_MASK_PLAIN;
+
 	if(to == OPERAND_INT)
 		return from == OPERAND_INT;
 
 	return true;
-}
-
-static const struct backend_isn_constraint *find_isn_bestmatch(
-		const struct backend_isn *isn,
-		const enum operand_category arg_cats[],
-		const size_t nargs,
-		unsigned *const out_conversions_required)
-{
-	const int max = countof(isn->constraints);
-	int i, bestmatch_i = -1;
-	unsigned bestmatch_conversions = ~0u;
-
-	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
-		bool matches[MAX_OPERANDS];
-		unsigned nmatches = 0;
-		unsigned conversions_required;
-		unsigned conversions_left;
-		unsigned j;
-
-		/* how many conversions for this constrant-set? */
-		for(j = 0; j < nargs; j++){
-			matches[j] = (arg_cats[j] == isn->constraints[i].category[j]);
-
-			if(matches[j])
-				nmatches++;
-		}
-
-		conversions_required = (nargs - nmatches);
-
-		if(conversions_required == 0){
-			bestmatch_conversions = conversions_required;
-			bestmatch_i = i;
-			break;
-		}
-
-		/* we can only have the best match if the non-matched operand
-		 * is convertible to the required operand type */
-		conversions_left = conversions_required;
-		for(j = 0; j < nargs; j++){
-			if(matches[j])
-				continue;
-
-			if(operand_type_convertible(
-						arg_cats[j], isn->constraints[i].category[j]))
-			{
-				conversions_left--;
-			}
-		}
-
-		/* if we can convert all operands, we may have a new best match */
-		if(conversions_left == 0 /* feasible */
-		&& conversions_required < bestmatch_conversions /* best */)
-		{
-			bestmatch_conversions = conversions_required;
-			bestmatch_i = i;
-		}
-	}
-
-	*out_conversions_required = bestmatch_conversions;
-
-	if(bestmatch_i != -1)
-		return &isn->constraints[bestmatch_i];
-
-	return NULL;
 }
 
 static bool should_deref(isn *isn, val *val)
@@ -509,78 +448,180 @@ static bool should_deref(isn *isn, val *val)
 	return dereference;
 }
 
+static const struct backend_isn_constraint *find_isn_bestmatch(
+		const struct backend_isn *isn,
+		struct isn *fi,
+		val *inputs[2],
+		val *output,
+		unsigned *const out_conversions_required)
+{
+	const int max = countof(isn->constraints);
+	int i, bestmatch_i = -1;
+	unsigned bestmatch_conversions = ~0u;
+
+	for(i = 0; i < max && isn->constraints[i].category[0]; i++){
+		unsigned nmatches = 0;
+		unsigned conversions_required = 0;
+		unsigned j, nargs;
+		unsigned input_index = 0;
+		bool abort_this = false;
+
+		/* how many conversions for this constrant-set? */
+		for(j = 0; j < MAX_OPERANDS && isn->constraints[i].category[j]; j++){
+			bool match = true;
+
+			if(isn->constraints[i].category[j] & OPERAND_INPUT){
+				val *v;
+				enum operand_category cat;
+
+				assert(input_index < 2);
+				v = inputs[input_index];
+				input_index++;
+				assert(v && "input underflow");
+				cat = val_operand_category(v, should_deref(fi, v));
+
+				if(!val_operand_category_matches(cat, isn->constraints[i].category[j])){
+					match = false;
+
+					if(operand_type_convertible(cat, isn->constraints[i].category[j])){
+						conversions_required++;
+					}else{
+						abort_this = true;
+					}
+				}
+			}
+			if(isn->constraints[i].category[j] & OPERAND_OUTPUT){
+				enum operand_category cat = val_operand_category(output, should_deref(fi, output));
+
+				if(!val_operand_category_matches(cat, isn->constraints[i].category[j])){
+					match = false;
+
+					if(operand_type_convertible(cat, isn->constraints[i].category[j])){
+						conversions_required++;
+					}else{
+						abort_this = true;
+					}
+				}
+			}
+
+			if(match)
+				nmatches++;
+		}
+		nargs = j;
+
+		if(nmatches == nargs){
+			assert(conversions_required == 0);
+			bestmatch_conversions = conversions_required;
+			bestmatch_i = i;
+			break;
+		}
+
+		if(abort_this)
+			continue;
+
+		/* we can convert all operands, we may have a new best match */
+		if(conversions_required < bestmatch_conversions /* best */){
+			bestmatch_conversions = conversions_required;
+			bestmatch_i = i;
+		}
+	}
+
+	*out_conversions_required = bestmatch_conversions;
+
+	if(bestmatch_i != -1)
+		return &isn->constraints[bestmatch_i];
+
+	return NULL;
+}
+
+static void constrain(
+		val *v, enum operand_category cat, isn *fi, bool postisn)
+{
+	struct constraint constraint;
+
+	assert(v);
+
+	cat &= OPERAND_MASK_PLAIN;
+	switch(cat){
+		case OPERAND_REG:
+			constraint.req = REQ_REG;
+			constraint.reg[0] = regt_make_invalid();
+			constraint.reg[1] = regt_make_invalid();
+			break;
+		case OPERAND_MEM_PTR:
+		case OPERAND_MEM_CONTENTS:
+			constraint.req = REQ_MEM;
+			break;
+		case OPERAND_INT:
+			constraint.req = REQ_CONST;
+			break;
+		default:
+			/* no constraint */
+			return;
+	}
+
+	constraint.val = v;
+	gen_constraint_isns(fi, &constraint, postisn);
+}
+
 static void isel_generic(isn *fi, const struct target *target, const struct backend_isn *bi)
 {
 	const struct backend_isn_constraint *bestmatch;
 	unsigned conversions_required;
-	enum operand_category categories[MAX_OPERANDS] = { 0 };
 	val *inputs[2], *output;
-	unsigned valcount = 0;
-	unsigned input_index, category_index, i;
+	unsigned i;
+	unsigned input_index;
+
+	if(ISEL_DEBUG)
+		fprintf(stderr, "isel \"%s\"\n", bi->mnemonic);
 
 	isn_vals_get(fi, inputs, &output);
 
-	for(category_index = input_index = 0; input_index < countof(inputs); input_index++){
-		if(inputs[input_index]){
-			categories[category_index++] = val_operand_category(inputs[input_index], should_deref(fi, inputs[input_index]));
-			valcount++;
+	bestmatch = find_isn_bestmatch(bi, fi, inputs, output, &conversions_required);
+
+	if(bestmatch && ISEL_DEBUG){
+		fprintf(stderr, "  bestmatch:\n");
+		for(i = 0; bestmatch->category[i]; i++)
+			fprintf(stderr, "    categories[%d] = %s\n",
+					i, operand_category_to_str(bestmatch->category[i]));
+
+		for(i = 0; i < 2 && inputs[i]; i++){
+			enum operand_category cat = val_operand_category(
+					inputs[i],
+					should_deref(fi, inputs[i]));
+
+			fprintf(stderr, "    inputs[%d] = %s\n",
+					i, operand_category_to_str(cat));
+		}
+
+		if(output){
+			fprintf(stderr, "    output = %s\n",
+					operand_category_to_str(
+						val_operand_category(output, should_deref(fi, output))));
 		}
 	}
-	if(output){
-		categories[category_index++] = val_operand_category(output, should_deref(fi, output));
-		valcount++;
-	}
 
-	if(ISEL_DEBUG){
-		fprintf(stderr, "isel_generic() for \"%s\"\n", bi->mnemonic);
-		for(i = 0; i < bi->operand_count; i++)
-			fprintf(stderr, "  input categories[%d] = %s\n", i, operand_category_to_str(categories[i]));
-	}
+	if(ISEL_DEBUG)
+		fprintf(stderr, "  %d conversions required\n", conversions_required);
 
-	bestmatch = find_isn_bestmatch(bi, categories, valcount, &conversions_required);
-	if(conversions_required == 0){
-		if(ISEL_DEBUG)
-			fprintf(stderr, "  no conversions required\n");
+	if(conversions_required == 0)
 		return;
-	}
 	assert(bestmatch);
 
-	if(ISEL_DEBUG){
-		fprintf(stderr, "  bestmatch:\n");
-		for(i = 0; i < bi->operand_count; i++)
-			fprintf(stderr, "    categories[%d] = %s\n",
-					i,
-					operand_category_to_str(bestmatch->category[i]));
-	}
+	input_index = 0;
+	for(i = 0; i < MAX_OPERANDS && bestmatch->category[i]; i++){
+		if(bestmatch->category[i] & OPERAND_INPUT){
+			val *v;
 
+			assert(input_index < 2);
+			v = inputs[input_index++];
+			assert(v && "input underflow");
 
-	for(i = 0; i < 3; i++){
-		const bool is_output = i >= 2;
-		struct constraint constraint;
-
-		constraint.val = is_output ? output : inputs[i];
-		if(!constraint.val)
-			continue;
-
-		switch(bestmatch->category[i]){
-			case OPERAND_REG:
-				constraint.req = REQ_REG;
-				constraint.reg[0] = regt_make_invalid();
-				constraint.reg[1] = regt_make_invalid();
-				break;
-			case OPERAND_MEM_PTR:
-			case OPERAND_MEM_CONTENTS:
-				constraint.req = REQ_MEM;
-				break;
-			case OPERAND_INT:
-				constraint.req = REQ_CONST;
-				break;
-			default:
-				/* no constraint */
-				continue;
+			constrain(v, bestmatch->category[i], fi, false);
 		}
-
-		gen_constraint_isns(fi, &constraint, is_output);
+		if(bestmatch->category[i] & OPERAND_OUTPUT){
+			constrain(output, bestmatch->category[i], fi, true);
+		}
 	}
 }
 

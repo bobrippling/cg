@@ -9,8 +9,13 @@ enum operand_category
 	OPERAND_REG = 1, /* %rax */
 	OPERAND_MEM_PTR, /* %rsp +/- ... */
 	OPERAND_MEM_CONTENTS, /* +/-...(%rbp), _label, 5 */
-	OPERAND_INT /* $5 */
+	OPERAND_INT, /* $5 */
+
+	OPERAND_INPUT = 1 << 3,
+	OPERAND_OUTPUT = 1 << 4,
+	OPERAND_ADDRESSED = 1 << 5
 };
+#define OPERAND_MASK_PLAIN 0x7
 
 #define MAX_OPERANDS 3
 #define MAX_ISN_COMBOS 6
@@ -18,13 +23,6 @@ enum operand_category
 struct backend_isn
 {
 	const char *mnemonic;
-	unsigned operand_count;
-
-	enum {
-		OPERAND_INPUT = 1 << 0,
-		OPERAND_OUTPUT = 1 << 1,
-		OPERAND_ADDRESSED = 1 << 2
-	} arg_ios[MAX_OPERANDS];
 
 	struct backend_isn_constraint {
 		enum operand_category category[MAX_OPERANDS];

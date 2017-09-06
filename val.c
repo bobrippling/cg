@@ -215,6 +215,14 @@ enum operand_category val_operand_category(val *v, bool dereference)
 	assert(0);
 }
 
+bool val_operand_category_matches(enum operand_category a, enum operand_category b)
+{
+	a &= OPERAND_MASK_PLAIN;
+	b &= OPERAND_MASK_PLAIN;
+
+	return a == b;
+}
+
 #if 0
 static bool val_both_ints(val *l, val *r)
 {

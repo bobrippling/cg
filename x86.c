@@ -502,7 +502,7 @@ static bool emit_isn_try(
 #endif
 	unsigned j;
 
-	assert(operand_count == isn->operand_count);
+	/*assert(operand_count == isn->operand_count);*/
 	assert(operand_count <= MAX_OPERANDS);
 
 	for(j = 0; j < operand_count; j++){
@@ -772,8 +772,13 @@ static void x86_op(
 			op.val = rhs;
 			op.dereference = false;
 			opisn.mnemonic = "idiv";
-			opisn.operand_count = 1; /* idiv takes an implicit second operand */
-			x86_emit_isn(&opisn, octx, &op, 1, NULL);
+
+			x86_emit_isn(
+					&opisn,
+					octx,
+					&op,
+					1, /* idiv takes an implicit second operand */
+					NULL);
 			return;
 		}
 	}
