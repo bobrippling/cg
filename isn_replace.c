@@ -95,6 +95,11 @@ void isn_vals_get(isn *i, val *inputs[2], val **const output)
 #define IO(ar, val) ar = val
 	ISN_SWITCH_IO()
 #undef IO
+
+	if(inputs[1] && !inputs[0]){
+		inputs[0] = inputs[1];
+		inputs[1] = NULL;
+	}
 }
 
 static void isn_vals_set(isn *i, val *inputs[2], val **const output)
