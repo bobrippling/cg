@@ -106,6 +106,7 @@ static const struct backend_isn call = {
 	{
 		{ OPERAND_INPUT | OPERAND_REG },
 		{ OPERAND_INPUT | OPERAND_MEM_CONTENTS },
+		{ OPERAND_INPUT | OPERAND_MEM_PTR },
 	},
 	false
 };
