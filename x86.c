@@ -76,6 +76,7 @@ static char x86_target_regch(const struct target *target)
 
 static enum operand_category val_category(val *v, bool dereference)
 {
+	/* FIXME: same as val_operand_category */
 	switch(v->kind){
 		case LITERAL:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_INT;
