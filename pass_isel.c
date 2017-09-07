@@ -606,7 +606,7 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 
 	if(conversions_required == 0)
 		return;
-	assert(bestmatch);
+	assert(bestmatch && "cannot satisfy/isel instruction");
 
 	input_index = 0;
 	for(i = 0; i < MAX_OPERANDS && bestmatch->category[i]; i++){
