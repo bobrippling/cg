@@ -49,8 +49,9 @@ static const struct backend_isn lea = {
 static const struct backend_isn movzx = {
 	"mov", /* movzx */
 	{
-		X86_CONSTRAINT(OPERAND_REG, OPERAND_REG),
-		X86_CONSTRAINT(OPERAND_REG, OPERAND_MEM_CONTENTS),
+		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_REG },
+		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_MEM_CONTENTS },
+		{ OPERAND_INPUT | OPERAND_MEM_CONTENTS, OPERAND_OUTPUT | OPERAND_REG },
 	},
 	false
 };
