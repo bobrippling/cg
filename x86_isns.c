@@ -122,7 +122,7 @@ static const struct backend_isn set = {
 	false
 };
 
-const struct target_arch_isn backend_isns_x64[] = {
+const struct target_arch_isn backend_isns_x64[ISN_TYPE_COUNT] = {
 	/*ISN_LOAD*/         { &mov, NULL },
 	/*ISN_STORE*/        { &mov, NULL },
 	/*ISN_ALLOCA*/       { NULL, NULL },
