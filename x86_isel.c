@@ -42,6 +42,9 @@ void x86_isel_lea(isn *i, const struct target *target)
 		case OPERAND_MEM_PTR:
 			assert(0 && "need to convert mem_ptr to reg");
 
+		case OPERAND_IMPLICIT:
+			assert(0 && "bad instruction chosen");
+
 		case OPERAND_INPUT:
 		case OPERAND_OUTPUT:
 		case OPERAND_ADDRESSED:

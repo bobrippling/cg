@@ -470,6 +470,11 @@ static const struct backend_isn_constraint *find_isn_bestmatch(
 		for(j = 0; j < MAX_OPERANDS && isn->constraints[i].category[j]; j++){
 			bool match = true;
 
+			if((isn->constraints[i].category[j] & OPERAND_MASK_PLAIN) == OPERAND_IMPLICIT){
+				/* doesn't use any inputs or outputs explicitly */
+				continue;
+			}
+
 			if(isn->constraints[i].category[j] & OPERAND_INPUT){
 				val *v;
 				enum operand_category cat;
@@ -555,9 +560,11 @@ static void gen_constraint_isns_for_op_category(
 		case OPERAND_INT:
 			constraint.req = REQ_CONST;
 			break;
-		default:
-			/* no constraint */
-			return;
+		case OPERAND_IMPLICIT:
+		case OPERAND_INPUT:
+		case OPERAND_OUTPUT:
+		case OPERAND_ADDRESSED:
+			assert(0 && "unreachable");
 	}
 
 	constraint.val = v;

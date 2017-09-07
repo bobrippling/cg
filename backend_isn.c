@@ -32,6 +32,9 @@ const char *operand_category_to_str(enum operand_category cat)
 		case OPERAND_INT:
 			snprintf(p, remaining,  "OPERAND_INT");
 			break;
+		case OPERAND_IMPLICIT:
+			snprintf(p, remaining,  "OPERAND_IMPLICIT");
+			break;
 		case OPERAND_INPUT:
 		case OPERAND_OUTPUT:
 		case OPERAND_ADDRESSED:

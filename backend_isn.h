@@ -10,6 +10,7 @@ enum operand_category
 	OPERAND_MEM_PTR, /* %rsp +/- ... */
 	OPERAND_MEM_CONTENTS, /* +/-...(%rbp), _label, 5 */
 	OPERAND_INT, /* $5 */
+	OPERAND_IMPLICIT,
 
 	OPERAND_INPUT = 1 << 3,
 	OPERAND_OUTPUT = 1 << 4,
