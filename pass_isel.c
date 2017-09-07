@@ -448,6 +448,30 @@ static bool should_deref(isn *isn, val *val)
 	return dereference;
 }
 
+static bool is_valid_constraint_set(
+		val *inputs[2],
+		val *output,
+		const struct backend_isn_constraint *constraint)
+{
+	struct {
+		unsigned ninputs, noutputs;
+	} vals, constraints = { 0 };
+	unsigned i;
+
+	vals.noutputs = !!output;
+	vals.ninputs = !!inputs[0] + !!inputs[1];
+
+	for(i = 0; i < MAX_OPERANDS && constraint->category[i]; i++){
+		enum operand_category cat = constraint->category[i];
+
+		constraints.ninputs += !!(cat & OPERAND_INPUT);
+		constraints.noutputs += !!(cat & OPERAND_OUTPUT);
+	}
+
+	return vals.ninputs == constraints.ninputs
+		&& vals.noutputs == constraints.noutputs;
+}
+
 static const struct backend_isn_constraint *find_isn_bestmatch(
 		const struct backend_isn *isn,
 		struct isn *fi,
@@ -465,6 +489,9 @@ static const struct backend_isn_constraint *find_isn_bestmatch(
 		unsigned j, nargs;
 		unsigned input_index = 0;
 		bool abort_this = false;
+
+		if(!is_valid_constraint_set(inputs, output, &isn->constraints[i]))
+			continue;
 
 		/* how many conversions for this constrant-set? */
 		for(j = 0; j < MAX_OPERANDS && isn->constraints[i].category[j]; j++){
