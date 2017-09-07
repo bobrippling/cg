@@ -534,7 +534,7 @@ static const struct backend_isn_constraint *find_isn_bestmatch(
 	return NULL;
 }
 
-static void constrain(
+static void gen_constraint_isns_for_op_category(
 		val *v, enum operand_category cat, isn *fi, bool postisn)
 {
 	struct constraint constraint;
@@ -617,10 +617,10 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 			v = inputs[input_index++];
 			assert(v && "input underflow");
 
-			constrain(v, bestmatch->category[i], fi, false);
+			gen_constraint_isns_for_op_category(v, bestmatch->category[i], fi, false);
 		}
 		if(bestmatch->category[i] & OPERAND_OUTPUT){
-			constrain(output, bestmatch->category[i], fi, true);
+			gen_constraint_isns_for_op_category(output, bestmatch->category[i], fi, true);
 		}
 	}
 }
