@@ -2,6 +2,7 @@
 Makefile.cfg
 ir
 utests
+ctests
 *.o
 tags
 test/harness/harness
