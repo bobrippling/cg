@@ -250,6 +250,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	assert(unit);
+	if(parse_err)
+		return 1;
 
 	/* ensure the final passes are: */
 	dynarray_add(&passes, "_abi");
@@ -261,9 +263,6 @@ int main(int argc, char *argv[])
 	pat.target = &target;
 
 	unit_on_functions(unit, run_passes, &pat);
-
-	if(parse_err)
-		return 1;
 
 	if(output && !freopen(output, "w", stdout)){
 		fprintf(stderr, "%s: open %s: %s\n", *argv, output, strerror(errno));
