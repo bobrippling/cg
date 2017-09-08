@@ -244,14 +244,12 @@ int main(int argc, char *argv[])
 	else
 		target_default(&target);
 
-	if(!unit){
-		unit = read_and_parse(fname, dump_tok, &target, &parse_err);
-		if(dump_tok){
-			assert(!unit);
-			return 0;
-		}
-		assert(unit);
+	unit = read_and_parse(fname, dump_tok, &target, &parse_err);
+	if(dump_tok){
+		assert(!unit);
+		return 0;
 	}
+	assert(unit);
 
 	/* ensure the final passes are: */
 	dynarray_add(&passes, "_abi");
