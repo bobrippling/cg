@@ -1,4 +1,4 @@
-OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
+OBJ = val.o mem.o dynarray.o op.o init.o \
       dynmap.o string.o imath.o \
       isn.o backend_isn.o isn_replace.o \
       function.o variable.o global.o variable_global.o block.o unit.o \
@@ -10,12 +10,15 @@ OBJ = val.o  main.o mem.o dynarray.o op.o init.o \
       pass_abi.o pass_isel.o pass_spill.o pass_regalloc.o \
       x86.o x86_isel.o x86_call.o x86_isns.o
 
+OBJ_MAIN = ${OBJ} main.o
+OBJ_UTEST = utests.o type.o uniq_type_list.o type_iter.o \
+           mem.o dynmap.o dynarray.o imath.o regset.o regset_marks.o
+OBJ_CTEST = ${OBJ} ctest.o
+OBJ_ALL = ${OBJ_MAIN} ctest.o utests.o
+
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
 
-SRC = ${OBJ:.o=.c}
-
-TEST_OBJ = utests.o type.o uniq_type_list.o type_iter.o \
-           mem.o dynmap.o dynarray.o imath.o regset.o regset_marks.o
+SRC = ${OBJ_MAIN:.o=.c}
 
 CFLAGS_DEFINE = -D_POSIX_C_SOURCE=200112L -Istrbuf
 
@@ -24,28 +27,29 @@ LDFLAGS = ${LDFLAGS_CONFIGURE}
 
 Q = @
 
-all: tags ir check-utests
+all: tags ir check-utests check-ctests
 
-ir: ${OBJ} strbuf/strbuf.a
+check-%: %
+	./$<
+
+check: ir check-utests check-ctests
+	make -Ctest
+
+ir: ${OBJ_MAIN} strbuf/strbuf.a
 	@echo link $@
-	$Q${CC} -o $@ ${OBJ} strbuf/strbuf.a ${LDFLAGS}
+	$Q${CC} -o $@ ${OBJ_MAIN} strbuf/strbuf.a ${LDFLAGS}
+
+utests: ${OBJ_UTEST} strbuf/strbuf.a
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_UTEST} strbuf/strbuf.a ${LDFLAGS}
+
+ctests: ${OBJ} ctests.o
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ} ctests.o strbuf/strbuf.a ${LDFLAGS}
 
 %.o: %.c
 	@echo compile $<
 	$Q${CC} -c -o $@ $< ${CFLAGS}
-
-# va_list:
-mem.o: CFLAGS += -std=c99
-
-utests: ${TEST_OBJ} strbuf/strbuf.a
-	@echo link $@
-	$Q${CC} -o $@ ${TEST_OBJ} strbuf/strbuf.a ${LDFLAGS}
-
-check-utests: utests
-	./utests
-
-check: ir check-utests
-	make -Ctest
 
 tags: ${SRC}
 	@echo ctags
@@ -54,14 +58,16 @@ tags: ${SRC}
 clean:
 	make -C test clean
 	make -C strbuf clean
-	rm -f ir ${OBJ} ${OBJ:%.o=.%.d}
+	rm -f ir ${OBJ_ALL} ${OBJ_ALL:%.o=.%.d}
 
 .%.d: %.c
 	@echo depend $<
 	$Q${CC} -MM ${CFLAGS} $< > $@
 
--include ${OBJ:%.o=.%.d}
--include ${TEST_OBJ:%.o=.%.d}
+# va_copy:
+mem.o: CFLAGS += -std=c99
+
+-include ${OBJ_ALL:%.o=.%.d}
 -include Makefile.cfg
 
 STRBUF_PATH = strbuf
