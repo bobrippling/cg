@@ -93,6 +93,7 @@ enum token
 };
 
 tokeniser *token_init(FILE *, const char *fname);
+tokeniser *token_init_str(const char *);
 void token_fin(tokeniser *, int *err);
 
 const char *token_to_str(enum token);

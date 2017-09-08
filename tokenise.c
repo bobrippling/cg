@@ -16,6 +16,8 @@
 struct tokeniser
 {
 	FILE *f;
+	char *str;
+
 	int eof;
 	int ferr;
 	unsigned lno;
@@ -63,6 +65,36 @@ tokeniser *token_init(FILE *f, const char *fname)
 	return t;
 }
 
+tokeniser *token_init_str(const char *str)
+{
+	tokeniser *t = xmalloc(sizeof *t);
+	memset(t, 0, sizeof *t);
+
+	t->unget = TOKEN_PEEK_EMPTY;
+	t->str = xstrdup(str);
+
+	return t;
+}
+
+static char *token_read_line(tokeniser *t)
+{
+	char *r;
+
+	if(t->f)
+		return read_line(t->f);
+
+	r = t->str;
+	t->str = NULL;
+	return r;
+}
+
+static void token_free_line(tokeniser *t)
+{
+	assert(!t->line || !t->str);
+	free(t->line);
+	t->line = NULL;
+}
+
 void token_fin(tokeniser *t, int *const err)
 {
 	if(t->f){
@@ -76,6 +108,7 @@ void token_fin(tokeniser *t, int *const err)
 
 	free(t->lastident);
 	free(t->lastbareword);
+	free(t->str);
 	free(t);
 }
 
@@ -217,13 +250,13 @@ enum token token_next(tokeniser *t)
 	t->linep = skipspace(t->linep);
 
 	while(!t->linep || !*t->linep){
-		free(t->line);
-		t->line = t->linep = read_line(t->f);
+		token_free_line(t);
+		t->line = t->linep = token_read_line(t);
 
 		if(!t->line){
 			t->eof = 1;
 
-			if(ferror(t->f))
+			if(t->f && ferror(t->f))
 				t->ferr = errno;
 
 			/* file closed later */
