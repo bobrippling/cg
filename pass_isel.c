@@ -162,6 +162,8 @@ static void constrain_to_reg_any(
 	if(!loc){
 		val *reg = copy_val_to_reg(v, isn_to_constrain);
 		loc = val_location(reg);
+	}else if(loc->where == NAME_IN_REG_ANY){
+		return;
 	}else{
 		assert(loc->where == NAME_NOWHERE);
 	}
@@ -187,6 +189,11 @@ static void constrain_to_reg_specific(
 	desired.where = NAME_IN_REG;
 	memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
 
+	if(location_eq(loc, &desired)){
+		/* fine */
+		return;
+	}
+
 	if(loc->where == NAME_NOWHERE
 	|| loc->where == NAME_IN_REG_ANY
 	|| (loc->where == NAME_IN_REG && !regt_is_valid(loc->u.reg)))
@@ -197,9 +204,6 @@ static void constrain_to_reg_specific(
 		 */
 		/*memcpy(loc, &desired, sizeof(*loc)); - optimal */
 		goto via_temp; /* - general */
-
-	}else if(location_eq(loc, &desired)){
-		/* fine */
 
 	}else{
 		/* Need to go via an ABI temp.
