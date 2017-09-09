@@ -163,6 +163,29 @@ static void isn_replace_output_with_store(
 	*output = tmp;
 }
 
+static void replace_args_with_load_store(
+		isn *isn,
+		val *old,
+		val *spill,
+		struct replace_ctx *ctx)
+{
+	dynarray *args;
+	size_t i;
+
+	if(isn->type != ISN_CALL)
+		return;
+
+	args = &isn->u.call.args;
+	dynarray_iter(args, i){
+		val *arg = dynarray_ent(args, i);
+
+		if(arg == old){
+			isn_replace_input_with_load(isn, old, spill, &arg, ctx);
+			dynarray_ent(args, i) = arg;
+		}
+	}
+}
+
 void isn_replace_uses_with_load_store(
 		struct val *old, struct val *spill, struct isn *any_isn, block *blk)
 {
@@ -196,6 +219,27 @@ void isn_replace_uses_with_load_store(
 
 		if(writeback)
 			isn_vals_set(any_isn, inputs, &output);
+
+		replace_args_with_load_store(any_isn, old, spill, &ctx);
+	}
+}
+
+static void isn_replace_val_with_val_call(isn *isn, val *old, val *new)
+{
+	dynarray *args;
+	size_t i;
+
+	if(isn->type != ISN_CALL)
+		return;
+
+	args = &isn->u.call.args;
+	dynarray_iter(args, i){
+		val *arg = dynarray_ent(args, i);
+
+		if(arg == old){
+			dynarray_ent(args, i) = val_retain(new);
+			val_release(old);
+		}
 	}
 }
 
@@ -208,6 +252,8 @@ void isn_replace_val_with_val(isn *isn, val *old, val *new, enum replace_mode mo
 	if(mode & REPLACE_INPUTS){
 		if(inputs[0] == old) inputs[0] = new;
 		if(inputs[1] == old) inputs[1] = new;
+
+		isn_replace_val_with_val_call(isn, old, new);
 	}
 	if(mode & REPLACE_OUTPUTS)
 		if(output == old) output = new;
