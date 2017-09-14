@@ -1,6 +1,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <stdio.h>
 #include "function.h"
 #include "variable_global.h"
 
@@ -9,7 +10,7 @@ struct uniq_type_list;
 
 typedef struct global global;
 
-void global_dump(struct unit *, global *, void *);
+void global_dump(struct unit *, global *, FILE *);
 
 const char *global_name(global *);
 struct type *global_type_as_ptr(struct uniq_type_list *, global *);

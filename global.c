@@ -7,9 +7,8 @@
 
 #include "type.h"
 
-void global_dump(struct unit *unit, global *glob, void *ctx)
+void global_dump(struct unit *unit, global *glob, FILE *fout)
 {
-	FILE *fout = ctx;
 	const char *name;
 	type *ty;
 

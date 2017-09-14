@@ -1430,7 +1430,7 @@ static void x86_out_var(variable_global *var, const struct target *target_info, 
 	}
 }
 
-void x86_out(unit *unit, global *glob, void *ctx)
+void x86_out(unit *unit, global *glob, FILE *ctx)
 {
 	const struct target *target = unit_target_info(unit);
 	FILE *fout = ctx;

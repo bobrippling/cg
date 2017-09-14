@@ -1,6 +1,7 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+#include <stdio.h>
 #include "global.h"
 
 struct type;
@@ -10,7 +11,7 @@ struct target;
 
 typedef struct unit unit;
 
-typedef void on_global_func(unit *, global *, void *);
+typedef void on_global_func(unit *, global *, FILE *);
 
 unit *unit_new(const struct target *);
 void unit_free(unit *);
