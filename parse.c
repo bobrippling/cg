@@ -23,6 +23,9 @@ typedef struct {
 	block *entry;
 	dynmap *names2vals;
 	int err;
+
+	parse_error_fn *error_v;
+	void *error_ctx;
 } parse;
 
 enum val_opts
@@ -39,6 +42,11 @@ static void error_v(parse *p, const char *fmt, va_list l)
 {
 	char buf[32];
 	size_t off;
+
+	if(p->error_v){
+		p->error_v(token_curfile(p->tok), token_curlineno(p->tok), p->error_ctx, fmt, l);
+		return;
+	}
 
 	fprintf(stderr, "%s:%u: ", token_curfile(p->tok), token_curlineno(p->tok));
 
@@ -1306,12 +1314,19 @@ static void parse_global(parse *p)
 	}
 }
 
-unit *parse_code(tokeniser *tok, int *const err, const struct target *target)
+static unit *parse_code_internal(
+		tokeniser *tok,
+		int *const err,
+		const struct target *target,
+		parse_error_fn on_error,
+		void *on_error_ctx)
 {
 	parse state = { 0 };
 
 	state.tok = tok;
 	state.unit = unit_new(target);
+	state.error_v = on_error;
+	state.error_ctx = on_error_ctx;
 
 	while(!parse_finished(tok)){
 		parse_global(&state);
@@ -1328,4 +1343,15 @@ unit *parse_code(tokeniser *tok, int *const err, const struct target *target)
 	*err = state.err;
 
 	return state.unit;
+}
+
+unit *parse_code(tokeniser *tok, int *const err, const struct target *target)
+{
+	return parse_code_internal(tok, err, target, NULL, NULL);
+}
+
+unit *parse_code_cb(tokeniser *tok, const struct target *target, parse_error_fn on_error, void *ctx)
+{
+	int err;
+	return parse_code_internal(tok, &err, target, on_error, ctx);
 }

@@ -152,6 +152,7 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 
 int main(int argc, char *argv[])
 {
+	FILE *fout;
 	dynarray passes = DYNARRAY_INIT;
 	bool dump_tok = false;
 	unit *unit = NULL;
@@ -264,16 +265,21 @@ int main(int argc, char *argv[])
 
 	unit_on_functions(unit, run_passes, &pat);
 
-	if(output && !freopen(output, "w", stdout)){
-		fprintf(stderr, "%s: open %s: %s\n", *argv, output, strerror(errno));
-		return 1;
+	if(output){
+		fout = fopen(output, "w");
+		if(!fout)
+			die("open %s:", output);
+	}else{
+		fout = stdout;
 	}
 
-	unit_on_globals(unit, target.emit);
+	unit_on_globals(unit, target.emit, fout);
 
 	unit_free(unit);
 
 	dynarray_reset(&passes);
+
+	fclose(fout);
 
 	return 0;
 }
