@@ -33,6 +33,8 @@ struct path_and_file
 	FILE *f;
 };
 
+static unsigned failed, passed;
+
 static void free_path_and_file(struct path_and_file *paf)
 {
 	if(paf->f && fclose(paf->f))
@@ -149,6 +151,24 @@ out_err:
 	goto out;
 }
 
+static void test_ir_ret(const char *str, int ret, const struct target *target)
+{
+	int err;
+	int ec = execute_ir(target, &err, str);
+	if(err || ec != ret){
+		fprintf(stderr, "ir return failure, expected %d, got ", ret);
+		if(err)
+			fprintf(stderr, "error");
+		else
+			fprintf(stderr, "%d", ec);
+		fprintf(stderr, "\n");
+
+		failed++;
+	}else{
+		passed++;
+	}
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -159,10 +179,7 @@ int main(int argc, const char *argv[])
 	struct target target;
 	target_default(&target);
 
-	int err;
-	int ec = execute_ir(
-			&target,
-			&err,
+	test_ir_ret(
 			"$is_5 = i4(i4 $x){"
 			"  $b = eq $x, i4 5"
 			"  $be = zext i4, $b"
@@ -171,8 +188,9 @@ int main(int argc, const char *argv[])
 			"$entry = i4(){"
 			"  $x = call $is_5(i4 5)"
 			"  ret $x"
-			"}"
-			);
+			"}",
+			1,
+			&target);
 
 	/* TODO:
 	 * interested in:
@@ -183,7 +201,7 @@ int main(int argc, const char *argv[])
 	 *   -[ ] ir output (optimisation folding, jump threading, etc)
 	 */
 
-	fprintf(stderr, "build-error=%d, result=%d\n", err, ec);
+	printf("passed: %d, failed: %d\n", passed, failed);
 
-	return 0;
+	return !!failed;
 }
