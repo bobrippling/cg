@@ -714,12 +714,12 @@ void isn_on_live_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 }
 
 
-static void isn_dump1(isn *i)
+static void isn_dump1(isn *i, FILE *f)
 {
 	switch(i->type){
 		case ISN_STORE:
 		{
-			printf("\tstore %s, %s\n",
+			fprintf(f, "\tstore %s, %s\n",
 					val_str_rn(0, i->u.store.lval),
 					val_str_rn(1, i->u.store.from));
 			break;
@@ -727,7 +727,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_LOAD:
 		{
-			printf("\t%s = load %s\n",
+			fprintf(f, "\t%s = load %s\n",
 					val_str_rn(0, i->u.load.to),
 					val_str_rn(1, i->u.load.lval));
 
@@ -736,7 +736,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_ALLOCA:
 		{
-			printf("\t%s = alloca %s\n",
+			fprintf(f, "\t%s = alloca %s\n",
 					val_str(i->u.alloca.out),
 					type_to_str(type_deref(val_type(i->u.alloca.out))));
 			break;
@@ -744,7 +744,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_ELEM:
 		{
-			printf("\t%s = elem %s, %s\n",
+			fprintf(f, "\t%s = elem %s, %s\n",
 					val_str_rn(0, i->u.elem.res),
 					val_str_rn(1, i->u.elem.lval),
 					val_str_rn(2, i->u.elem.index));
@@ -754,7 +754,7 @@ static void isn_dump1(isn *i)
 		case ISN_PTRADD:
 		case ISN_PTRSUB:
 		{
-			printf("\t%s = ptr%s %s, %s\n",
+			fprintf(f, "\t%s = ptr%s %s, %s\n",
 					val_str_rn(0, i->u.ptraddsub.out),
 					i->type == ISN_PTRADD ? "add" : "sub",
 					val_str_rn(1, i->u.ptraddsub.lhs),
@@ -764,7 +764,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_CMP:
 		{
-			printf("\t%s = %s %s, %s\n",
+			fprintf(f, "\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.cmp.res),
 					op_cmp_to_str(i->u.cmp.cmp),
 					val_str_rn(1, i->u.cmp.lhs),
@@ -774,7 +774,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_OP:
 		{
-			printf("\t%s = %s %s, %s\n",
+			fprintf(f, "\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.op.res),
 					op_to_str(i->u.op.op),
 					val_str_rn(1, i->u.op.lhs),
@@ -784,7 +784,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_COPY:
 		{
-			printf("\t%s = %s\n",
+			fprintf(f, "\t%s = %s\n",
 					val_str_rn(0, i->u.copy.to),
 					val_str_rn(1, i->u.copy.from));
 			break;
@@ -800,7 +800,7 @@ static void isn_dump1(isn *i)
 				ext_kind = "trunc";
 			}
 
-			printf("\t%s = %s %s, %s\n",
+			fprintf(f, "\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.ext.to),
 					ext_kind,
 					type_to_str(val_type(i->u.ext.to)),
@@ -811,7 +811,7 @@ static void isn_dump1(isn *i)
 		case ISN_INT2PTR:
 		case ISN_PTR2INT:
 		{
-			printf("\t%s = %s %s, %s\n",
+			fprintf(f, "\t%s = %s %s, %s\n",
 					val_str_rn(0, i->u.ptr2int.to),
 					isn_type_to_str(i->type),
 					type_to_str(val_type(i->u.ptr2int.to)),
@@ -821,7 +821,7 @@ static void isn_dump1(isn *i)
 
 		case ISN_PTRCAST:
 		{
-			printf("\t%s = ptrcast %s, %s\n",
+			fprintf(f, "\t%s = ptrcast %s, %s\n",
 					val_str_rn(0, i->u.ptrcast.to),
 					type_to_str(val_type(i->u.ptrcast.to)),
 					val_str_rn(1, i->u.ptrcast.from));
@@ -830,13 +830,13 @@ static void isn_dump1(isn *i)
 
 		case ISN_RET:
 		{
-			printf("\tret %s\n", val_str(i->u.ret));
+			fprintf(f, "\tret %s\n", val_str(i->u.ret));
 			break;
 		}
 
 		case ISN_JMP:
 		{
-			printf("\tjmp $%s\n", i->u.jmp.target->lbl);
+			fprintf(f, "\tjmp $%s\n", i->u.jmp.target->lbl);
 			break;
 		}
 
@@ -845,27 +845,27 @@ static void isn_dump1(isn *i)
 			size_t argi;
 			const char *sep = "";
 
-			printf("\t");
+			fprintf(f, "\t");
 
-			printf("%s = ", val_str(i->u.call.into));
+			fprintf(f, "%s = ", val_str(i->u.call.into));
 
-			printf("call %s(", val_str(i->u.call.fn));
+			fprintf(f, "call %s(", val_str(i->u.call.fn));
 
 			dynarray_iter(&i->u.call.args, argi){
 				val *arg = dynarray_ent(&i->u.call.args, argi);
 
-				printf("%s%s", sep, val_str(arg));
+				fprintf(f, "%s%s", sep, val_str(arg));
 
 				sep = ", ";
 			}
 
-			printf(")\n");
+			fprintf(f, ")\n");
 			break;
 		}
 
 		case ISN_BR:
 		{
-			printf("\tbr %s, $%s, $%s\n",
+			fprintf(f, "\tbr %s, $%s, $%s\n",
 					val_str(i->u.branch.cond),
 					i->u.branch.t->lbl,
 					i->u.branch.f->lbl);
@@ -877,13 +877,13 @@ static void isn_dump1(isn *i)
 			size_t j;
 			const char *sep = "";
 
-			printf("\timplicituse ");
+			fprintf(f, "\timplicituse ");
 
 			dynarray_iter(&i->u.implicit_use.vals, j){
-				printf("%s%s", sep, val_str(dynarray_ent(&i->u.implicit_use.vals, j)));
+				fprintf(f, "%s%s", sep, val_str(dynarray_ent(&i->u.implicit_use.vals, j)));
 				sep = ", ";
 			}
-			printf("\n");
+			fprintf(f, "\n");
 			break;
 		}
 	}
@@ -942,7 +942,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 
 #define SHOW_LIFE 0
 #define SHOW_TYPE 0
-void isn_dump(isn *const head, block *blk)
+void isn_dump(isn *const head, block *blk, FILE *f)
 {
 	size_t idx = 0;
 	isn *i;
@@ -952,11 +952,11 @@ void isn_dump(isn *const head, block *blk)
 			continue;
 
 		if(SHOW_LIFE)
-			printf("[%zu] ", idx++);
+			fprintf(f, "[%zu] ", idx++);
 		if(SHOW_LIFE)
-			printf("[%p] ", i);
+			fprintf(f, "[%p] ", i);
 
-		isn_dump1(i);
+		isn_dump1(i, f);
 	}
 
 	if(SHOW_LIFE || SHOW_TYPE){
@@ -967,10 +967,10 @@ void isn_dump(isn *const head, block *blk)
 
 		val *v;
 		for(idx = 0; (v = dynmap_key(val *, vals, idx)); idx++){
-			printf("# %s:", val_str(v));
+			fprintf(f, "# %s:", val_str(v));
 
 			if(SHOW_TYPE)
-				printf(" %s", type_to_str(val_type(v)));
+				fprintf(f, " %s", type_to_str(val_type(v)));
 
 			if(SHOW_LIFE){
 				struct lifetime *lt = dynmap_get(
@@ -979,12 +979,12 @@ void isn_dump(isn *const head, block *blk)
 						v);
 
 				if(lt){
-					printf(" %p - %p. inter-block = %d",
+					fprintf(f, " %p - %p. inter-block = %d",
 							lt->start,
 							lt->end,
 							v->live_across_blocks);
 				}else{
-					printf(" no-ltime inter-block = %d",
+					fprintf(f, " no-ltime inter-block = %d",
 							v->live_across_blocks);
 				}
 			}

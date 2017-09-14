@@ -1,6 +1,7 @@
 #ifndef ISN_H
 #define ISN_H
 
+#include <stdio.h>
 #include <stdbool.h>
 
 #include "op.h"
@@ -78,7 +79,7 @@ size_t isns_count(isn *);
 
 void isn_free_r(struct isn *);
 
-void isn_dump(struct isn *, struct block *);
+void isn_dump(struct isn *, struct block *, FILE *);
 
 void isn_on_live_vals(
 		struct isn *,

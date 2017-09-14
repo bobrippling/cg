@@ -147,12 +147,12 @@ enum function_attributes function_attributes(function *f)
 	return f->attr;
 }
 
-static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool variadic)
+static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool variadic, FILE *fout)
 {
 	const size_t nargs = dynarray_count(arg_tys);
 	size_t i;
 
-	printf("(");
+	fprintf(fout, "(");
 
 	dynarray_iter(arg_tys, i){
 		variable tmpvar;
@@ -164,7 +164,7 @@ static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool var
 		else
 			tmpvar.name = dynarray_ent(arg_names, i);
 
-		printf("%s%s%s%s",
+		fprintf(fout, "%s%s%s%s",
 				type_to_str(tmpvar.ty),
 				*tmpvar.name ? " $" : "",
 				tmpvar.name,
@@ -172,38 +172,38 @@ static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool var
 	}
 
 	if(variadic){
-		printf("%s...", i > 0 ? ", " : "");
+		fprintf(fout, "%s...", i > 0 ? ", " : "");
 	}
 
-	printf(")");
+	fprintf(fout, ")");
 }
 
-void function_dump(function *f)
+void function_dump(function *f, FILE *fout)
 {
-	printf("$%s = ", function_name(f));
+	fprintf(fout, "$%s = ", function_name(f));
 
 	if(dynarray_is_empty(&f->arg_names)){
-		printf("%s", type_to_str(function_type(f)));
+		fprintf(fout, "%s", type_to_str(function_type(f)));
 	}else{
 		bool variadic;
 		dynarray *args;
 		type *retty = type_func_call(function_type(f), &args, &variadic);
 
 		assert(retty);
-		printf("%s", type_to_str(retty));
+		fprintf(fout, "%s", type_to_str(retty));
 
-		print_func_and_args(args, &f->arg_names, variadic);
+		print_func_and_args(args, &f->arg_names, variadic, fout);
 	}
 
 	if(f->entry){
-		printf("\n{\n");
+		fprintf(fout, "\n{\n");
 
-		block_dump(f->entry);
+		block_dump(f->entry, fout);
 
-		printf("}");
+		fprintf(fout, "}");
 	}
 
-	printf("\n");
+	fprintf(fout, "\n");
 }
 
 const char *function_name(function *f)

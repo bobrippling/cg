@@ -5,16 +5,16 @@
 #include "init.h"
 #include "type.h"
 
-static void init_dump_r(struct init *init)
+static void init_dump_r(struct init *init, FILE *f)
 {
 	switch(init->type){
 		case init_int:
-			printf("%#llx", init->u.i);
+			fprintf(f, "%#llx", init->u.i);
 			break;
 
 		case init_alias:
-			printf("aliasinit %s ", type_to_str(init->u.alias.as));
-			init_dump_r(init->u.alias.init);
+			fprintf(f, "aliasinit %s ", type_to_str(init->u.alias.as));
+			init_dump_r(init->u.alias.init, f);
 			break;
 
 		case init_str:
@@ -29,14 +29,14 @@ static void init_dump_r(struct init *init)
 			size_t i;
 			const char *comma = "";
 
-			printf("{ ");
+			fprintf(f, "{ ");
 
 			dynarray_iter(&init->u.elem_inits, i){
-				printf("%s", comma);
-				init_dump_r(dynarray_ent(&init->u.elem_inits, i));
+				fprintf(f, "%s", comma);
+				init_dump_r(dynarray_ent(&init->u.elem_inits, i), f);
 				comma = ", ";
 			}
-			printf(" }");
+			fprintf(f, " }");
 
 			break;
 		}
@@ -46,29 +46,29 @@ static void init_dump_r(struct init *init)
 			if(init->u.ptr.is_label){
 				long off = init->u.ptr.u.ident.label.offset;
 
-				printf("$%s %s %ld%s",
+				fprintf(f, "$%s %s %ld%s",
 						init->u.ptr.u.ident.label.ident,
 						off > 0 ? "add" : "sub",
 						off > 0 ? off : -off,
 						init->u.ptr.u.ident.is_anyptr ? " anyptr" : "");
 			}else{
-				printf("%lu", init->u.ptr.u.integral);
+				fprintf(f, "%lu", init->u.ptr.u.integral);
 			}
 			break;
 		}
 	}
 }
 
-void init_dump(struct init_toplvl *init)
+void init_dump(struct init_toplvl *init, FILE *f)
 {
-	printf("%s ", init->internal ? "internal" : "global");
+	fprintf(f, "%s ", init->internal ? "internal" : "global");
 
 	if(init->constant)
-		printf("const ");
+		fprintf(f, "const ");
 	if(init->weak)
-		printf("weak ");
+		fprintf(f, "weak ");
 
-	init_dump_r(init->init);
+	init_dump_r(init->init, f);
 }
 
 static void init_free_r(struct init *init)

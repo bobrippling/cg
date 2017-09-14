@@ -1,6 +1,7 @@
 #ifndef FUNCTION_H
 #define FUNCTION_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include "block.h"
@@ -14,7 +15,7 @@ void function_free(function *);
 
 const char *function_name(function *);
 struct type *function_type(function *);
-void function_dump(function *);
+void function_dump(function *, FILE *);
 
 void function_finalize(function *);
 

@@ -1,6 +1,8 @@
 #ifndef INIT_H
 #define INIT_H
 
+#include <stdio.h>
+
 #include "dynarray.h"
 #include "string.h"
 #include "label.h"
@@ -48,7 +50,7 @@ struct init_toplvl
 	bool internal, constant, weak;
 };
 
-void init_dump(struct init_toplvl *);
+void init_dump(struct init_toplvl *, FILE *);
 
 void init_free(struct init_toplvl *);
 

@@ -1,6 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include "macros.h"
 
@@ -42,7 +43,7 @@ dynmap *block_lifetime_map(block *);
 #define BLOCK_DYNMAP_NEW() dynmap_new(block *, NULL, block_hash)
 unsigned block_hash(block *);
 
-void block_dump(block *);
+void block_dump(block *, FILE *);
 
 void block_lifecheck(block *);
 

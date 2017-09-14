@@ -9,6 +9,7 @@
 
 void global_dump(struct unit *unit, global *glob, void *ctx)
 {
+	FILE *fout = ctx;
 	const char *name;
 	type *ty;
 
@@ -16,7 +17,7 @@ void global_dump(struct unit *unit, global *glob, void *ctx)
 
 	switch(glob->kind){
 		case GLOBAL_FUNC:
-			function_dump(glob->u.fn);
+			function_dump(glob->u.fn, fout);
 			return;
 
 		case GLOBAL_VAR:
@@ -30,12 +31,12 @@ void global_dump(struct unit *unit, global *glob, void *ctx)
 		}
 
 		case GLOBAL_TYPE:
-			printf("type ");
+			fprintf(fout, "type ");
 			name = type_alias_name(glob->u.ty);
 			ty = type_alias_resolve(glob->u.ty);
 	}
 
-	printf("$%s = %s", name, ty ? type_to_str(ty) : "");
+	fprintf(fout, "$%s = %s", name, ty ? type_to_str(ty) : "");
 
 	switch(glob->kind){
 		case GLOBAL_FUNC:
@@ -47,15 +48,15 @@ void global_dump(struct unit *unit, global *glob, void *ctx)
 
 			if(init){
 				putchar(' ');
-				init_dump(init);
+				init_dump(init, fout);
 			}
 
-			printf("\n");
+			fprintf(fout, "\n");
 			break;
 		}
 
 		case GLOBAL_TYPE:
-			printf("\n");
+			fprintf(fout, "\n");
 			break;
 	}
 }

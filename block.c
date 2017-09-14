@@ -22,7 +22,7 @@ struct life_check_ctx
 	dynmap *values_to_block;
 };
 
-static void block_dump_r(block *);
+static void block_dump_r(block *, FILE *);
 
 
 block *block_new(char *lbl)
@@ -240,43 +240,43 @@ unsigned block_hash(block *b)
 	return (b->lbl ? dynmap_strhash(b->lbl) : 0) ^ (unsigned)b;
 }
 
-static void block_dump1(block *blk)
+static void block_dump1(block *blk, FILE *f)
 {
 	if(!dynarray_is_empty(&blk->preds)){
 		size_t i;
 		const char *comma = "";
 
-		printf("# predecessors: ");
+		fprintf(f, "# predecessors: ");
 
 		dynarray_iter(&blk->preds, i){
 			block *pred = dynarray_ent(&blk->preds, i);
 
-			printf("%s%p", comma, pred);
+			fprintf(f, "%s%p", comma, pred);
 			comma = ", ";
 		}
 
 		putchar('\n');
 	}
 
-	printf("# block: %p\n", blk);
+	fprintf(f, "# block: %p\n", blk);
 
-	isn_dump(block_first_isn(blk), blk);
+	isn_dump(block_first_isn(blk), blk, f);
 }
 
-static void block_dump_lbl(block *blk)
+static void block_dump_lbl(block *blk, FILE *f)
 {
 	if(blk->emitted)
 		return;
 
 	blk->emitted = 1;
 
-	printf("\n$%s:\n", blk->lbl);
-	block_dump_r(blk);
+	fprintf(f, "\n$%s:\n", blk->lbl);
+	block_dump_r(blk, f);
 }
 
-static void block_dump_r(block *blk)
+static void block_dump_r(block *blk, FILE *f)
 {
-	block_dump1(blk);
+	block_dump1(blk, f);
 
 	switch(blk->type){
 		case BLK_UNKNOWN:
@@ -285,11 +285,11 @@ static void block_dump_r(block *blk)
 		case BLK_EXIT:
 			break;
 		case BLK_BRANCH:
-			block_dump_lbl(blk->u.branch.t);
-			block_dump_lbl(blk->u.branch.f);
+			block_dump_lbl(blk->u.branch.t, f);
+			block_dump_lbl(blk->u.branch.f, f);
 			break;
 		case BLK_JMP:
-			block_dump_lbl(blk->u.jmp.target);
+			block_dump_lbl(blk->u.jmp.target, f);
 			break;
 	}
 }
@@ -299,8 +299,8 @@ static void block_unmark_emitted(block *blk, void *vctx)
 	blk->emitted = 0;
 }
 
-void block_dump(block *blk)
+void block_dump(block *blk, FILE *f)
 {
-	block_dump_r(blk);
+	block_dump_r(blk, f);
 	blocks_traverse(blk, block_unmark_emitted, NULL);
 }
