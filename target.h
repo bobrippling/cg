@@ -49,7 +49,7 @@ struct target
 		struct regset ret_regs;
 	} abi;
 
-	global_emit_func *emit;
+	on_global_func *emit;
 };
 
 void target_parse(const char *triple, struct target *);

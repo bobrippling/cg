@@ -10,13 +10,13 @@ struct target;
 
 typedef struct unit unit;
 
-typedef void global_emit_func(unit *, global *);
+typedef void on_global_func(unit *, global *, void *);
 
 unit *unit_new(const struct target *);
 void unit_free(unit *);
 
 void unit_on_functions(unit *, void (function *, unit *, void *), void *);
-void unit_on_globals(unit *, global_emit_func);
+void unit_on_globals(unit *, on_global_func, void *);
 
 function *unit_function_new(
 		unit *u, char *lbl /*consumed*/,
@@ -31,7 +31,5 @@ global *unit_global_find(unit *, const char *);
 
 struct uniq_type_list *unit_uniqtypes(unit *);
 const struct target *unit_target_info(unit *);
-
-void unit_dump(unit *);
 
 #endif

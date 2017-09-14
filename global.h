@@ -9,7 +9,7 @@ struct uniq_type_list;
 
 typedef struct global global;
 
-void global_dump(struct unit *, global *);
+void global_dump(struct unit *, global *, void *);
 
 const char *global_name(global *);
 struct type *global_type_as_ptr(struct uniq_type_list *, global *);

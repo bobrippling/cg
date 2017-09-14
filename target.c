@@ -63,7 +63,7 @@ static const struct
 
 	struct target_arch arch;
 	struct target_abi abi;
-	global_emit_func *emit;
+	on_global_func *emit;
 
 } arches[] = {
 	{

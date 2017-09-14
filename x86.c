@@ -1210,17 +1210,18 @@ static void x86_emit_prologue(
 		function *func,
 		long alloca_total,
 		unsigned align,
-		const struct target *target)
+		const struct target *target,
+		x86_octx *octx)
 {
 	const char *fname;
 	char regch = x86_target_regch(target);
 
-	printf(".text\n");
+	fprintf(octx->fout, ".text\n");
 	fname = function_name(func);
-	printf(".globl %s\n", fname);
-	printf("%s:\n", fname);
+	fprintf(octx->fout, ".globl %s\n", fname);
+	fprintf(octx->fout, "%s:\n", fname);
 
-	printf("\tpush %%%cbp\n"
+	fprintf(octx->fout, "\tpush %%%cbp\n"
 			"\tmov %%%csp, %%%cbp\n",
 			regch, regch, regch);
 
@@ -1229,7 +1230,7 @@ static void x86_emit_prologue(
 	}
 
 	if(alloca_total)
-		printf("\tsub $%ld, %%%csp\n", alloca_total, regch);
+		fprintf(octx->fout, "\tsub $%ld, %%%csp\n", alloca_total, regch);
 }
 
 static long x86_alloca_total(x86_octx *octx)
@@ -1237,64 +1238,65 @@ static long x86_alloca_total(x86_octx *octx)
 	return octx->alloca_bottom + octx->spill_alloca_max;
 }
 
-static void x86_out_fn(unit *unit, function *func)
+static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 {
 	unsigned alloca_sum = 0;
-	x86_octx out_ctx = { 0 };
 	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func, unit);
+	FILE *const saved_out = octx->fout;
+	FILE *const tmp_out = tmpfile();
+	if(!tmp_out)
+		die("tmpfile:");
 
-	out_ctx.unit = unit;
-
-	out_ctx.fout = tmpfile();
-	if(!out_ctx.fout)
-		die("tmpfile():");
-
-	out_ctx.exitblk = exit;
-	out_ctx.func = func;
+	octx->fout = tmp_out;
+	octx->exitblk = exit;
+	octx->func = func;
 
 	/* start at the bottom of allocas */
-	out_ctx.alloca_bottom = alloca_sum;
+	octx->alloca_bottom = alloca_sum;
 
-	blocks_traverse(entry, x86_out_block1, &out_ctx);
-	x86_emit_epilogue(&out_ctx, exit);
+	blocks_traverse(entry, x86_out_block1, octx);
+	x86_emit_epilogue(octx, exit);
+
+	octx->fout = saved_out;
 
 	/* now we spit out the prologue first */
 	x86_emit_prologue(
 			func,
-			x86_alloca_total(&out_ctx),
-			out_ctx.max_align,
-			unit_target_info(unit));
+			x86_alloca_total(octx),
+			octx->max_align,
+			unit_target_info(unit),
+			octx);
 
-	if(cat_file(out_ctx.fout, stdout) != 0)
+	if(cat_file(tmp_out, octx->fout) != 0)
 		die("cat file:");
 
-	if(fclose(out_ctx.fout))
+	if(fclose(tmp_out))
 		die("close:");
 }
 
-static void x86_emit_space(unsigned space)
+static void x86_emit_space(unsigned space, x86_octx *octx)
 {
 	if(space)
-		printf(".space %u\n", space);
+		fprintf(octx->fout, ".space %u\n", space);
 }
 
-static void x86_out_padding(size_t *const bytes, unsigned align)
+static void x86_out_padding(size_t *const bytes, unsigned align, x86_octx *octx)
 {
 	unsigned gap = gap_for_alignment(*bytes, align);
 
 	if(gap == 0)
 		return;
 
-	x86_emit_space(gap);
+	x86_emit_space(gap, octx);
 	*bytes += gap;
 }
 
-static void x86_out_init(struct init *init, type *ty)
+static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 {
 	switch(init->type){
 		case init_int:
-			printf(".%s %#llx\n",
+			fprintf(octx->fout, ".%s %#llx\n",
 					x86_size_name(type_size(ty)),
 					init->u.i);
 			break;
@@ -1307,21 +1309,21 @@ static void x86_out_init(struct init *init, type *ty)
 
 			assert(as_size <= tsize);
 
-			printf(X86_COMMENT_STR " alias init %s as %s:\n",
+			fprintf(octx->fout, X86_COMMENT_STR " alias init %s as %s:\n",
 					type_to_str_r(buf, sizeof(buf), ty),
 					type_to_str(init->u.alias.as));
 
-			x86_out_init(init->u.alias.init, init->u.alias.as);
+			x86_out_init(init->u.alias.init, init->u.alias.as, octx);
 
-			x86_emit_space(tsize - as_size);
+			x86_emit_space(tsize - as_size, octx);
 			break;
 		}
 
 		case init_str:
 		{
-			printf(".ascii \"");
+			fprintf(octx->fout, ".ascii \"");
 			dump_escaped_string(&init->u.str);
-			printf("\"\n");
+			fprintf(octx->fout, "\"\n");
 			break;
 		}
 
@@ -1333,7 +1335,7 @@ static void x86_out_init(struct init *init, type *ty)
 			dynarray_iter(&init->u.elem_inits, i){
 				struct init *elem = dynarray_ent(&init->u.elem_inits, i);
 
-				x86_out_init(elem, elemty);
+				x86_out_init(elem, elemty, octx);
 			}
 			break;
 		}
@@ -1354,30 +1356,30 @@ static void x86_out_init(struct init *init, type *ty)
 
 				type_size_align(elemty, &attr.size, &attr.align);
 
-				x86_out_padding(&bytes, attr.align);
+				x86_out_padding(&bytes, attr.align, octx);
 
-				x86_out_init(elem, elemty);
+				x86_out_init(elem, elemty, octx);
 
 				bytes += attr.size;
 			}
 
-			x86_out_padding(&bytes, type_align(ty));
+			x86_out_padding(&bytes, type_align(ty), octx);
 			break;
 		}
 
 		case init_ptr:
 		{
-			printf(".%s ", x86_size_name(type_size(ty)));
+			fprintf(octx->fout, ".%s ", x86_size_name(type_size(ty)));
 
 			if(init->u.ptr.is_label){
 				long off = init->u.ptr.u.ident.label.offset;
 
-				printf("%s %s %ld",
+				fprintf(octx->fout, "%s %s %ld",
 						init->u.ptr.u.ident.label.ident,
 						off > 0 ? "+" : "-",
 						off > 0 ? off : -off);
 			}else{
-				printf("%lu", init->u.ptr.u.integral);
+				fprintf(octx->fout, "%lu", init->u.ptr.u.integral);
 			}
 			putchar('\n');
 			break;
@@ -1385,15 +1387,15 @@ static void x86_out_init(struct init *init, type *ty)
 	}
 }
 
-static void x86_out_align(unsigned align, const struct target *target)
+static void x86_out_align(unsigned align, const struct target *target, x86_octx *octx)
 {
 	if(target->sys.align_is_pow2)
 		align = log2i(align);
 
-	printf(".align %u\n", align);
+	fprintf(octx->fout, ".align %u\n", align);
 }
 
-static void x86_out_var(variable_global *var, const struct target *target_info)
+static void x86_out_var(variable_global *var, const struct target *target_info, x86_octx *octx)
 {
 	variable *inner = variable_global_var(var);
 	const char *name = variable_name(inner);
@@ -1403,44 +1405,46 @@ static void x86_out_var(variable_global *var, const struct target *target_info)
 	/* TODO: use .bss for zero-init */
 
 	if(init_top && init_top->constant){
-		printf("%s\n", target_info->sys.section_rodata);
+		fprintf(octx->fout, "%s\n", target_info->sys.section_rodata);
 
 	}else{
-		printf(".data\n");
+		fprintf(octx->fout, ".data\n");
 	}
 
 	if(init_top){
 		if(!init_top->internal)
-			printf(".globl %s\n", name);
+			fprintf(octx->fout, ".globl %s\n", name);
 
 		if(init_top->weak)
-			printf("%s %s\n", target_info->sys.weak_directive_var, name);
+			fprintf(octx->fout, "%s %s\n", target_info->sys.weak_directive_var, name);
 	}
 
-	x86_out_align(type_align(var_ty), target_info);
+	x86_out_align(type_align(var_ty), target_info, octx);
 
-	printf("%s:\n", name);
+	fprintf(octx->fout, "%s:\n", name);
 
 	if(init_top){
-		x86_out_init(init_top->init, var_ty);
+		x86_out_init(init_top->init, var_ty, octx);
 	}else{
-		printf(".space %u\n", variable_size(inner));
+		fprintf(octx->fout, ".space %u\n", variable_size(inner));
 	}
 }
 
-void x86_out(unit *unit, global *glob)
+void x86_out(unit *unit, global *glob, void *ctx)
 {
 	const struct target *target = unit_target_info(unit);
+	FILE *fout = ctx;
+	x86_octx octx = { 0 };
+	octx.fout = fout;
+	octx.unit = unit;
 
 	if(global_is_forward_decl(glob)){
-		x86_octx octx = { 0 };
-		octx.fout = stdout;
 		x86_comment(&octx, "forward decl %s", global_name(glob));
 
 		if(glob->kind == GLOBAL_FUNC
 		&& function_attributes(glob->u.fn) & function_attribute_weak)
 		{
-			printf("%s %s\n", target->sys.weak_directive_func, global_name(glob));
+			fprintf(octx.fout, "%s %s\n", target->sys.weak_directive_func, global_name(glob));
 		}
 		return;
 	}
@@ -1452,13 +1456,13 @@ void x86_out(unit *unit, global *glob)
 
 			/* should have entry block, otherwise it's a forward decl */
 			assert(function_entry_block(fn, false));
-			x86_out_fn(unit, fn);
+			x86_out_fn(unit, fn, &octx);
 
 			break;
 		}
 
 		case GLOBAL_VAR:
-			x86_out_var(glob->u.var, target);
+			x86_out_var(glob->u.var, target, &octx);
 			break;
 
 		case GLOBAL_TYPE:

@@ -94,12 +94,12 @@ void unit_on_functions(unit *u, void fn(function *, unit *, void *), void *ctx)
 			fn(u->globals[i]->u.fn, u, ctx);
 }
 
-void unit_on_globals(unit *u, global_emit_func *fn)
+void unit_on_globals(unit *u, on_global_func *fn, void *ctx)
 {
 	size_t i;
 
 	for(i = 0; i < u->nglobals; i++)
-		fn(u, u->globals[i]);
+		fn(u, u->globals[i], ctx);
 }
 
 static void unit_add_global(unit *u, void *global, enum global_kind kind)
@@ -163,14 +163,4 @@ global *unit_global_find(unit *u, const char *spel)
 	}
 
 	return NULL;
-}
-
-void unit_dump(unit *u)
-{
-	size_t i;
-	for(i = 0; i < u->nglobals; i++){
-		global *g = u->globals[i];
-
-		global_dump(u, g);
-	}
 }
