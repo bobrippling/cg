@@ -56,3 +56,27 @@ int cat_file(FILE *from, FILE *to)
 
 	return 0;
 }
+
+FILE *temp_file(char **const fname)
+{
+	char *tmppath;
+	int fd;
+	char *tmpdir = getenv("TMPDIR");
+
+#ifdef P_tmpdir
+	if(!tmpdir)
+		tmpdir = P_tmpdir;
+#endif
+	if(!tmpdir)
+		tmpdir = "/tmp";
+
+	tmppath = xsprintf("%s/XXXXXX", tmpdir);
+	fd = mkstemp(tmppath);
+
+	if(fname)
+		*fname = tmppath;
+	else
+		free(tmppath);
+
+	return fdopen(fd, "w");
+}

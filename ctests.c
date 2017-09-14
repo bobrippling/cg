@@ -2,6 +2,8 @@
 #include <unistd.h>
 
 #include "die.h"
+#include "mem.h"
+#include "io.h"
 
 #include "unit.h"
 #include "target.h"
@@ -13,17 +15,70 @@
 #include "pass_spill.h"
 #include "pass_regalloc.h"
 
+struct compile_ctx
+{
+	struct error
+	{
+		int line;
+		char *fmt;
+
+		struct error *next;
+	} *errors;
+
+};
+
+struct path_and_file
+{
+	char *path;
+	FILE *f;
+};
+
+static void free_path_and_file(struct path_and_file *paf)
+{
+	if(paf->f && fclose(paf->f))
+		die("close %s:", paf->path);
+
+	free(paf->path);
+}
+
+static void on_error_store(
+		const char *file,
+		int line,
+		void *vctx,
+		const char *fmt,
+		va_list l)
+{
+	struct compile_ctx *ctx = vctx;
+	struct error *e = xmalloc(sizeof(*e));
+
+	(void)file;
+	(void)l;
+
+	e->line = line;
+	e->fmt = xstrdup(fmt);
+
+	e->next = ctx->errors;
+	ctx->errors = e;
+}
+
+static void on_error_simple(
+		const char *file,
+		int line,
+		void *vctx,
+		const char *fmt,
+		va_list l)
+{
+	int *ctx = vctx;
+	*ctx = 1;
+}
+
 static unit *compile_string(const char *str, int *const err, const struct target *target)
 {
-	struct {
-		int parse, tok;
-	} errs;
 	tokeniser *tok = token_init_str(str);
-	unit *u = parse_code(tok, &errs.parse, target);
-	token_fin(tok, &errs.tok);
-
-	*err = errs.parse + errs.tok;
-
+	int parse_err = 0;
+	unit *u = parse_code_cb(tok, target, on_error_simple, &parse_err);
+	token_fin(tok, err);
+	*err |= parse_err;
 	return u;
 }
 
@@ -37,31 +92,61 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 	pass_regalloc(fn, unit, target);
 }
 
-static int execute_ir(const struct target *target, const char *str)
+static unit *compile_and_pass_string(const char *str, int *const err, const struct target *target)
 {
-	int err;
-	unit *u = compile_string(str, &err, target);
-	if(err){
-		fprintf(stderr, "err\n");
-		return 1;
-	}
-	unit_on_functions(u, run_passes, (void *)target);
+	unit *u = compile_string(str, err, target);
+	if(!*err)
+		unit_on_functions(u, run_passes, (void *)target);
+	return u;
+}
 
-	FILE *f = fopen("/tmp/dog.s", "w");/*tmpfile();*/
-	if(!f)
-		die("tmpfile:");
-	/* FIXME: closing stdout/f, memleak / problems writing to stdout after etc etc */
-	if(dup2(fileno(f), 1) < 0)
-		die("dup2:");
-	unit_on_globals(u, target->emit);
-	fclose(f);
-	fclose(stdout);
+static int execute_ir(const struct target *target, int *const err, const char *str)
+{
+	struct path_and_file as, exe;
+	int ec = 0;
+	int build_err;
+	char sysbuf[256];
+	unit *u = compile_and_pass_string(str, err, target);
 
-	if(system("echo 'int entry(void) __asm(\"entry\"); int main(){return entry();}' | cc -o /tmp/dog /tmp/dog.s -xc -"))
-		die("system:");
+	if(*err)
+		goto out_err;
 
-	fprintf(stderr, "running /tmp/dog\n");
-	return WEXITSTATUS(system("/tmp/dog"));
+	as.f = temp_file(&as.path);
+	if(!as.f)
+		die("open %s:", as.path);
+
+	unit_on_globals(u, target->emit, as.f);
+	if(fclose(as.f))
+		die("close:");
+	as.f = NULL;
+
+	exe.f = temp_file(&exe.path);
+
+	snprintf(
+			sysbuf,
+			sizeof(sysbuf),
+			"echo 'int entry(void) __asm__(\"entry\"); int main(){return entry();}' "
+			"| cc -w -o %s -x assembler %s -xc -",
+			exe.path, as.path);
+
+	build_err = system(sysbuf);
+	if(build_err)
+		goto out_err;
+
+	ec = system(exe.path);
+
+out:
+	unit_free(u);
+	free_path_and_file(&as);
+	free_path_and_file(&exe);
+
+	if(WIFEXITED(ec))
+		return WEXITSTATUS(ec);
+	return -1;
+
+out_err:
+	*err = 1;
+	goto out;
 }
 
 int main(int argc, const char *argv[])
@@ -72,10 +157,12 @@ int main(int argc, const char *argv[])
 	}
 
 	struct target target;
-	target_parse("darwin-x86_64", &target);
+	target_default(&target);
 
+	int err;
 	int ec = execute_ir(
 			&target,
+			&err,
 			"$is_5 = i4(i4 $x){"
 			"  $b = eq $x, i4 5"
 			"  $be = zext i4, $b"
@@ -87,7 +174,16 @@ int main(int argc, const char *argv[])
 			"}"
 			);
 
-	fprintf(stderr, "result: %d\n", ec);
+	/* TODO:
+	 * interested in:
+	 *   -[X] ./test a b c; test $? -eq ...
+	 *   -[ ] machine output
+	 *   -[ ] errors
+	 *   -[ ] irdiff (pre-pass)
+	 *   -[ ] ir output (optimisation folding, jump threading, etc)
+	 */
+
+	fprintf(stderr, "build-error=%d, result=%d\n", err, ec);
 
 	return 0;
 }
