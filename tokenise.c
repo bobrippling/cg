@@ -80,8 +80,15 @@ static char *token_read_line(tokeniser *t)
 {
 	char *r;
 
-	if(t->f)
-		return read_line(t->f);
+	if(t->f){
+		char *l = read_line(t->f);
+		if(errno){
+			fprintf(stderr, "read: %s\n", strerror(errno));
+			free(l);
+			l = NULL;
+		}
+		return l;
+	}
 
 	r = t->str;
 	t->str = NULL;
