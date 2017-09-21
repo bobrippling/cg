@@ -1,20 +1,22 @@
 #ifndef OP_H
 #define OP_H
 
-#define OPS   \
-	X(add)      \
-	X(sub)      \
-	X(mul)      \
-	X(sdiv)     \
-	X(udiv)     \
-	X(smod)     \
-	X(umod)     \
-	X(and)      \
-	X(or)       \
-	X(xor)      \
-	X(shiftl)      \
-	X(shiftr_logic)\
-	X(shiftr_arith)
+#include <stdbool.h>
+
+#define OPS          \
+	X(add, 1)          \
+	X(sub, 1)          \
+	X(mul, 1)          \
+	X(sdiv, 1)         \
+	X(udiv, 1)         \
+	X(smod, 1)         \
+	X(umod, 1)         \
+	X(and, 1)          \
+	X(or, 1)           \
+	X(xor, 1)          \
+	X(shiftl, 0)       \
+	X(shiftr_logic, 0) \
+	X(shiftr_arith, 0)
 
 #define CMPS \
 	X(eq)      \
@@ -26,7 +28,7 @@
 
 enum op
 {
-#define X(op) op_ ## op,
+#define X(op, match) op_ ## op,
 	OPS
 #undef X
 };
@@ -41,6 +43,8 @@ enum op_cmp
 int op_exe(enum op, int l, int r, int *div0);
 
 int op_cmp_exe(enum op_cmp, int l, int r);
+
+bool op_operands_must_match(enum op);
 
 const char *op_to_str(enum op);
 const char *op_cmp_to_str(enum op_cmp);

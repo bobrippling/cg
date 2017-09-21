@@ -57,7 +57,7 @@ int op_cmp_exe(enum op_cmp cmp, int l, int r)
 const char *op_to_str(enum op op)
 {
 	switch(op){
-#define X(op) case op_ ## op: return #op;
+#define X(op, match) case op_ ## op: return #op;
 		OPS
 #undef X
 	}
@@ -69,6 +69,16 @@ const char *op_cmp_to_str(enum op_cmp cmp)
 	switch(cmp){
 #define X(cmp) case cmp_ ## cmp: return #cmp;
 		CMPS
+#undef X
+	}
+	assert(0);
+}
+
+bool op_operands_must_match(enum op op)
+{
+	switch(op){
+#define X(op, match) case op_ ## op: return match;
+		OPS
 #undef X
 	}
 	assert(0);

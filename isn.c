@@ -296,7 +296,7 @@ isn *isn_op(enum op op, val *lhs, val *rhs, val *res)
 	val_retain(rhs);
 	val_retain(res);
 
-	assert(type_size(val_type(lhs)) == type_size(val_type(rhs)));
+	assert(type_size(val_type(lhs)) == type_size(val_type(rhs)) || !op_operands_must_match(op));
 	assert(type_eq(val_type(lhs), val_type(res)) || type_eq(val_type(rhs), val_type(res)));
 
 	isn = isn_new(ISN_OP);
