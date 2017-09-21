@@ -725,6 +725,8 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
+	bool truncate_to_byte = false;
+	type *saved_ty = NULL;
 	struct backend_isn opisn;
 
 	if(op == op_mul && /* XXX: disabled */false){
@@ -760,9 +762,9 @@ static void x86_op(
 		case op_or:           opisn.mnemonic = "or"; break;
 		case op_xor:          opisn.mnemonic = "xor"; break;
 
-		case op_shiftl:       opisn.mnemonic = "shl"; break;
-		case op_shiftr_arith: opisn.mnemonic = "sar"; break;
-		case op_shiftr_logic: opisn.mnemonic = "shr"; break;
+		case op_shiftl:       opisn.mnemonic = "shl"; truncate_to_byte = true; break;
+		case op_shiftr_arith: opisn.mnemonic = "sar"; truncate_to_byte = true; break;
+		case op_shiftr_logic: opisn.mnemonic = "shr"; truncate_to_byte = true; break;
 
 		case op_sdiv:
 		case op_smod:
@@ -784,8 +786,17 @@ static void x86_op(
 		}
 	}
 
+	if(truncate_to_byte){
+		saved_ty = type_get_primitive(unit_uniqtypes(octx->unit), i1);
+	}else{
+		saved_ty = rhs->ty;
+	}
+	rhs->ty = saved_ty;
+
 	x86_mov(lhs, res, octx); /* FIXME: what if they're both in memory? */
 	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
+
+	rhs->ty = saved_ty;
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
