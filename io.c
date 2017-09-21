@@ -42,6 +42,31 @@ char *read_line(FILE *f)
 	return buf;
 }
 
+char **read_lines(FILE *f, size_t *const nlines)
+{
+	char **lines = NULL;
+	*nlines = 0;
+
+	for(;;){
+		char *line = read_line(f);
+		const int e = errno;
+
+		if(!line)
+			break;
+
+		++*nlines;
+		lines = xrealloc(lines, *nlines * sizeof(*lines));
+		lines[*nlines - 1] = line;
+
+		if(e){
+			errno = e;
+			break;
+		}
+	}
+
+	return lines;
+}
+
 int cat_file(FILE *from, FILE *to)
 {
 	char buf[512];

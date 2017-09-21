@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 
 #include "die.h"
@@ -169,6 +170,55 @@ static void test_ir_ret(const char *str, int ret, const struct target *target)
 	}
 }
 
+static void test_ir_x86(
+		const char *ir,
+		const char *x86,
+		const struct target *target)
+{
+	int err;
+	unit *u = compile_and_pass_string(ir, &err, target);
+
+	if(err){
+		fprintf(stderr, ":(\n");
+		goto out;
+	}
+
+	FILE *f = tmpfile();
+	if(!f)
+		die("tmpfile:");
+
+	unit_on_globals(u, target->emit, f);
+
+	if(fseek(f, 0, SEEK_SET) < 0)
+		die("fseek:");
+
+	size_t nlines;
+	char **lines = read_lines(f, &nlines);
+	if(errno)
+		die("read:");
+
+	bool found = false;
+	for(size_t i = 0; i < nlines; i++){
+		if(strstr(lines[i], x86)){
+			found = true;
+			break;
+		}
+	}
+
+out:
+	if(err){
+		fprintf(stderr, "error compiling\n");
+		failed++;
+	}else if(!found){
+		fprintf(stderr, "couldn't find \"%s\"\n", x86);
+		failed++;
+	}else{
+		passed++;
+	}
+
+	unit_free(u);
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -192,10 +242,17 @@ int main(int argc, const char *argv[])
 			1,
 			&target);
 
+	test_ir_x86(
+			"$f = i4(i4 $a){"
+			"  ret i4 3"
+			"}",
+			"mov $3, %eax",
+			&target);
+
 	/* TODO:
 	 * interested in:
 	 *   -[X] ./test a b c; test $? -eq ...
-	 *   -[ ] machine output
+	 *   -[X] machine output
 	 *   -[ ] errors
 	 *   -[ ] irdiff (pre-pass)
 	 *   -[ ] ir output (optimisation folding, jump threading, etc)
