@@ -35,6 +35,11 @@ struct constraint {
 	val *val;
 };
 
+struct constrain_ctx {
+	const struct target *target;
+	uniq_type_list *utl;
+};
+
 static void populate_constraints(
 		isn *isn,
 		struct constraint *req_lhs,
@@ -231,7 +236,7 @@ via_temp:
 }
 
 static void gen_constraint_isns(
-		isn *isn_to_constrain, struct constraint const *req, bool postisn)
+		isn *isn_to_constrain, struct constraint const *req, bool postisn, uniq_type_list *utl)
 {
 	/* We don't know where `req->val` will end up so we can pick any constraint,
 	 * within reason. Regalloc will work around us later on. Attempt to pick
@@ -272,18 +277,18 @@ static void gen_constraint_isns(
 	/* no constraint */
 }
 
-static void isel_reserve_cisc_isn(isn *isn)
+static void isel_reserve_cisc_isn(isn *isn, uniq_type_list *utl)
 {
 	struct constraint req_lhs = { 0 }, req_rhs = { 0 }, req_ret = { 0 };
 
 	populate_constraints(isn, &req_lhs, &req_rhs, &req_ret);
 
 	if(req_lhs.val)
-		gen_constraint_isns(isn, &req_lhs, false);
+		gen_constraint_isns(isn, &req_lhs, false, utl);
 	if(req_rhs.val)
-		gen_constraint_isns(isn, &req_rhs, false);
+		gen_constraint_isns(isn, &req_rhs, false, utl);
 	if(req_ret.val)
-		gen_constraint_isns(isn, &req_ret, true);
+		gen_constraint_isns(isn, &req_ret, true, utl);
 }
 
 static void isel_pad_cisc_isn(isn *i)
@@ -318,23 +323,22 @@ static void isel_pad_cisc_isn(isn *i)
 
 static void isel_reserve_cisc_block(block *block, void *vctx)
 {
+	uniq_type_list *utl = vctx;
 	isn *i;
-
-	(void)vctx;
 
 	isns_flag(block_first_isn(block), true);
 
 	for(i = block_first_isn(block); i; i = i->next){
 		if(i->flag){
-			isel_reserve_cisc_isn(i);
+			isel_reserve_cisc_isn(i, utl);
 			isel_pad_cisc_isn(i);
 		}
 	}
 }
 
-static void isel_reserve_cisc(block *entry)
+static void isel_reserve_cisc(block *entry, uniq_type_list *utl)
 {
-	blocks_traverse(entry, isel_reserve_cisc_block, NULL);
+	blocks_traverse(entry, isel_reserve_cisc_block, utl);
 }
 
 static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
@@ -571,9 +575,9 @@ static const struct backend_isn_constraint *find_isn_bestmatch(
 }
 
 static void gen_constraint_isns_for_op_category(
-		val *v, enum operand_category cat, isn *fi, bool postisn)
+		val *v, enum operand_category cat, isn *fi, bool postisn, uniq_type_list *utl)
 {
-	struct constraint constraint;
+	struct constraint constraint = { 0 };
 
 	assert(v);
 
@@ -599,10 +603,14 @@ static void gen_constraint_isns_for_op_category(
 	}
 
 	constraint.val = v;
-	gen_constraint_isns(fi, &constraint, postisn);
+	gen_constraint_isns(fi, &constraint, postisn, utl);
 }
 
-static void isel_generic(isn *fi, const struct target *target, const struct backend_isn *bi)
+static void isel_generic(
+		isn *fi,
+		const struct target *target,
+		const struct backend_isn *bi,
+		uniq_type_list *utl)
 {
 	const struct backend_isn_constraint *bestmatch;
 	unsigned conversions_required;
@@ -658,15 +666,15 @@ static void isel_generic(isn *fi, const struct target *target, const struct back
 			v = inputs[input_index++];
 			assert(v && "input underflow");
 
-			gen_constraint_isns_for_op_category(v, bestmatch->category[i], fi, false);
+			gen_constraint_isns_for_op_category(v, bestmatch->category[i], fi, false, utl);
 		}
 		if(bestmatch->category[i] & OPERAND_OUTPUT){
-			gen_constraint_isns_for_op_category(output, bestmatch->category[i], fi, true);
+			gen_constraint_isns_for_op_category(output, bestmatch->category[i], fi, true, utl);
 		}
 	}
 }
 
-static void isel_constrain_isn(isn *fi, const struct target *target)
+static void isel_constrain_isn(isn *fi, const struct target *target, uniq_type_list *utl)
 {
 	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
@@ -679,12 +687,12 @@ static void isel_constrain_isn(isn *fi, const struct target *target)
 	if(!bi)
 		return;
 
-	isel_generic(fi, target, bi);
+	isel_generic(fi, target, bi, utl);
 }
 
 static void isel_constrain_isns_block(block *block, void *vctx)
 {
-	const struct target *target = vctx;
+	struct constrain_ctx *ctx = vctx;
 	isn *i;
 
 	isn *const first = block_first_isn(block);
@@ -693,13 +701,16 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 
 	for(i = block_first_isn(block); i; i = i->next){
 		if(i->flag)
-			isel_constrain_isn(i, target);
+			isel_constrain_isn(i, ctx->target, ctx->utl);
 	}
 }
 
-static void isel_constrain_isns(block *entry, const struct target *target)
+static void isel_constrain_isns(block *entry, const struct target *target, uniq_type_list *utl)
 {
-	blocks_traverse(entry, isel_constrain_isns_block, (void *)target);
+	struct constrain_ctx ctx;
+	ctx.utl = utl;
+	ctx.target = target;
+	blocks_traverse(entry, isel_constrain_isns_block, &ctx);
 }
 
 void pass_isel(function *fn, struct unit *unit, const struct target *target)
@@ -726,6 +737,6 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 	}
 
 	isel_create_ptrmath(entry, unit);
-	isel_reserve_cisc(entry);
-	isel_constrain_isns(entry, target);
+	isel_reserve_cisc(entry, unit_uniqtypes(unit));
+	isel_constrain_isns(entry, target, unit_uniqtypes(unit));
 }
