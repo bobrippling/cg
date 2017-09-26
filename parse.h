@@ -1,6 +1,8 @@
 #ifndef PARSE_H
 #define PARSE_H
 
+#include <stdarg.h>
+
 #include "unit.h"
 
 typedef attr_printf(4, 0) void parse_error_fn(
