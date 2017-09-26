@@ -1120,7 +1120,8 @@ static struct init *parse_init(parse *p, type *ty)
 	init = xmalloc(sizeof *init);
 
 	if(token_accept(p->tok, tok_aliasinit)){
-		/* aliasinit <type> <init> */
+		/* aliasinit <type> <init>
+		 * (useful for unions) */
 		init->type = init_alias;
 		init->u.alias.as = parse_type(p);
 
