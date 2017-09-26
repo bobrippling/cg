@@ -3,7 +3,7 @@
 
 #include "string.h"
 
-int dump_escaped_string(const struct string *str)
+int dump_escaped_string(const struct string *str, FILE *f)
 {
 	size_t i;
 	int ret = 0;
@@ -13,9 +13,9 @@ int dump_escaped_string(const struct string *str)
 		int r;
 
 		if(isprint(ch))
-			r = printf("%c", ch);
+			r = fprintf(f, "%c", ch);
 		else
-			r = printf("\\%03o", (unsigned)ch);
+			r = fprintf(f, "\\%03o", (unsigned)ch);
 
 		if(r < 0)
 			return r;

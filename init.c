@@ -19,7 +19,7 @@ static void init_dump_r(struct init *init, FILE *f)
 
 		case init_str:
 			putchar('\"');
-			dump_escaped_string(&init->u.str);
+			dump_escaped_string(&init->u.str, f);
 			putchar('\"');
 			break;
 

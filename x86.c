@@ -1328,7 +1328,7 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 		case init_str:
 		{
 			fprintf(octx->fout, ".ascii \"");
-			dump_escaped_string(&init->u.str);
+			dump_escaped_string(&init->u.str, octx->fout);
 			fprintf(octx->fout, "\"\n");
 			break;
 		}
