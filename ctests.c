@@ -150,6 +150,11 @@ static int execute_ir(const struct target *target, int *const err, const char *s
 	if(build_err)
 		goto out_err;
 
+	FILE *newf = freopen(exe.path, "r", exe.f);
+	if(!newf)
+		die("freopen() executable:");
+	exe.f = newf;
+
 	ec = system(exe.path);
 
 out:
