@@ -74,7 +74,8 @@ static void test_type_iter(void)
 		NULL
 	};
 
-	for(type **i = expected; *i; i++){
+	type **i;
+	for(i = expected; *i; i++){
 		type *got = type_iter_next(iter);
 
 		test(got == *i);

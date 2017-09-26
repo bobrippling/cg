@@ -211,7 +211,8 @@ static void test_ir_x86(
 		die("read:");
 
 	bool found = false;
-	for(size_t i = 0; i < nlines; i++){
+	size_t i;
+	for(i = 0; i < nlines; i++){
 		if(strstr(lines[i], x86)){
 			found = true;
 		}
@@ -258,7 +259,8 @@ static void test_ir_error(
 	va_list l;
 	va_start(l, line);
 
-	for(struct error *e = ctx.errors; e; e = e->next){
+	struct error *e;
+	for(e = ctx.errors; e; e = e->next){
 		if(e->line != line){
 			fprintf(stderr, "error mismatch: expected error on line %d, got it on line %d\n", line, e->line);
 			had_error = 1;
