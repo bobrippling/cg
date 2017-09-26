@@ -21,7 +21,8 @@ typedef struct uniq_type_list uniq_type_list;
 
 enum type_primitive
 {
-#define X(name, integral, sz, align) name,
+	/* assign a unique non-zero value to allow zero to be used as a sentinel */
+#define X(name, integral, sz, align) name = (sz + integral),
 	TYPE_PRIMITIVES
 #undef X
 };
