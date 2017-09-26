@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "die.h"
 #include "mem.h"
