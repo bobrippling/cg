@@ -43,6 +43,7 @@ static void free_path_and_file(struct path_and_file *paf)
 	if(paf->f && fclose(paf->f))
 		die("close %s:", paf->path);
 
+	unlink(paf->path);
 	free(paf->path);
 }
 
