@@ -1306,6 +1306,7 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 			const unsigned tsize = type_size(ty);
 			const unsigned as_size = type_size(init->u.alias.as);
 			char buf[256];
+			struct init *sub;
 
 			assert(as_size <= tsize);
 
@@ -1313,9 +1314,14 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 					type_to_str_r(buf, sizeof(buf), ty),
 					type_to_str(init->u.alias.as));
 
-			x86_out_init(init->u.alias.init, init->u.alias.as, octx);
-
-			x86_emit_space(tsize - as_size, octx);
+			sub = init->u.alias.init;
+			/* make zeroinits look nice */
+			if(sub->type == init_int && sub->u.i == 0){
+				x86_emit_space(tsize, octx);
+			}else{
+				x86_out_init(init->u.alias.init, init->u.alias.as, octx);
+				x86_emit_space(tsize - as_size, octx);
+			}
 			break;
 		}
 
