@@ -219,6 +219,67 @@ out:
 	unit_free(u);
 }
 
+static void test_ir_error(
+		const char *ir,
+		const struct target *target,
+		const char *err, int line,
+		...)
+{
+	tokeniser *tok = token_init_str(ir);
+	struct compile_ctx ctx = { 0 };
+
+	unit *u = parse_code_cb(tok, target, on_error_store, &ctx);
+	int tok_err;
+	token_fin(tok, &tok_err);
+	unit_free(u);
+
+	if(tok_err){
+		fprintf(stderr, "tokenisation error\n");
+		failed++;
+		return;
+	}
+
+	int had_error = 0;
+	va_list l;
+	va_start(l, line);
+
+	for(struct error *e = ctx.errors; e; e = e->next){
+		if(e->line != line){
+			fprintf(stderr, "error mismatch: expected error on line %d, got it on line %d\n", line, e->line);
+			had_error = 1;
+			goto out;
+		}else if(strcmp(e->fmt, err)){
+			fprintf(stderr, "error mismatch: expected \"%s\", got \"%s\"\n", err, e->fmt);
+			had_error = 1;
+			goto out;
+		}
+
+		err = va_arg(l, const char *);
+		if(!err){
+			if(e->next){
+				fprintf(stderr, "error count mismatch: got more than expected\n");
+				had_error = 1;
+				goto out;
+			}
+			break;
+		}
+		line = va_arg(l, int);
+	}
+
+	if(err){
+		fprintf(stderr, "error count mismatch: got fewer than expected\n");
+		had_error = 1;
+	}
+
+out:
+	va_end(l);
+
+	if(had_error)
+		failed++;
+	else
+		passed++;
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -249,11 +310,20 @@ int main(int argc, const char *argv[])
 			"mov $3, %eax",
 			&target);
 
+	test_ir_error(
+			"$main = i4(){\n"
+			"	$z = alloca i4()\n"
+			"	ret i4 0\n"
+			"}\n",
+			&target,
+			"alloca of function type", 1,
+			(char *)NULL);
+
 	/* TODO:
 	 * interested in:
 	 *   -[X] ./test a b c; test $? -eq ...
 	 *   -[X] machine output
-	 *   -[ ] errors
+	 *   -[X] errors
 	 *   -[ ] irdiff (pre-pass)
 	 *   -[ ] ir output (optimisation folding, jump threading, etc)
 	 */
