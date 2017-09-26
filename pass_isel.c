@@ -33,6 +33,7 @@ struct constraint {
 	} req;
 	regt reg[2]; /* union if more needed */
 	val *val;
+	int size_req_primitive;
 };
 
 struct constrain_ctx {
@@ -107,6 +108,7 @@ static void populate_constraints(
 					req_rhs->reg[0] = regt_make(REG_ECX, 0);
 					req_rhs->reg[1] = regt_make_invalid();
 					req_rhs->val = isn->u.op.rhs;
+					req_rhs->size_req_primitive = i1;
 					break;
 				}
 			}
@@ -235,6 +237,35 @@ via_temp:
 	}
 }
 
+static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size_req_primitive, uniq_type_list *utl)
+{
+	val *const v = *out_v;
+	type *curtype = val_type(v);
+	enum type_primitive *curprim = type_primitive(curtype);
+	isn *i;
+	val *out;
+
+	assert(curprim);
+	assert(size_req_primitive);
+
+	if(*curprim == size_req_primitive)
+		return;
+
+	assert(type_primitive_size(*curprim) > type_primitive_size(size_req_primitive));
+
+	out = val_new_localf(
+			type_get_primitive(utl, size_req_primitive),
+			false,
+			"reg.for.size.%d",
+			(int)v);
+
+	i = isn_trunc(v, out);
+	isn_insert_before(isn_to_constrain, i);
+	isn_replace_val_with_val(isn_to_constrain, v, out, REPLACE_INPUTS);
+
+	*out_v = out;
+}
+
 static void gen_constraint_isns(
 		isn *isn_to_constrain, struct constraint const *req, bool postisn, uniq_type_list *utl)
 {
@@ -243,6 +274,10 @@ static void gen_constraint_isns(
 	 * constant if the value is a constant, otherwise go for reg if available.
 	 */
 	val *v = req->val;
+
+	if(req->size_req_primitive){
+		constrain_to_size(&v, isn_to_constrain, req->size_req_primitive, utl);
+	}
 
 	if(v->kind == LITERAL && req->req & REQ_CONST){
 		assert(type_is_int(v->ty) || type_deref(v->ty));
