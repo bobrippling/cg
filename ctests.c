@@ -46,6 +46,17 @@ static void free_path_and_file(struct path_and_file *paf)
 	free(paf->path);
 }
 
+static void free_compile_ctx(struct compile_ctx *ctx)
+{
+	struct error *e, *next;
+
+	for(e = ctx->errors; e; e = next){
+		next = e->next;
+		free(e->fmt);
+		free(e);
+	}
+}
+
 static void on_error_store(
 		const char *file,
 		int line,
@@ -107,7 +118,7 @@ static unit *compile_and_pass_string(const char *str, int *const err, const stru
 
 static int execute_ir(const struct target *target, int *const err, const char *str)
 {
-	struct path_and_file as, exe;
+	struct path_and_file as = { 0 }, exe = { 0 };
 	int ec = 0;
 	int build_err;
 	char sysbuf[256];
@@ -203,9 +214,10 @@ static void test_ir_x86(
 	for(size_t i = 0; i < nlines; i++){
 		if(strstr(lines[i], x86)){
 			found = true;
-			break;
 		}
+		free(lines[i]);
 	}
+	free(lines);
 
 out:
 	if(err){
@@ -235,13 +247,14 @@ static void test_ir_error(
 	token_fin(tok, &tok_err);
 	unit_free(u);
 
+	int had_error = 0;
+
 	if(tok_err){
 		fprintf(stderr, "tokenisation error\n");
-		failed++;
-		return;
+		had_error = 1;
+		goto out;
 	}
 
-	int had_error = 0;
 	va_list l;
 	va_start(l, line);
 
@@ -249,11 +262,11 @@ static void test_ir_error(
 		if(e->line != line){
 			fprintf(stderr, "error mismatch: expected error on line %d, got it on line %d\n", line, e->line);
 			had_error = 1;
-			goto out;
+			goto out_va_end;
 		}else if(strcmp(e->fmt, err)){
 			fprintf(stderr, "error mismatch: expected \"%s\", got \"%s\"\n", err, e->fmt);
 			had_error = 1;
-			goto out;
+			goto out_va_end;
 		}
 
 		err = va_arg(l, const char *);
@@ -261,7 +274,7 @@ static void test_ir_error(
 			if(e->next){
 				fprintf(stderr, "error count mismatch: got more than expected\n");
 				had_error = 1;
-				goto out;
+				goto out_va_end;
 			}
 			break;
 		}
@@ -273,8 +286,11 @@ static void test_ir_error(
 		had_error = 1;
 	}
 
-out:
+out_va_end:
 	va_end(l);
+
+out:
+	free_compile_ctx(&ctx);
 
 	if(had_error)
 		failed++;
