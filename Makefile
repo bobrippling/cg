@@ -49,7 +49,7 @@ ctests: ${OBJ} ctests.o
 
 %.o: %.c
 	@echo compile $<
-	$Q${CC} -c -o $@ $< ${CFLAGS}
+	$Q${CC} -c -o $@ $< ${CFLAGS} ${CPPFLAGS}
 
 tags: ${SRC}
 	@echo ctags
@@ -66,6 +66,9 @@ clean:
 
 # va_copy:
 mem.o: CFLAGS += -std=c99
+
+# mkstemp:
+io.o: CPPFLAGS += -D_XOPEN_SOURCE=500
 
 -include ${OBJ_ALL:%.o=.%.d}
 -include Makefile.cfg
