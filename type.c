@@ -95,15 +95,22 @@ bool type_eq(type *t1, type *t2)
 	return t1 == t2;
 }
 
-bool type_is_primitive(type *t, enum type_primitive prim)
+enum type_primitive *type_primitive(type *t)
 {
 	t = type_resolve(t);
 	if(!t)
-		return false;
+		return NULL;
 
 	if(t->kind != PRIMITIVE)
-		return false;
-	return t->u.prim == prim;
+		return NULL;
+
+	return &t->u.prim;
+}
+
+bool type_is_primitive(type *t, enum type_primitive prim)
+{
+	enum type_primitive *p = type_primitive(t);
+	return p && *p == prim;
 }
 
 bool type_is_int(type *t)

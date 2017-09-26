@@ -66,6 +66,7 @@ dynarray *type_func_args(type *);
 type *type_array_element(type *);
 type *type_struct_element(type *, size_t);
 size_t type_array_count(type *);
+enum type_primitive *type_primitive(type *);
 
 /* --- sizing --- */
 void type_size_align(type *, unsigned *sz, unsigned *align);
