@@ -179,6 +179,13 @@ static void type_primitive_size_align(
 	assert(0);
 }
 
+unsigned type_primitive_size(enum type_primitive p)
+{
+	unsigned sz, align;
+	type_primitive_size_align(p, &sz, &align);
+	return sz;
+}
+
 enum type_primitive type_primitive_less_or_equal(unsigned sz, bool fp)
 {
 	if(fp){

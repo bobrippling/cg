@@ -72,5 +72,6 @@ enum type_primitive *type_primitive(type *);
 void type_size_align(type *, unsigned *sz, unsigned *align);
 unsigned type_size(type *);
 unsigned type_align(type *);
+unsigned type_primitive_size(enum type_primitive);
 
 #endif
