@@ -65,11 +65,13 @@ bool lifetime_contains(const struct lifetime *lt, isn *needle, bool include_last
 	return false;
 }
 
-static void lifetime_fill_block(block *b)
+static void lifetime_fill_block(block *b, void *vctx)
 {
 	struct lifetime_assign_ctx ctx = { 0 };
 	isn *i;
 	ctx.blk = b;
+
+	(void)vctx;
 
 	for(i = block_first_isn(b); i; i = isn_next(i), ctx.isn_count++)
 		isn_on_live_vals(i, assign_lifetime, &ctx);
@@ -77,5 +79,5 @@ static void lifetime_fill_block(block *b)
 
 void lifetime_fill_func(function *func)
 {
-	function_onblocks(func, lifetime_fill_block);
+	function_onblocks(func, lifetime_fill_block, NULL);
 }

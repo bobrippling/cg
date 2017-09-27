@@ -26,8 +26,6 @@ void block_free(block *);
 
 int block_tenative(block *);
 
-void blocks_traverse(block *, void (block *, void *), void *);
-
 struct isn *block_first_isn(block *);
 void block_add_isn(block *, struct isn *);
 
@@ -44,7 +42,5 @@ dynmap *block_lifetime_map(block *);
 unsigned block_hash(block *);
 
 void block_dump(block *, FILE *);
-
-void block_lifecheck(block *);
 
 #endif

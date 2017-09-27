@@ -22,7 +22,8 @@ void function_finalize(function *);
 void function_add_attributes(function *, enum function_attributes);
 enum function_attributes function_attributes(function *);
 
-void function_onblocks(function *, void (block *));
+void function_onblocks(function *, void (block *, void *), void *);
+void function_blocks_traverse(function *, void (block *, void *), void *);
 
 block *function_entry_block(function *, bool create);
 block *function_exit_block(function *, struct unit *unit);

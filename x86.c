@@ -1241,7 +1241,6 @@ static long x86_alloca_total(x86_octx *octx)
 static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 {
 	unsigned alloca_sum = 0;
-	block *const entry = function_entry_block(func, false);
 	block *const exit = function_exit_block(func, unit);
 	FILE *const saved_out = octx->fout;
 	FILE *const tmp_out = tmpfile();
@@ -1255,7 +1254,7 @@ static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 	/* start at the bottom of allocas */
 	octx->alloca_bottom = alloca_sum;
 
-	blocks_traverse(entry, x86_out_block1, octx);
+	function_blocks_traverse(func, x86_out_block1, octx);
 	x86_emit_epilogue(octx, exit);
 
 	octx->fout = saved_out;

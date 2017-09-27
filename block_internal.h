@@ -10,4 +10,8 @@ const char *block_label(block *);
 
 void block_add_pred(block *, block *);
 
+void block_check_val_life(block *blk, void *);
+
+void block_dump1(block *blk, FILE *f);
+
 #endif

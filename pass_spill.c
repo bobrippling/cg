@@ -139,5 +139,5 @@ void pass_spill(function *fn, struct unit *unit, const struct target *target)
 	/* FIXME: ctx.spill_space conflicts/overlaps with regalloc's */
 	ctx.regcount = target->abi.scratch_regs.count;
 	ctx.utl = unit_uniqtypes(unit);
-	blocks_traverse(entry, blk_spill, &ctx);
+	function_onblocks(fn, blk_spill, &ctx);
 }

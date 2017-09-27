@@ -4,10 +4,13 @@
 #include <assert.h>
 
 #include "mem.h"
+#include "dynmap.h"
+
 #include "function.h"
 #include "function_internal.h"
 #include "lbl.h"
 #include "block_internal.h"
+#include "block_struct.h"
 #include "variable.h"
 #include "variable_struct.h"
 #include "function_struct.h"
@@ -39,9 +42,17 @@ function *function_new(
 	return fn;
 }
 
+static void block_free_abi(block *b, void *ctx)
+{
+	(void)ctx;
+	block_free(b);
+}
+
 void function_free(function *f)
 {
-	function_onblocks(f, block_free);
+	function_onblocks(f, block_free_abi, NULL);
+	if(f->exit)
+		block_free(f->exit);
 
 	dynarray_foreach(&f->arg_names, free);
 	dynarray_reset(&f->arg_names);
@@ -60,11 +71,54 @@ void function_add_block(function *f, block *b)
 	f->blocks[f->nblocks - 1] = b;
 }
 
-void function_onblocks(function *f, void cb(block *))
+void function_onblocks(function *f, void cb(block *, void *), void *ctx)
 {
 	size_t i;
-	for(i = 0; i < f->nblocks; i++)
-		cb(f->blocks[i]);
+	for(i = 0; i < f->nblocks; i++){
+		if(f->blocks[i] == f->exit)
+			continue;
+		cb(f->blocks[i], ctx);
+}
+
+static void function_blocks_traverse_r(
+		block *blk,
+		void fn(block *, void *),
+		void *ctx,
+		dynmap *markers)
+{
+	if(dynmap_get(block *, int, markers, blk))
+		return;
+	(void)dynmap_set(block *, int, markers, blk, 1);
+
+	fn(blk, ctx);
+
+	switch(blk->type){
+		case BLK_UNKNOWN:
+			assert(0 && "unknown block");
+			break;
+		case BLK_ENTRY:
+		case BLK_EXIT:
+			break;
+		case BLK_BRANCH:
+			function_blocks_traverse_r(blk->u.branch.t, fn, ctx, markers);
+			function_blocks_traverse_r(blk->u.branch.f, fn, ctx, markers);
+			break;
+		case BLK_JMP:
+			function_blocks_traverse_r(blk->u.jmp.target, fn, ctx, markers);
+			break;
+	}
+}
+
+void function_blocks_traverse(
+		function *func,
+		void fn(block *, void *),
+		void *ctx)
+{
+	dynmap *markers = BLOCK_DYNMAP_NEW();
+
+	function_blocks_traverse_r(function_entry_block(func, false), fn, ctx, markers);
+
+	dynmap_free(markers);
 }
 
 dynarray *function_arg_names(function *f)
@@ -133,8 +187,17 @@ block *function_block_find(
 
 void function_finalize(function *f)
 {
-	if(f->entry)
-		block_lifecheck(f->entry);
+	dynmap *values_to_block;
+
+	if(!f->entry)
+		return;
+
+	/* find out which values live outside their block */
+	values_to_block = dynmap_new(val *, NULL, val_hash);
+
+	function_onblocks(f, block_check_val_life, values_to_block);
+
+	dynmap_free(values_to_block);
 }
 
 void function_add_attributes(function *f, enum function_attributes attr)
@@ -178,6 +241,17 @@ static void print_func_and_args(dynarray *arg_tys, dynarray *arg_names, bool var
 	fprintf(fout, ")");
 }
 
+static void block_unmark_emitted(block *blk, void *vctx)
+{
+	blk->emitted = 0;
+}
+
+static void block_dump_abi(block *b, void *ctx)
+{
+	FILE *f = ctx;
+	block_dump1(b, f);
+}
+
 void function_dump(function *f, FILE *fout)
 {
 	fprintf(fout, "$%s = ", function_name(f));
@@ -198,7 +272,8 @@ void function_dump(function *f, FILE *fout)
 	if(f->entry){
 		fprintf(fout, "\n{\n");
 
-		block_dump(f->entry, fout);
+		function_blocks_traverse(f, block_dump_abi, fout);
+		function_blocks_traverse(f, block_unmark_emitted, NULL);
 
 		fprintf(fout, "}");
 	}

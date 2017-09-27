@@ -8,6 +8,7 @@
 #include "block.h"
 #include "block_struct.h"
 #include "block_internal.h"
+#include "function.h"
 
 #include "isn_struct.h"
 #include "isn.h"
@@ -21,9 +22,6 @@ struct life_check_ctx
 	block *blk;
 	dynmap *values_to_block;
 };
-
-static void block_dump_r(block *, FILE *);
-
 
 block *block_new(char *lbl)
 {
@@ -141,46 +139,6 @@ void block_set_jmp(block *current, block *new)
 	current->u.jmp.target = new; /* weak ref */
 }
 
-static void blocks_traverse_r(
-		block *blk,
-		void fn(block *, void *),
-		void *ctx,
-		dynmap *markers)
-{
-	if(dynmap_get(block *, int, markers, blk))
-		return;
-	(void)dynmap_set(block *, int, markers, blk, 1);
-
-	fn(blk, ctx);
-
-	switch(blk->type){
-		case BLK_UNKNOWN:
-			assert(0 && "unknown block");
-		case BLK_ENTRY:
-		case BLK_EXIT:
-			break;
-		case BLK_BRANCH:
-			blocks_traverse_r(blk->u.branch.t, fn, ctx, markers);
-			blocks_traverse_r(blk->u.branch.f, fn, ctx, markers);
-			break;
-		case BLK_JMP:
-			blocks_traverse_r(blk->u.jmp.target, fn, ctx, markers);
-			break;
-	}
-}
-
-void blocks_traverse(
-		block *blk,
-		void fn(block *, void *),
-		void *ctx)
-{
-	dynmap *markers = BLOCK_DYNMAP_NEW();
-
-	blocks_traverse_r(blk, fn, ctx, markers);
-
-	dynmap_free(markers);
-}
-
 void block_add_pred(block *b, block *pred)
 {
 	dynarray_add(&b->preds, pred);
@@ -212,7 +170,7 @@ static void check_val_life_isn(val *v, isn *isn, void *vctx)
 	}
 }
 
-static void check_val_life_block(block *blk, void *vctx)
+void block_check_val_life(block *blk, void *vctx)
 {
 	dynmap *values_to_block = vctx;
 	struct life_check_ctx ctx_lifecheck;
@@ -225,23 +183,20 @@ static void check_val_life_block(block *blk, void *vctx)
 		isn_on_live_vals(isn, check_val_life_isn, &ctx_lifecheck);
 }
 
-void block_lifecheck(block *blk)
-{
-	/* find out which values live outside their block */
-	dynmap *values_to_block = dynmap_new(val *, NULL, val_hash);
-
-	blocks_traverse(blk, check_val_life_block, values_to_block);
-
-	dynmap_free(values_to_block);
-}
-
 unsigned block_hash(block *b)
 {
 	return (b->lbl ? dynmap_strhash(b->lbl) : 0) ^ (unsigned)b;
 }
 
-static void block_dump1(block *blk, FILE *f)
+void block_dump1(block *blk, FILE *f)
 {
+	if(blk->emitted)
+		return;
+	blk->emitted = 1;
+
+	if(blk->lbl)
+		fprintf(f, "\n");
+
 	if(!dynarray_is_empty(&blk->preds)){
 		size_t i;
 		const char *comma = "";
@@ -259,48 +214,7 @@ static void block_dump1(block *blk, FILE *f)
 	}
 
 	fprintf(f, "# block: %p\n", blk);
-
+	if(blk->lbl)
+		fprintf(f, "$%s:\n", blk->lbl);
 	isn_dump(block_first_isn(blk), blk, f);
-}
-
-static void block_dump_lbl(block *blk, FILE *f)
-{
-	if(blk->emitted)
-		return;
-
-	blk->emitted = 1;
-
-	fprintf(f, "\n$%s:\n", blk->lbl);
-	block_dump_r(blk, f);
-}
-
-static void block_dump_r(block *blk, FILE *f)
-{
-	block_dump1(blk, f);
-
-	switch(blk->type){
-		case BLK_UNKNOWN:
-			assert(0 && "unknown block");
-		case BLK_ENTRY:
-		case BLK_EXIT:
-			break;
-		case BLK_BRANCH:
-			block_dump_lbl(blk->u.branch.t, f);
-			block_dump_lbl(blk->u.branch.f, f);
-			break;
-		case BLK_JMP:
-			block_dump_lbl(blk->u.jmp.target, f);
-			break;
-	}
-}
-
-static void block_unmark_emitted(block *blk, void *vctx)
-{
-	blk->emitted = 0;
-}
-
-void block_dump(block *blk, FILE *f)
-{
-	block_dump_r(blk, f);
-	blocks_traverse(blk, block_unmark_emitted, NULL);
 }

@@ -602,14 +602,14 @@ static void convert_outgoing_args_and_call_block(block *blk, void *const vctx)
 }
 
 static void convert_outgoing_args_and_call(
-		const struct target *target, uniq_type_list *utl, block *const entry)
+		const struct target *target, uniq_type_list *utl, function *func)
 {
 	struct convert_out_ctx ctx = { 0 };
 
 	ctx.target = target;
 	ctx.utl = utl;
 
-	blocks_traverse(entry, convert_outgoing_args_and_call_block, &ctx);
+	function_onblocks(func, convert_outgoing_args_and_call_block, &ctx);
 }
 
 static isn *convert_return_isn(
@@ -707,7 +707,7 @@ static void convert_returns(
 		val *stret_stash,
 		uniq_type_list *utl,
 		const struct target *target,
-		block *entry,
+		function *func,
 		unsigned *const uniq_index_per_func)
 {
 	struct convert_ret_ctx ctx;
@@ -716,7 +716,7 @@ static void convert_returns(
 	ctx.target = target;
 	ctx.uniq_index_per_func = uniq_index_per_func;
 
-	blocks_traverse(entry, convert_return, &ctx);
+	function_onblocks(func, convert_return, &ctx);
 }
 
 void pass_abi(function *fn, unit *unit, const struct target *target)
@@ -744,8 +744,8 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 			stret_stash,
 			unit_uniqtypes(unit),
 			target,
-			entry,
+			fn,
 			&uniq_index_per_func);
 
-	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), entry);
+	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), fn);
 }

@@ -371,9 +371,9 @@ static void isel_reserve_cisc_block(block *block, void *vctx)
 	}
 }
 
-static void isel_reserve_cisc(block *entry, uniq_type_list *utl)
+static void isel_reserve_cisc(function *func, uniq_type_list *utl)
 {
-	blocks_traverse(entry, isel_reserve_cisc_block, utl);
+	function_onblocks(func, isel_reserve_cisc_block, utl);
 }
 
 static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
@@ -455,9 +455,9 @@ static void isel_create_ptrmath_blk(block *block, void *vctx)
 	}
 }
 
-static void isel_create_ptrmath(block *const entry, unit *unit)
+static void isel_create_ptrmath(function *fn, unit *unit)
 {
-	blocks_traverse(entry, isel_create_ptrmath_blk, unit);
+	function_onblocks(fn, isel_create_ptrmath_blk, unit);
 }
 
 static bool operand_type_convertible(
@@ -740,12 +740,12 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 	}
 }
 
-static void isel_constrain_isns(block *entry, const struct target *target, uniq_type_list *utl)
+static void isel_constrain_isns(function *fn, const struct target *target, uniq_type_list *utl)
 {
 	struct constrain_ctx ctx;
 	ctx.utl = utl;
 	ctx.target = target;
-	blocks_traverse(entry, isel_constrain_isns_block, &ctx);
+	function_onblocks(fn, isel_constrain_isns_block, &ctx);
 }
 
 void pass_isel(function *fn, struct unit *unit, const struct target *target)
@@ -771,7 +771,7 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 		return;
 	}
 
-	isel_create_ptrmath(entry, unit);
-	isel_reserve_cisc(entry, unit_uniqtypes(unit));
-	isel_constrain_isns(entry, target, unit_uniqtypes(unit));
+	isel_create_ptrmath(fn, unit);
+	isel_reserve_cisc(fn, unit_uniqtypes(unit));
+	isel_constrain_isns(fn, target, unit_uniqtypes(unit));
 }

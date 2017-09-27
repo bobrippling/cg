@@ -164,7 +164,7 @@ static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
 	block *blk = function_entry_block(func, false);
 	assert(blk);
 
-	blocks_traverse(blk, find_args_in_block, spillctx);
+	function_onblocks(func, find_args_in_block, spillctx);
 }
 
 static dynmap *x86_spillregs(
