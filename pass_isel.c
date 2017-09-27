@@ -293,7 +293,7 @@ static void gen_constraint_isns(
 			return;
 		}
 
-		/* TODO: assert(!regt_is_valid(req->reg[1]) && "todo"); */
+		assert(!regt_is_valid(req->reg[1]) && "TODO");
 
 		constrain_to_reg_specific(req, v, isn_to_constrain, postisn);
 		return;
