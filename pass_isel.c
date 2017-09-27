@@ -666,6 +666,8 @@ static void isel_generic(
 			fprintf(stderr, "    categories[%d] = %s\n",
 					i, operand_category_to_str(bestmatch->category[i]));
 
+		fprintf(stderr, "  for:\n");
+
 		for(i = 0; i < 2 && inputs[i]; i++){
 			enum operand_category cat = val_operand_category(
 					inputs[i],
