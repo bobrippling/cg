@@ -17,7 +17,8 @@ enum block_type
 	BLK_ENTRY,
 	BLK_EXIT,
 	BLK_BRANCH,
-	BLK_JMP
+	BLK_JMP,
+	BLK_JMP_COMP
 };
 
 bool block_unknown_ending(block *);

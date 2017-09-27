@@ -21,6 +21,8 @@ val *val_new_undef(struct type *);
 /* refer to a local, arg or global */
 val *val_new_global(struct uniq_type_list *, struct global *) attr_nonnull();
 
+val *val_new_label(char *, struct type *) attr_nonnull();
+
 val *val_new_local(char * /*consumed*/, struct type *, bool is_alloca)
 	attr_nonnull((2));
 

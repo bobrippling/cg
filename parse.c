@@ -31,7 +31,8 @@ typedef struct {
 enum val_opts
 {
 	VAL_CREATE = 1 << 0,
-	VAL_ALLOCA = 1 << 1
+	VAL_ALLOCA = 1 << 1,
+	VAL_LABEL = 1 << 2,
 };
 
 static type *parse_type(parse *);
@@ -163,7 +164,10 @@ found:
 	if((opts & VAL_CREATE) == 0)
 		parse_error(p, "undeclared identifier '%s'", name_to_print);
 
-	v = val_new_local(name, ty, opts & VAL_ALLOCA);
+	if(opts & VAL_LABEL)
+		v = val_new_label(name, ty);
+	else
+		v = val_new_local(name, ty, opts & VAL_ALLOCA);
 
 	return map_val(p, name, v);
 }
@@ -912,18 +916,42 @@ static void parse_br(parse *p)
 
 static void parse_jmp(parse *p)
 {
-	block *target;
-	char *lbl;
+	if(token_accept(p->tok, tok_star)){
+		val *target = parse_val(p);
 
-	eat(p, "jmp label", tok_ident);
-	lbl = token_last_ident(p->tok);
+		block_add_isn(p->entry, isn_jmp_computed(target));
+		block_set_type(p->entry, BLK_JMP_COMP);
 
-	target = function_block_find(p->func, p->unit, lbl, NULL);
+	}else{
+		block *target;
+		char *lbl;
 
-	block_add_isn(p->entry, isn_jmp(target));
-	block_set_jmp(p->entry, target);
+		eat(p, "jmp label", tok_ident);
+		lbl = token_last_ident(p->tok);
+
+		target = function_block_find(p->func, p->unit, lbl, NULL);
+
+		block_add_isn(p->entry, isn_jmp(target));
+		block_set_jmp(p->entry, target);
+	}
 
 	enter_unreachable_code(p);
+}
+
+static void parse_label(parse *p)
+{
+	char *lbl;
+	uniq_type_list *utl = unit_uniqtypes(p->unit);
+	type *blkty = type_get_ptr(utl, type_get_void(utl));
+	val *blkval;
+
+	eat(p, "label decl", tok_ident);
+	lbl = token_last_ident(p->tok);
+
+	blkval = uniq_val(p, xstrdup(lbl), blkty, VAL_CREATE | VAL_LABEL);
+	block_add_isn(p->entry, isn_label(blkval));
+
+	function_block_find(p->func, p->unit, lbl, NULL);
 }
 
 static void parse_block(parse *p)
@@ -985,6 +1013,10 @@ static void parse_block(parse *p)
 
 		case tok_store:
 			parse_store(p);
+			break;
+
+		case tok_label:
+			parse_label(p);
 			break;
 	}
 }

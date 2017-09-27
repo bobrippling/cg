@@ -716,6 +716,9 @@ static void isel_constrain_isn(isn *fi, const struct target *target, uniq_type_l
 	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
 
+	if(fi->type == ISN_LABEL)
+		return;
+
 	if(arch_isn->custom_isel){
 		arch_isn->custom_isel(fi, target);
 		return;

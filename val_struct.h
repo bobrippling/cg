@@ -20,6 +20,10 @@ struct val
 			struct location loc;
 			char *name;
 		} local, alloca, argument;
+		struct
+		{
+			char *name;
+		} label;
 		struct location temp_loc;
 		struct location abi;
 	} u;
@@ -33,6 +37,7 @@ struct val
 	{
 		LITERAL,  /* i4 5, { i4, [i1 x 2] }* 54 */
 		GLOBAL,   /* $x from global */
+		LABEL,    /* &&here */
 		ARGUMENT, /* $x from arg */
 		FROM_ISN, /* $y = load i4* 1 */
 		ALLOCA,   /* $z = alloca i4 */

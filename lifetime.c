@@ -36,6 +36,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 			break;
 		case LITERAL:
 		case GLOBAL:
+		case LABEL:
 		case ALLOCA:
 			return;
 	}

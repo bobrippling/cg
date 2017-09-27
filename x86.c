@@ -81,6 +81,7 @@ static enum operand_category val_category(val *v, bool dereference)
 		case LITERAL:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_INT;
 
+		case LABEL:
 		case GLOBAL:
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
@@ -100,13 +101,19 @@ static bool must_lea_val(val *v)
 {
 	/* this assumes we haven't been told to dereference */
 
-	if(v->kind == ALLOCA)
-		return true;
+	switch(v->kind){
+		case ALLOCA:
+		case GLOBAL:
+		case LABEL:
+			return true;
 
-	if(v->kind == GLOBAL)
-		return true;
-
-	return false;
+		case LITERAL:
+		case ARGUMENT:
+		case FROM_ISN:
+		case BACKEND_TEMP:
+		case ABI_TEMP:
+			return false;
+	}
 }
 
 static const char *x86_size_name(unsigned sz)
@@ -206,6 +213,7 @@ static bool x86_can_infer_size(val *val)
 		case ALLOCA: return false;
 		case LITERAL: return false;
 		case GLOBAL: return false;
+		case LABEL: return false;
 
 		case ABI_TEMP:
 			loc = &val->u.abi;
@@ -313,6 +321,16 @@ static const char *x86_val_str(
 					indir ? "" : "$",
 					global_name(val->u.global),
 					x64 ? "(%rip)" : "");
+			break;
+		}
+
+		case LABEL:
+		{
+			const struct target *target = unit_target_info(octx->unit);
+			const int x64 = x86_target_switch(target, 0, 1);
+			const char *prefix = unit_lbl_private_prefix(octx->unit);
+
+			snprintf(buf, sizeof bufs[0], "%s_%s%s", prefix, val->u.label.name, x64 ? "(%rip)" : "");
 			break;
 		}
 
@@ -887,6 +905,9 @@ loc:
 					result_str);
 			return;
 		}
+
+		case LABEL:
+			assert(0 && "unreachable");
 	}
 
 	x86_op(
@@ -1033,6 +1054,11 @@ static void x86_jmp(x86_octx *octx, block *target)
 	fprintf(octx->fout, "\tjmp %s\n", target->lbl);
 }
 
+static void x86_jmp_comp(x86_octx *octx, val *target)
+{
+	fprintf(octx->fout, "\tjmp *%s\n", x86_val_str(target, 0, octx, val_type(target), DEREFERENCE_FALSE));
+}
+
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
 	emit_isn_binary(&x86_isn_test, octx,
@@ -1176,6 +1202,15 @@ static void x86_out_block1(block *blk, void *vctx)
 				x86_jmp(octx, i->u.jmp.target);
 				break;
 			}
+
+			case ISN_JMP_COMPUTED:
+			{
+				x86_jmp_comp(octx, i->u.jmpcomp.target);
+				break;
+			}
+
+			case ISN_LABEL:
+				break;
 
 			case ISN_BR:
 			{

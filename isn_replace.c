@@ -75,6 +75,11 @@ struct replace_ctx
 			break;                           \
 		case ISN_JMP:                      \
 			break;                           \
+		case ISN_JMP_COMPUTED:             \
+			IO(inputs[0], i->u.jmpcomp.target); \
+			break;                           \
+		case ISN_LABEL:                    \
+			break;                           \
 		case ISN_CALL:                     \
 			IO(inputs[0], i->u.call.fn);      \
 			IO(*output, i->u.call.into);      \

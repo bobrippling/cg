@@ -79,6 +79,7 @@ static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+		case LABEL:
 		case BACKEND_TEMP:
 		case ALLOCA:
 		case ABI_TEMP:

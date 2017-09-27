@@ -26,6 +26,8 @@ struct isn
 		ISN_PTRCAST,
 		ISN_BR,
 		ISN_JMP,
+		ISN_JMP_COMPUTED,
+		ISN_LABEL,
 		ISN_RET,
 		ISN_CALL,
 		ISN_IMPLICIT_USE
@@ -91,6 +93,16 @@ struct isn
 		{
 			struct block *target;
 		} jmp;
+
+		struct
+		{
+			struct val *target;
+		} jmpcomp;
+
+		struct
+		{
+			struct val *val;
+		} lbl;
 
 		struct
 		{

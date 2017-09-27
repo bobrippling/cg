@@ -119,6 +119,12 @@ unsigned val_hash(val *v)
 			break;
 		}
 
+		case LABEL:
+		{
+			spel = v->u.label.name;
+			break;
+		}
+
 		case ARGUMENT:
 			spel = v->u.argument.name;
 			break;
@@ -151,6 +157,7 @@ const char *val_kind_to_str(enum val_kind k)
 	switch(k){
 		case LITERAL: return "LITERAL";
 		case GLOBAL: return "GLOBAL";
+		case LABEL: return "LABEL";
 		case ARGUMENT: return "ARGUMENT";
 		case ALLOCA: return "ALLOCA";
 		case FROM_ISN: return "FROM_ISN";
@@ -179,6 +186,7 @@ struct location *val_location(val *v)
 
 		case GLOBAL:
 		case LITERAL:
+		case LABEL:
 			break;
 	}
 	return NULL;
@@ -190,6 +198,8 @@ enum operand_category val_operand_category(val *v, bool dereference)
 		case LITERAL:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_INT;
 
+		case LABEL:
+			assert(!dereference);
 		case GLOBAL:
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
@@ -327,6 +337,9 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 		case GLOBAL:
 			snprintf(buf, VAL_STR_SZ, "$%s", global_name(v->u.global));
 			break;
+		case LABEL:
+			snprintf(buf, VAL_STR_SZ, "$%s", v->u.label.name);
+			break;
 		case ARGUMENT:
 			snprintf(buf, VAL_STR_SZ, "$%s", v->u.argument.name);
 			break;
@@ -391,6 +404,9 @@ static void val_free(val *v)
 		case LITERAL:
 			break;
 		case GLOBAL:
+			break;
+		case LABEL:
+			free(v->u.label.name);
 			break;
 		case ARGUMENT:
 			free(v->u.argument.name);
@@ -490,6 +506,13 @@ val *val_new_local(char *name, struct type *ty, bool alloca)
 	val *p = val_new(alloca ? ALLOCA : FROM_ISN, ty);
 	p->u.local.name = name;
 	location_init_reg(&p->u.local.loc);
+	return p;
+}
+
+val *val_new_label(char *name, struct type *ty)
+{
+	val *p = val_new(LABEL, ty);
+	p->u.label.name = name;
 	return p;
 }
 

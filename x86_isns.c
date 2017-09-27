@@ -122,6 +122,15 @@ static const struct backend_isn set = {
 	false
 };
 
+static const struct backend_isn jmp = {
+	"jmp",
+	{
+		{ OPERAND_INPUT | OPERAND_REG },
+		{ OPERAND_INPUT | OPERAND_MEM_CONTENTS }
+	},
+	false
+};
+
 const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_LOAD*/         { &mov, NULL },
 	/*ISN_STORE*/        { &mov, NULL },
@@ -138,6 +147,8 @@ const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_PTRCAST*/      { &mov, NULL },
 	/*ISN_BR*/           { NULL, NULL },
 	/*ISN_JMP*/          { NULL, NULL },
+	/*ISN_JMP_COMPUTED*/ { &jmp, NULL },
+	/*ISN_LABEL*/        { NULL, NULL },
 	/*ISN_RET*/          { NULL, NULL },
 	/*ISN_CALL*/         { &call, NULL },
 	/*ISN_IMPLICIT_USE*/ { NULL, NULL },

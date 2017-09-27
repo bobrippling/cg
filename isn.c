@@ -194,6 +194,12 @@ static void isn_free_1(isn *isn)
 			break;
 		case ISN_JMP:
 			break;
+		case ISN_JMP_COMPUTED:
+			val_release(isn->u.jmpcomp.target);
+			break;
+		case ISN_LABEL:
+			val_release(isn->u.lbl.val);
+			break;
 		case ISN_CALL:
 		{
 			size_t i;
@@ -247,6 +253,8 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_RET:    return "ret";
 		case ISN_BR:     return "br";
 		case ISN_JMP:    return "jmp";
+		case ISN_JMP_COMPUTED: return "jmp*";
+		case ISN_LABEL:  return "label";
 		case ISN_CALL:   return "call";
 		case ISN_PTR2INT:return "ptr2int";
 		case ISN_INT2PTR:return "int2ptr";
@@ -560,6 +568,23 @@ isn *isn_jmp(block *new)
 	return isn;
 }
 
+isn *isn_jmp_computed(val *v)
+{
+	isn *isn;
+
+	isn = isn_new(ISN_JMP_COMPUTED);
+	isn->u.jmpcomp.target = val_retain(v);
+
+	return isn;
+}
+
+isn *isn_label(val *lblval)
+{
+	isn *isn = isn_new(ISN_LABEL);
+	isn->u.lbl.val = val_retain(lblval);
+	return isn;
+}
+
 bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 {
 	switch(isn->type){
@@ -575,10 +600,12 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 		case ISN_EXT_TRUNC:
 		case ISN_RET:
 		case ISN_JMP:
+		case ISN_JMP_COMPUTED:
 		case ISN_BR:
 		case ISN_CALL:
 			break;
 
+		case ISN_LABEL:
 		case ISN_IMPLICIT_USE:
 			return true;
 
@@ -673,6 +700,13 @@ static void isn_on_vals(
 			break;
 
 		case ISN_JMP:
+			break;
+
+		case ISN_JMP_COMPUTED:
+			fn(current->u.jmpcomp.target, current, ctx);
+			break;
+
+		case ISN_LABEL:
 			break;
 
 		case ISN_BR:
@@ -840,6 +874,18 @@ static void isn_dump1(isn *i, FILE *f)
 			break;
 		}
 
+		case ISN_JMP_COMPUTED:
+		{
+			fprintf(f, "\tjmp *%s\n", val_str(i->u.jmpcomp.target));
+			break;
+		}
+
+		case ISN_LABEL:
+		{
+			fprintf(f, "\tlabel %s\n", val_str(i->u.lbl.val));
+			break;
+		}
+
 		case ISN_CALL:
 		{
 			size_t argi;
@@ -928,6 +974,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+		case LABEL:
 			return;
 		case BACKEND_TEMP:
 		case ABI_TEMP:

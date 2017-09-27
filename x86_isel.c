@@ -24,6 +24,7 @@ void x86_isel_lea(isn *i, const struct target *target)
 		case ALLOCA:
 			assert(0 && "invalid elem");
 
+		case LABEL:
 		case FROM_ISN:
 		case BACKEND_TEMP:
 		case ABI_TEMP:

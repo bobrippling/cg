@@ -63,6 +63,7 @@ bool regalloc_applies_to(val *v)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+		case LABEL:
 			return false;
 
 		case BACKEND_TEMP:
@@ -190,6 +191,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 	switch(v->kind){
 		case LITERAL:
 		case GLOBAL:
+		case LABEL:
 		case BACKEND_TEMP:
 			assert(0 && "unreachable");
 

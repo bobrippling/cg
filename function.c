@@ -20,6 +20,13 @@
 #endif
 #include "unit_internal.h"
 
+struct traverse_jmpcomp
+{
+	dynmap *markers;
+	void (*fn)(block *, void *);
+	void *ctx;
+};
+
 static void function_add_block(function *, block *);
 
 function *function_new(
@@ -78,6 +85,15 @@ void function_onblocks(function *f, void cb(block *, void *), void *ctx)
 		if(f->blocks[i] == f->exit)
 			continue;
 		cb(f->blocks[i], ctx);
+	}
+}
+
+static bool traverse_block_marked(block *blk, dynmap *markers)
+{
+	if(dynmap_get(block *, int, markers, blk))
+		return true;
+	(void)dynmap_set(block *, int, markers, blk, 1);
+	return false;
 }
 
 static void function_blocks_traverse_r(
@@ -86,9 +102,8 @@ static void function_blocks_traverse_r(
 		void *ctx,
 		dynmap *markers)
 {
-	if(dynmap_get(block *, int, markers, blk))
+	if(traverse_block_marked(blk, markers))
 		return;
-	(void)dynmap_set(block *, int, markers, blk, 1);
 
 	fn(blk, ctx);
 
@@ -98,6 +113,8 @@ static void function_blocks_traverse_r(
 			break;
 		case BLK_ENTRY:
 		case BLK_EXIT:
+			break;
+		case BLK_JMP_COMP:
 			break;
 		case BLK_BRANCH:
 			function_blocks_traverse_r(blk->u.branch.t, fn, ctx, markers);
@@ -109,14 +126,31 @@ static void function_blocks_traverse_r(
 	}
 }
 
+static void traverse_computed_goto(block *blk, void *vctx)
+{
+	struct traverse_jmpcomp *ctx = vctx;
+
+	if(traverse_block_marked(blk, ctx->markers))
+		return;
+
+	ctx->fn(blk, ctx->ctx);
+}
+
 void function_blocks_traverse(
 		function *func,
 		void fn(block *, void *),
 		void *ctx)
 {
+	struct traverse_jmpcomp traverse_ctx;
 	dynmap *markers = BLOCK_DYNMAP_NEW();
 
 	function_blocks_traverse_r(function_entry_block(func, false), fn, ctx, markers);
+
+	/* cover all blocks, in case of computed-goto-otherwise-unreachable ones */
+	traverse_ctx.markers = markers;
+	traverse_ctx.fn = fn;
+	traverse_ctx.ctx = ctx;
+	function_onblocks(func, traverse_computed_goto, &traverse_ctx);
 
 	dynmap_free(markers);
 }

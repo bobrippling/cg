@@ -36,6 +36,8 @@ isn *isn_ptrcast(struct val *from, struct val *to);
 
 isn *isn_br(struct val *cond, block *btrue, block *bfalse);
 isn *isn_jmp(block *);
+isn *isn_jmp_computed(struct val *);
+isn *isn_label(struct val *lblval);
 
 isn *isn_ret(struct val *);
 

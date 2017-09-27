@@ -42,6 +42,7 @@
 	KW(trunc)           \
 	KW(br)              \
 	KW(jmp)             \
+	KW(label)           \
 	KW(call)            \
 	KW(i1) KW(i2)       \
 	KW(i4) KW(i8)       \
