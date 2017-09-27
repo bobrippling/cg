@@ -691,7 +691,7 @@ static void isel_generic(
 
 	input_index = 0;
 	for(i = 0; i < MAX_OPERANDS && bestmatch->category[i]; i++){
-		if(bestmatch->category[i] & OPERAND_IMPLICIT)
+		if((bestmatch->category[i] & OPERAND_MASK_PLAIN) == OPERAND_IMPLICIT)
 			continue;
 
 		if(bestmatch->category[i] & OPERAND_INPUT){
