@@ -660,6 +660,11 @@ static void gen_constraint_isns_for_op_category(
 {
 	struct constraint constraint = { 0 };
 
+	if(ISEL_DEBUG){
+		fprintf(stderr, "  potential conversion:\n");
+		fprintf(stderr, "    %s -> %s\n", val_str(v), operand_category_to_str(cat));
+	}
+
 	assert(v);
 
 	cat &= OPERAND_MASK_PLAIN;
