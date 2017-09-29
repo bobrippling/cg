@@ -73,7 +73,18 @@ bool regalloc_applies_to(val *v)
 		case ARGUMENT:
 		case FROM_ISN:
 		case ABI_TEMP:
+		{
+			struct location *loc = val_location(v);
+			switch(loc->where){
+				case NAME_SPILT:
+					return false;
+				case NAME_NOWHERE:
+				case NAME_IN_REG_ANY:
+				case NAME_IN_REG:
+					break;
+			}
 			break;
+		}
 	}
 	return true;
 }
