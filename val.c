@@ -357,13 +357,15 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 			break;
 	}
 
-	if(loc
-	&& loc->where == NAME_IN_REG
-	&& regt_is_valid(loc->u.reg))
-	{
-		/* append reg */
+	if(loc){
 		const size_t len = strlen(buf);
-		val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
+
+		if(loc->where == NAME_IN_REG && regt_is_valid(loc->u.reg)){
+			/* append reg */
+			val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
+		}else if(loc->where == NAME_SPILT){
+			snprintf(buf + len, VAL_STR_SZ - len, "<stack %d>", loc->u.off);
+		}
 	}
 
 	return buf;
