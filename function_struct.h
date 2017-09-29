@@ -22,6 +22,8 @@ struct function
 	dynarray arg_locns;
 	val **arg_vals;
 
+	unsigned stackspace;
+
 	enum function_attributes attr;
 };
 

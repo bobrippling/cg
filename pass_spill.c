@@ -23,25 +23,19 @@ struct spill_ctx
 {
 	block *blk;
 	struct uniq_type_list *utl;
+	function *fn;
 	unsigned used_count;
 	unsigned regcount;
-	unsigned spill_space;
 };
 
-static unsigned get_spill_space(unsigned *const spill_space, type *ty)
-{
-	*spill_space += type_size(ty);
-	return *spill_space;
-}
-
-static void spill_assign(val *spill, unsigned *const spill_space)
+static void spill_assign(val *spill, struct spill_ctx *ctx)
 {
 	struct location *spill_loc = val_location(spill);
 
 	assert(spill_loc->where == NAME_NOWHERE);
 
 	spill_loc->where = NAME_SPILT;
-	spill_loc->u.off = get_spill_space(spill_space, type_deref(val_type(spill)));
+	spill_loc->u.off = function_alloc_stack_space(ctx->fn, type_deref(val_type(spill)));
 }
 
 static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
@@ -56,7 +50,7 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
 	isn *alloca = isn_alloca(spill);
 
-	spill_assign(spill, &ctx->spill_space);
+	spill_assign(spill, ctx);
 
 	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
 	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
@@ -73,7 +67,7 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 	const struct lifetime *lt;
 
 	if(v->kind == ALLOCA && isn->type == ISN_ALLOCA){
-		spill_assign(v, &ctx->spill_space);
+		spill_assign(v, ctx);
 		return;
 	}
 
@@ -134,9 +128,10 @@ void pass_spill(function *fn, struct unit *unit, const struct target *target)
 	if(!entry)
 		return;
 
+	ctx.fn = fn;
+
 	lifetime_fill_func(fn);
 
-	/* FIXME: ctx.spill_space conflicts/overlaps with regalloc's */
 	ctx.regcount = target->abi.scratch_regs.count;
 	ctx.utl = unit_uniqtypes(unit);
 	function_onblocks(fn, blk_spill, &ctx);

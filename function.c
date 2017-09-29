@@ -400,6 +400,12 @@ void func_regalloc(
 }
 #endif
 
+unsigned function_alloc_stack_space(function *f, type *for_ty)
+{
+	f->stackspace += type_size(for_ty);
+	return f->stackspace;
+}
+
 bool function_is_forward_decl(function *f)
 {
 	return !function_entry_block(f, false);

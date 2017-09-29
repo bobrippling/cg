@@ -46,6 +46,8 @@ struct val *function_arg_val(function *, unsigned arg_idx);
 struct dynarray *function_arg_names(function *);
 size_t function_arg_count(function *);
 
+unsigned function_alloc_stack_space(function *, struct type *for_ty);
+
 #if 0
 struct regalloc_info;
 void func_regalloc(function *f, struct regalloc_info *, unsigned *alloca);
