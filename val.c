@@ -103,6 +103,12 @@ bool val_is_abi_reg(val *v)
 		&& location_is_reg(v->u.abi.where);
 }
 
+bool val_on_stack(val *v)
+{
+	struct location *loc = val_location(v);
+	return loc && loc->where == NAME_SPILT;
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;
