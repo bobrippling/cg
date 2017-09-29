@@ -406,6 +406,11 @@ unsigned function_alloc_stack_space(function *f, type *for_ty)
 	return f->stackspace;
 }
 
+unsigned function_get_stack_use(function *f)
+{
+	return f->stackspace;
+}
+
 bool function_is_forward_decl(function *f)
 {
 	return !function_entry_block(f, false);

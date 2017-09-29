@@ -1253,7 +1253,7 @@ static void x86_emit_epilogue(x86_octx *octx, block *exit)
 
 static void x86_emit_prologue(
 		function *func,
-		long alloca_total,
+		unsigned alloca_total,
 		unsigned align,
 		const struct target *target,
 		x86_octx *octx)
@@ -1275,17 +1275,11 @@ static void x86_emit_prologue(
 	}
 
 	if(alloca_total)
-		fprintf(octx->fout, "\tsub $%ld, %%%csp\n", alloca_total, regch);
-}
-
-static long x86_alloca_total(x86_octx *octx)
-{
-	return octx->alloca_bottom + octx->spill_alloca_max;
+		fprintf(octx->fout, "\tsub $%d, %%%csp\n", alloca_total, regch);
 }
 
 static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 {
-	unsigned alloca_sum = 0;
 	block *const exit = function_exit_block(func, unit);
 	FILE *const saved_out = octx->fout;
 	FILE *const tmp_out = tmpfile();
@@ -1296,8 +1290,7 @@ static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 	octx->exitblk = exit;
 	octx->func = func;
 
-	/* start at the bottom of allocas */
-	octx->alloca_bottom = alloca_sum;
+	octx->stack.current = function_get_stack_use(func);
 
 	function_blocks_traverse(func, x86_out_block1, octx);
 	x86_emit_epilogue(octx, exit);
@@ -1307,7 +1300,7 @@ static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
 	/* now we spit out the prologue first */
 	x86_emit_prologue(
 			func,
-			x86_alloca_total(octx),
+			octx->stack.current + octx->stack.call_spill_max,
 			octx->max_align,
 			unit_target_info(unit),
 			octx);

@@ -40,7 +40,7 @@ struct x86_spill_ctx
 	dynmap *dontspill;
 	dynmap *spill;
 	block *blk;
-	unsigned long spill_alloca;
+	unsigned this_call_stack_use;
 	isn *call_isn;
 };
 
@@ -112,11 +112,11 @@ static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
 	for(idx = 0; (v = dynmap_key(val *, spillctx->spill, idx)); idx++){
 		val stack_slot = { 0 };
 
-		spillctx->spill_alloca += type_size(v->ty);
+		spillctx->this_call_stack_use += type_size(v->ty);
 
 		x86_make_stack_slot(
 				&stack_slot,
-				octx->alloca_bottom + spillctx->spill_alloca,
+				octx->stack.current + spillctx->this_call_stack_use,
 				v->ty);
 
 		x86_comment(octx, "spill '%s'", val_str(v));
@@ -191,8 +191,8 @@ static dynmap *x86_spillregs(
 
 	spill_vals(octx, &spillctx);
 
-	if(spillctx.spill_alloca > octx->spill_alloca_max)
-		octx->spill_alloca_max = spillctx.spill_alloca;
+	if(spillctx.this_call_stack_use > octx->stack.call_spill_max)
+		octx->stack.call_spill_max = spillctx.this_call_stack_use;
 
 	dynmap_free(spillctx.dontspill);
 	return spillctx.spill;

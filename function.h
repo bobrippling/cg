@@ -47,6 +47,7 @@ struct dynarray *function_arg_names(function *);
 size_t function_arg_count(function *);
 
 unsigned function_alloc_stack_space(function *, struct type *for_ty);
+unsigned function_get_stack_use(function *);
 
 #if 0
 struct regalloc_info;

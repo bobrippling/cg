@@ -7,8 +7,10 @@ typedef struct x86_octx
 	function *func;
 	struct unit *unit;
 	FILE *fout;
-	long alloca_bottom; /* max of ALLOCA instructions */
-	unsigned long spill_alloca_max; /* max of spill space */
+	struct {
+		unsigned current;
+		unsigned call_spill_max;
+	} stack;
 	unsigned max_align;
 	bool scratch_reg_reserved;
 } x86_octx;
