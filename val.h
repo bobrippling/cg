@@ -43,6 +43,7 @@ void val_temporary_init(val *, struct type *);
 
 bool val_is_abi_reg(val *);
 bool val_on_stack(val *);
+bool val_can_move(val *);
 unsigned val_size(val *);
 void val_size_align(val *, unsigned *, unsigned *);
 struct type *val_type(val *);

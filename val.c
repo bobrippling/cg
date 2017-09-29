@@ -109,6 +109,25 @@ bool val_on_stack(val *v)
 	return loc && loc->where == NAME_SPILT;
 }
 
+bool val_can_move(val *v)
+{
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
+		case LABEL:
+		case ARGUMENT:
+		case ALLOCA:
+			return false;
+
+		case BACKEND_TEMP:
+			assert(0 && "BACKEND_TEMP unreachable at this stage");
+
+		case FROM_ISN:
+		case ABI_TEMP:
+			return true;
+	}
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;

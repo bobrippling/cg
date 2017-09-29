@@ -172,7 +172,7 @@ static void constrain_to_reg_any(
 {
 	struct location *loc = val_location(v);
 
-	if(!loc){
+	if(!loc || !val_can_move(v)){
 		val *reg = copy_val_to_reg(v, isn_to_constrain);
 		loc = val_location(reg);
 	}else if(loc->where == NAME_IN_REG_ANY){
