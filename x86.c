@@ -190,16 +190,6 @@ void x86_comment(x86_octx *octx, const char *fmt, ...)
 	fprintf(octx->fout, "\n");
 }
 
-static void assert_deref(enum deref_type got, enum deref_type expected)
-{
-	if(got == DEREFERENCE_ANY)
-		return;
-	/*assert(got == expected && "wrong deref");*/
-	if(got != expected){
-		fprintf(stderr, "/* \x1b[1;31massert_deref() failed\x1b[m */\n");
-	}
-}
-
 static const char *x86_type_suffix(type *t)
 {
 	return x86_size_suffix(type_size(t));
@@ -269,9 +259,8 @@ static const char *x86_name_str(
 		{
 			char regch = x86_target_regch(target);
 
-			assert_deref(dereference_ty, DEREFERENCE_TRUE);
-
-			snprintf(buf, bufsz, "-%u(%%%cbp)", loc->u.off, regch);
+			snprintf(buf, bufsz, "-%u(%%%cbp)%s", loc->u.off, regch,
+					dereference_ty == DEREFERENCE_TRUE ? "" : "/* expected to deref */");
 			break;
 		}
 	}
@@ -751,6 +740,7 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
+	bool deref_lhs, deref_rhs;
 	struct backend_isn opisn;
 
 	if(op == op_mul && /* XXX: disabled */false){
@@ -810,10 +800,13 @@ static void x86_op(
 		}
 	}
 
+	deref_lhs = val_on_stack(lhs);
+	deref_rhs = val_on_stack(rhs);
+
 	/* to match isel's selections, we must match the rhs and result operands
 	 * to ensure that we do `op <lhs>, <rhs/res>` */
 	x86_mov(rhs, res, octx);
-	emit_isn_binary(&opisn, octx, lhs, false, res, false, NULL);
+	emit_isn_binary(&opisn, octx, lhs, deref_lhs, res, deref_rhs, NULL);
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
