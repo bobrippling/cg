@@ -353,10 +353,12 @@ loc:
 	return buf;
 }
 
+#if 0
 static const char *x86_val_str_debug(val *v, int bufidx, x86_octx *octx)
 {
 	return x86_val_str(v, bufidx, octx, val_type(v), DEREFERENCE_ANY);
 }
+#endif
 
 void x86_make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
@@ -379,6 +381,7 @@ void x86_make_eax(val *out, type *ty)
 	x86_make_reg(out, /* XXX: hard coded eax: */ 0, ty);
 }
 
+#if 0
 static void make_val_temporary_store(
 		val *from,
 		val *write_to,
@@ -425,7 +428,9 @@ static void make_val_temporary_store(
 
 	assert(val_size(write_to) == type_size(temporary_ty));
 }
+#endif
 
+#if 0
 static void ready_input(
 		val *orig_val,
 		val *temporary_store,
@@ -474,6 +479,7 @@ static void ready_output(
 	/* using a register as a temporary rhs - no dereference */
 	*deref_val = 0;
 }
+#endif
 
 static const char *maybe_generate_isn_suffix(
 		const size_t operand_count, val *emit_vals[],
@@ -511,10 +517,12 @@ static bool emit_isn_try(
 	val *emit_vals[MAX_OPERANDS];
 	bool orig_dereference[MAX_OPERANDS];
 	enum operand_category op_categories[MAX_OPERANDS] = { 0 };
+#if 0
 	struct {
 		val val;
 		variable var;
 	} temporaries[MAX_OPERANDS];
+#endif
 	unsigned conversions_required = 0, conversions_left;
 #if 0
 	const struct x86_isn_constraint *operands_target = NULL;
