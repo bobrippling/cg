@@ -284,6 +284,21 @@ static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_t
 	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
 }
 
+static bool mem_constraint_met(val *v)
+{
+	struct location *loc = val_location(v);
+
+	if(loc && loc->where == NAME_SPILT)
+		return true;
+	assert(!loc || loc->where == NAME_NOWHERE);
+
+	if(v->kind == ALLOCA){
+		return true;
+	}
+
+	return false;
+}
+
 static void gen_constraint_isns(
 		isn *isn_to_constrain,
 		struct constraint const *req,
@@ -307,6 +322,9 @@ static void gen_constraint_isns(
 		return;
 	}
 
+	if(req->req & REQ_MEM && mem_constraint_met(v))
+		return;
+
 	if(req->req & REQ_REG){
 		if(!regt_is_valid(req->reg[0])){
 			constrain_to_reg_any(v, isn_to_constrain);
@@ -322,16 +340,8 @@ static void gen_constraint_isns(
 	}
 
 	if(req->req & REQ_MEM){
-		struct location *loc = val_location(v);
-
-		if(loc && loc->where == NAME_SPILT)
+		if(mem_constraint_met(v))
 			return;
-		assert(!loc || loc->where == NAME_NOWHERE);
-
-		if(v->kind == ALLOCA){
-			/* will be assigned in spill pass, fine */
-			return;
-		}
 
 		constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
 		return;
