@@ -272,6 +272,18 @@ static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size
 	*out_v = out;
 }
 
+static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_type_list *utl, function *fn)
+{
+	unsigned stack_off = function_alloc_stack_space(fn, val_type(v));
+	val *mem = val_new_abi_stack(stack_off, type_get_ptr(utl, val_type(v)));
+	isn *spill = isn_store(v, mem);
+
+	assert(!postisn);
+	isn_insert_before(isn_to_constrain, spill);
+
+	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
+}
+
 static void gen_constraint_isns(
 		isn *isn_to_constrain,
 		struct constraint const *req,
@@ -311,11 +323,17 @@ static void gen_constraint_isns(
 
 	if(req->req & REQ_MEM){
 		struct location *loc = val_location(v);
-		assert(loc);
 
-		loc->where = NAME_SPILT;
+		if(loc && loc->where == NAME_SPILT)
+			return;
+		assert(!loc || loc->where == NAME_NOWHERE);
 
-		assert(0 && "TODO");
+		if(v->kind == ALLOCA){
+			/* will be assigned in spill pass, fine */
+			return;
+		}
+
+		constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
 		return;
 	}
 
