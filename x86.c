@@ -802,8 +802,10 @@ static void x86_op(
 		}
 	}
 
-	x86_mov(lhs, res, octx); /* FIXME: what if they're both in memory? */
-	emit_isn_binary(&opisn, octx, rhs, false, res, false, NULL);
+	/* to match isel's selections, we must match the rhs and result operands
+	 * to ensure that we do `op <lhs>, <rhs/res>` */
+	x86_mov(rhs, res, octx);
+	emit_isn_binary(&opisn, octx, lhs, false, res, false, NULL);
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
