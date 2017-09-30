@@ -161,8 +161,10 @@ found:
 		goto found;
 	}
 
-	if((opts & VAL_CREATE) == 0)
+	if((opts & VAL_CREATE) == 0){
 		parse_error(p, "undeclared identifier '%s'", name_to_print);
+		ty = default_type(p);
+	}
 
 	if(opts & VAL_LABEL)
 		v = val_new_label(name, ty);
