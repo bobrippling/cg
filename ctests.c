@@ -178,7 +178,9 @@ static void test_ir_assembles(const char *str, const struct target *target)
 	}
 }
 
-static int execute_ir(const struct target *target, int *const err, const char *str)
+static int execute_ir(
+		const struct target *target, int *const err, const char *str,
+		const char *c_harness)
 {
 	struct path_and_file as = { 0 }, exe = { 0 };
 	int ec = 0;
@@ -203,8 +205,9 @@ static int execute_ir(const struct target *target, int *const err, const char *s
 	snprintf(
 			sysbuf,
 			sizeof(sysbuf),
-			"echo 'int entry(void) __asm__(\"entry\"); int main(){return entry();}' "
+			"echo '%s' "
 			"| cc -w -o %s -x assembler %s -xc -",
+			c_harness,
 			exe.path, as.path);
 
 	build_err = system(sysbuf);
@@ -232,10 +235,13 @@ out_err:
 	goto out;
 }
 
-static void test_ir_ret(const char *str, int ret, const struct target *target)
+static void test_ir_ret(
+		const char *str, int ret, const struct target *target,
+		const char *maybe_c_harness)
 {
+	const char *c_harness = "int entry(void) __asm__(\"entry\"); int main(){return entry();}";
 	int err;
-	int ec = execute_ir(target, &err, str);
+	int ec = execute_ir(target, &err, str, maybe_c_harness ? maybe_c_harness : c_harness);
 	if(err || ec != ret){
 		fprintf(stderr, "ir return failure, expected %d, got ", ret);
 		if(err)
@@ -388,7 +394,66 @@ int main(int argc, const char *argv[])
 			"  ret $x"
 			"}",
 			1,
-			&target);
+			&target,
+			NULL);
+
+	test_ir_ret(
+			"$div = i4(i4 $a, i4 $b)"
+			"{"
+			"  $d = udiv $a, $b"
+			"  $e = udiv $b, i4 2"
+			"  $s = add $d, $e"
+			"  ret $s"
+			"}"
+			"$entry = i4(){"
+			"  $x = call $div(i4 10, i4 2)"
+			"  ret $x"
+			"}",
+			6,
+			&target,
+			NULL);
+
+	test_ir_ret(
+			"type $a = {i4,i4}"
+			"$f = $a() {"
+			"  $stack = alloca $a"
+			"  $p1 = elem $stack, i8 0"
+			"  $p2 = elem $stack, i8 1"
+			"  store $p1, i4 1"
+			"  store $p2, i4 2"
+			"  $tmp = load $stack"
+			"  ret $tmp"
+			"}",
+			1,
+			&target,
+			"typedef struct { int a, b; } A;"
+			"extern A f(void) __asm__(\"f\");"
+			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
+
+	test_ir_ret(
+			"$x = i4 global 3"
+			"$f = i4()"
+			"{"
+			"  $a = load $x"
+			"  $b = load $x"
+			"  $c = load $x"
+			"  $d = load $x"
+			"  $e = load $x"
+			"  $1 = add $a, $b"
+			"  $2 = add $1, $c"
+			"  $3 = add $2, $d"
+			"  $4 = add $3, $e"
+			"  ret $4"
+			"}"
+			"$entry = i4()"
+			"{"
+			"	store $x, i4 3"
+			"	$i = call $f()"
+			"	ret $i"
+			"}",
+			15,
+			&target,
+			NULL);
 
 	test_ir_x86(
 			"$f = i4(i4 $a){"
