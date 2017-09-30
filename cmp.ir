@@ -1,6 +1,0 @@
-$f = i4(i1 $cond)
-{
-	$cmp = eq $cond, i1 3
-	$e = zext i4, $cmp
-	ret $e
-}

@@ -494,6 +494,22 @@ int main(int argc, const char *argv[])
 			"}",
 			&target);
 
+	test_ir_compiles(
+			"type $alias = { i4, { i1* }* }"
+			"$i1 = i1 global 7"
+			"$si1 = {i1*} global { $i1 }"
+			"$globvar = $alias global { 3, $si1 }"
+			"$globvar2 = {$alias, [i4 x 3]} internal { { 4, $si1 }, { 1, 2, 3 } }"
+			"$main = i4() {"
+			"	ret i4 3"
+			"}"
+			"$func = i4(i1 $arg) {"
+			"	$stackalloc = alloca $alias"
+			"	$var = call $main()"
+			"	ret $var"
+			"}",
+			&target);
+
 	test_ir_assembles(
 			"$f = i4(i4 $i)"
 			"{"

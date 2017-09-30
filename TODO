@@ -1,24 +1,14 @@
-//===---------------------------------------------------------------------===//
-code-gen
-
-position independent code on i386 and x86_64
-
-//===---------------------------------------------------------------------===//
-alignment
-
-alignment of allocas on stack
-
-//===---------------------------------------------------------------------===//
-functions
-
+live-across-block values
+position independent code
+alloca and global data alignment
 function arguments
 	- r8 and r9 handling
 	- arguments > 6 handling
-	- calling
-callee save registers
-i386 function call ABI
+	- callee save registers
+	- i386 function call ABI
 
-//===---------------------------------------------------------------------===//
+###########################
+
 regalloc improvements
 
 1) stack allocations mirror register allocations - reuse stack across blocks
