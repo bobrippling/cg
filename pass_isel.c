@@ -76,6 +76,8 @@ static void populate_constraints(
 					req_lhs->reg[1] = regt_make_invalid();
 					req_lhs->val = isn->u.op.lhs;
 
+#if 0
+					/* for the moment, this is handled by isel_pad_cisc_isn() */
 					if(type_size(req_lhs->val->ty) >= 4){
 						/* we'll be doing a
 						 * a    cltd - edx:eax
@@ -84,6 +86,7 @@ static void populate_constraints(
 						 */
 						req_lhs->reg[1] = regt_make(REG_EDX, 0);
 					}
+#endif
 
 					req_rhs->req = REQ_REG | REQ_MEM;
 					req_rhs->reg[0] = regt_make_invalid();
