@@ -117,6 +117,21 @@ static unit *compile_and_pass_string(const char *str, int *const err, const stru
 	return u;
 }
 
+static void test_ir_compiles(const char *str, const struct target *target)
+{
+	int err;
+	unit *u = compile_and_pass_string(str, &err, target);
+
+	unit_free(u);
+
+	if(err){
+		fprintf(stderr, "compilation failure\n");
+		failed++;
+	}else{
+		passed++;
+	}
+}
+
 static int execute_ir(const struct target *target, int *const err, const char *str)
 {
 	struct path_and_file as = { 0 }, exe = { 0 };
@@ -344,6 +359,14 @@ int main(int argc, const char *argv[])
 			&target,
 			"alloca of function type", 1,
 			(char *)NULL);
+
+	test_ir_compiles(
+			"$f = i4*(){"
+			"	$p = alloca i4"
+			"	$plus = ptradd $p, i8 3"
+			"	ret $plus"
+			"}",
+			&target);
 
 	/* TODO:
 	 * interested in:
