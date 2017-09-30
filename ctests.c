@@ -455,6 +455,21 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	test_ir_ret(
+			"$entry = i4()"
+			"{"
+			"  $stack1 = alloca i4"
+			"  $stack2 = alloca i4"
+			"  store $stack1, i4 5"
+			"  store $stack2, i4 5"
+			"  $e = eq $stack1, $stack2"
+			"  $ez = zext i4, $e"
+			"  ret $ez"
+			"}",
+			0,
+			&target,
+			NULL);
+
 	test_ir_x86(
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
