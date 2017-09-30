@@ -9,32 +9,28 @@
 
 #include "x86_isel.h"
 
-void x86_isel_lea(isn *i, const struct target *target)
+static void check_lea_result(val *v_result)
 {
-	val *v;
 	enum operand_category cat;
 
-	assert(i->type == ISN_ELEM);
-
-	v = i->u.elem.res;
-	switch(v->kind){
+	switch(v_result->kind){
 		case LITERAL:
 		case GLOBAL:
 		case ARGUMENT:
 		case ALLOCA:
+		case LABEL:
+		case BACKEND_TEMP:
 			assert(0 && "invalid elem");
 
-		case LABEL:
 		case FROM_ISN:
-		case BACKEND_TEMP:
 		case ABI_TEMP:
 			break;
 	}
 
-	cat = val_operand_category(v, false) & OPERAND_MASK_PLAIN;
+	cat = val_operand_category(v_result, false) & OPERAND_MASK_PLAIN;
 	switch(cat){
 		case OPERAND_REG:
-			return;
+			break;
 
 		case OPERAND_INT:
 		case OPERAND_MEM_CONTENTS:
@@ -51,4 +47,11 @@ void x86_isel_lea(isn *i, const struct target *target)
 		case OPERAND_ADDRESSED:
 			assert(0 && "unreachable");
 	}
+}
+
+void x86_isel_lea(isn *i, const struct target *target)
+{
+	assert(i->type == ISN_ELEM);
+
+	check_lea_result(i->u.elem.res);
 }
