@@ -913,12 +913,10 @@ loc:
 			assert(0 && "unreachable");
 	}
 
-	x86_op(
-			op_add,
-			lval,
-			i->u.elem.index,
-			i->u.elem.res,
-			octx);
+	/* do the equivalent of x86_op/add,
+	 * but with more control over deref_[lr]hs and lea'ing of the lval */
+	x86_mov(lval, i->u.elem.res, octx);
+	emit_isn_binary(&x86_isn_add, octx, i->u.elem.index, false, i->u.elem.res, false, NULL);
 }
 
 static void x86_trunc(val *from, val *to, x86_octx *octx)
