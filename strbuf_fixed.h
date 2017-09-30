@@ -18,10 +18,10 @@ typedef struct strbuf_fixed {
 
 void strbuf_fixed_init(strbuf_fixed *, char *, size_t);
 
-compiler_printf(2, 3)
+strbuf_compiler_printf(2, 3)
 bool strbuf_fixed_printf(strbuf_fixed *, const char *, ...);
 
-compiler_printf(2, 0)
+strbuf_compiler_printf(2, 0)
 bool strbuf_fixed_vprintf(strbuf_fixed *, const char *, va_list);
 
 char *strbuf_fixed_detach(strbuf_fixed *);
