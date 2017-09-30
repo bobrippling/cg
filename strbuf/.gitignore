@@ -1,0 +1,4 @@
+*.o
+strbuf.a
+.*.d
+test
