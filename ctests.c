@@ -132,6 +132,52 @@ static void test_ir_compiles(const char *str, const struct target *target)
 	}
 }
 
+static int assemble_ir(const char *str, const struct target *target)
+{
+	struct path_and_file as = { 0 };
+	int ec = 0;
+	char sysbuf[256];
+	int err;
+	unit *u = compile_and_pass_string(str, &err, target);
+
+	if(err){
+		ec = -1;
+		goto out;
+	}
+
+	as.f = temp_file(&as.path);
+	if(!as.f)
+		die("open %s:", as.path);
+
+	unit_on_globals(u, target->emit, as.f);
+	if(fclose(as.f))
+		die("close:");
+	as.f = NULL;
+
+	snprintf(sysbuf, sizeof(sysbuf), "as -o /dev/null %s", as.path);
+	ec = system(sysbuf);
+
+out:
+	unit_free(u);
+	free_path_and_file(&as);
+
+	if(WIFEXITED(ec))
+		return WEXITSTATUS(ec);
+	return -1;
+}
+
+static void test_ir_assembles(const char *str, const struct target *target)
+{
+	int ec = assemble_ir(str, target);
+
+	if(ec){
+		fprintf(stderr, "as return failure\n");
+		failed++;
+	}else{
+		passed++;
+	}
+}
+
 static int execute_ir(const struct target *target, int *const err, const char *str)
 {
 	struct path_and_file as = { 0 }, exe = { 0 };
@@ -365,6 +411,18 @@ int main(int argc, const char *argv[])
 			"	$p = alloca i4"
 			"	$plus = ptradd $p, i8 3"
 			"	ret $plus"
+			"}",
+			&target);
+
+	test_ir_assembles(
+			"$f = i4(i4 $i)"
+			"{"
+			"	label $lbl"
+			"	$1 = alloca void*"
+			"	store $1, $lbl"
+			"	jmp $lbl"
+			"$lbl:"
+			"	ret i4 1"
 			"}",
 			&target);
 
