@@ -333,16 +333,16 @@ static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct location *loc)
 {
 	switch(loc->where){
 		case NAME_NOWHERE:
-			snprintf(buf, n, "<unlocated>");
+			xsnprintf(buf, n, "<unlocated>");
 			break;
 		case NAME_IN_REG_ANY:
-			snprintf(buf, n, "<reg any>");
+			xsnprintf(buf, n, "<reg any>");
 			break;
 		case NAME_IN_REG:
-			snprintf(buf, n, "<reg %d>", loc->u.reg);
+			xsnprintf(buf, n, "<reg %d>", loc->u.reg);
 			break;
 		case NAME_SPILT:
-			snprintf(buf, n, "<stack %d>", loc->u.off);
+			xsnprintf(buf, n, "<stack %d>", loc->u.off);
 			break;
 	}
 	return buf;
@@ -355,30 +355,30 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 	switch(v->kind){
 		case LITERAL:
 			if(type_is_void(v->ty))
-				snprintf(buf, VAL_STR_SZ, "void");
+				xsnprintf(buf, VAL_STR_SZ, "void");
 			else
-				snprintf(buf, VAL_STR_SZ, "%s %d", type_to_str(v->ty), v->u.i);
+				xsnprintf(buf, VAL_STR_SZ, "%s %d", type_to_str(v->ty), v->u.i);
 			break;
 		case GLOBAL:
-			snprintf(buf, VAL_STR_SZ, "$%s", global_name(v->u.global));
+			xsnprintf(buf, VAL_STR_SZ, "$%s", global_name(v->u.global));
 			break;
 		case LABEL:
-			snprintf(buf, VAL_STR_SZ, "$%s", v->u.label.name);
+			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.label.name);
 			break;
 		case ARGUMENT:
-			snprintf(buf, VAL_STR_SZ, "$%s", v->u.argument.name);
+			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.argument.name);
 			break;
 		case FROM_ISN:
-			snprintf(buf, VAL_STR_SZ, "$%s", v->u.local.name);
+			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.local.name);
 			break;
 		case ALLOCA:
-			snprintf(buf, VAL_STR_SZ, "$%s", v->u.alloca.name);
+			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.alloca.name);
 			break;
 		case BACKEND_TEMP:
-			snprintf(buf, VAL_STR_SZ, "<temp %p>", v);
+			xsnprintf(buf, VAL_STR_SZ, "<temp %p>", v);
 			break;
 		case ABI_TEMP:
-			snprintf(buf, VAL_STR_SZ, "<abi %p>", (void *)v);
+			xsnprintf(buf, VAL_STR_SZ, "<abi %p>", (void *)v);
 			break;
 	}
 
@@ -389,7 +389,7 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 			/* append reg */
 			val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
 		}else if(loc->where == NAME_SPILT){
-			snprintf(buf + len, VAL_STR_SZ - len, "<stack %d>", loc->u.off);
+			xsnprintf(buf + len, VAL_STR_SZ - len, "<stack %d>", loc->u.off);
 		}
 	}
 
@@ -479,7 +479,7 @@ val *val_name_new(unsigned sz, char *ident)
 		/* XXX: static */
 		static int n;
 		char buf[32];
-		snprintf(buf, sizeof buf, "tmp_%d", n++);
+		xsnprintf(buf, sizeof buf, "tmp_%d", n++);
 		ident = xstrdup(buf);
 	}
 

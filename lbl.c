@@ -10,7 +10,7 @@ char *lbl_new_private(unsigned *const counter, const char *prefix)
 	const int n = strlen(prefix) + 32;
 	char *l = xmalloc(n);
 
-	int printed = snprintf(l, n, "%s%u", prefix, *counter);
+	int printed = xsnprintf(l, n, "%s%u", prefix, *counter);
 
 	assert(printed < n);
 
@@ -24,7 +24,7 @@ char *lbl_new_ident(const char *ident, const char *prefix)
 	const int n = strlen(ident) + strlen(prefix) + 2;
 	char *l = xmalloc(n);
 
-	int printed = snprintf(l, n, "%s_%s", prefix, ident);
+	int printed = xsnprintf(l, n, "%s_%s", prefix, ident);
 
 	assert(printed < n);
 

@@ -248,7 +248,7 @@ static const char *x86_name_str(
 				val_sz = type_size(ty);
 			}
 
-			snprintf(buf, bufsz, "%s%%%s%s",
+			xsnprintf(buf, bufsz, "%s%%%s%s",
 					deref ? "(" : "",
 					name_in_reg_str(loc, val_sz),
 					deref ? ")" : "");
@@ -259,7 +259,7 @@ static const char *x86_name_str(
 		{
 			char regch = x86_target_regch(target);
 
-			snprintf(buf, bufsz, "-%u(%%%cbp)%s", loc->u.off, regch,
+			xsnprintf(buf, bufsz, "-%u(%%%cbp)%s", loc->u.off, regch,
 					dereference_ty == DEREFERENCE_TRUE ? "" : "/* expected to deref */");
 			break;
 		}
@@ -288,7 +288,7 @@ static const char *x86_val_str(
 		{
 			bool indir = (dereference == DEREFERENCE_TRUE);
 
-			snprintf(buf, sizeof bufs[0],
+			xsnprintf(buf, sizeof bufs[0],
 					"%s%d",
 					indir ? "" : "$",
 					val->u.i);
@@ -305,7 +305,7 @@ static const char *x86_val_str(
 			 * x86 is not PIC
 			 */
 			/* TODO: pic */
-			snprintf(buf, sizeof bufs[0],
+			xsnprintf(buf, sizeof bufs[0],
 					"%s%s%s",
 					indir ? "" : "$",
 					global_name(val->u.global),
@@ -319,7 +319,7 @@ static const char *x86_val_str(
 			const int x64 = x86_target_switch(target, 0, 1);
 			const char *prefix = unit_lbl_private_prefix(octx->unit);
 
-			snprintf(buf, sizeof bufs[0], "%s_%s%s", prefix, val->u.label.name, x64 ? "(%rip)" : "");
+			xsnprintf(buf, sizeof bufs[0], "%s_%s%s", prefix, val->u.label.name, x64 ? "(%rip)" : "");
 			break;
 		}
 

@@ -380,7 +380,7 @@ void token_curline(tokeniser *t, char *out, size_t len, size_t *const poff)
 	*poff = 0;
 
 	if(!src){
-		snprintf(out, len, "[eof]");
+		xsnprintf(out, len, "[eof]");
 		return;
 	}
 
