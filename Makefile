@@ -13,8 +13,8 @@ OBJ = val.o mem.o dynarray.o op.o init.o \
 OBJ_MAIN = ${OBJ} main.o
 OBJ_UTEST = utests.o type.o uniq_type_list.o type_iter.o \
            mem.o dynmap.o dynarray.o imath.o regset.o regset_marks.o
-OBJ_CTEST = ${OBJ} ctest.o
-OBJ_ALL = ${OBJ_MAIN} ctest.o utests.o
+OBJ_CTEST = ${OBJ} ctests.o
+OBJ_ALL = ${OBJ_MAIN} ctests.o utests.o
 
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
 
@@ -43,9 +43,9 @@ utests: ${OBJ_UTEST} strbuf/strbuf.a
 	@echo link $@
 	$Q${CC} -o $@ ${OBJ_UTEST} strbuf/strbuf.a ${LDFLAGS}
 
-ctests: ${OBJ} ctests.o
+ctests: ${OBJ_CTEST}
 	@echo link $@
-	$Q${CC} -o $@ ${OBJ} ctests.o strbuf/strbuf.a ${LDFLAGS}
+	$Q${CC} -o $@ ${OBJ_CTEST} strbuf/strbuf.a ${LDFLAGS}
 
 %.o: %.c
 	@echo compile $<
@@ -56,9 +56,8 @@ tags: ${SRC}
 	$Q-ctags ${SRC} *.h
 
 clean:
-	make -C test clean
 	make -C strbuf clean
-	rm -f ir ${OBJ_ALL} ${OBJ_ALL:%.o=.%.d}
+	rm -f ir ctests utests ${OBJ_ALL} ${OBJ_ALL:%.o=.%.d}
 
 .%.d: %.c
 	@echo depend $<
