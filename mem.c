@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -68,4 +69,21 @@ char *xsprintf(const char *fmt, ...)
 	s = xvsprintf(fmt, l);
 	va_end(l);
 	return s;
+}
+
+int xsnprintf(char *buf, size_t len, const char *fmt, ...)
+{
+	va_list l;
+	int desired_space;
+
+	va_start(l, fmt);
+	desired_space = vsnprintf(buf, len, fmt, l);
+	va_end(l);
+
+	if(desired_space < 0 || desired_space >= (int)len){
+		fprintf(stderr, "snprintf() overflow\n");
+		abort();
+	}
+
+	return desired_space;
 }

@@ -11,4 +11,6 @@ char *xstrdup(const char *);
 char *xsprintf(const char *fmt, ...);
 char *xvsprintf(const char *fmt, va_list);
 
+int xsnprintf(char *buf, size_t len, const char *fmt, ...);
+
 #endif
