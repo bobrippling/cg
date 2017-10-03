@@ -154,7 +154,7 @@ static int assemble_ir(const char *str, const struct target *target)
 		die("close:");
 	as.f = NULL;
 
-	snprintf(sysbuf, sizeof(sysbuf), "as -o /dev/null %s", as.path);
+	xsnprintf(sysbuf, sizeof(sysbuf), "as -o /dev/null %s", as.path);
 	ec = system(sysbuf);
 
 out:
@@ -202,7 +202,7 @@ static int execute_ir(
 
 	exe.f = temp_file(&exe.path);
 
-	snprintf(
+	xsnprintf(
 			sysbuf,
 			sizeof(sysbuf),
 			"echo '%s' "
