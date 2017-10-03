@@ -185,7 +185,7 @@ static int execute_ir(
 	struct path_and_file as = { 0 }, exe = { 0 };
 	int ec = 0;
 	int build_err;
-	char sysbuf[256];
+	char sysbuf[512];
 	unit *u = compile_and_pass_string(str, err, target);
 
 	if(*err)
