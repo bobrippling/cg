@@ -8,12 +8,3 @@ tags
 test/harness/harness
 test/harness/gen.s
 test/harness/src.s
-
-isel
-isel.s
-ret-st
-ret-st.s
-spill
-spill.s
-spill_call.ir
-spill_call.s
