@@ -477,6 +477,11 @@ int main(int argc, const char *argv[])
 			"mov $3, %eax",
 			&target);
 
+	test_ir_x86(
+			"$x = {i4,i2} global aliasinit i2 3",
+			".word 0x3",
+			&target);
+
 	test_ir_error(
 			"$main = i4(){\n"
 			"	$z = alloca i4()\n"

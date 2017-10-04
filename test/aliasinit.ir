@@ -1,2 +1,0 @@
-# test=grep_x86_64 .word 0x3
-$x = {i4,i2} global aliasinit i2 3
