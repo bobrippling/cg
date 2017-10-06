@@ -34,9 +34,7 @@ struct greedy_ctx
 	block *blk;
 	const struct regset *scratch_regs;
 	uniq_type_list *utl;
-	dynarray spill_isns;
 	dynmap *alloced_vars;
-	bool spilt;
 };
 
 struct regalloc_ctx
