@@ -162,9 +162,6 @@ static void gather_arg_vals(function *func, struct x86_spill_ctx *spillctx)
 	 * we only spill arguments that are actually used, for the moment,
 	 * that's any argument used at all, regardless of blocks
 	 */
-	block *blk = function_entry_block(func, false);
-	assert(blk);
-
 	function_onblocks(func, find_args_in_block, spillctx);
 }
 
