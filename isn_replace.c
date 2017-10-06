@@ -186,7 +186,8 @@ static void replace_args_with_load_store(
 
 		if(arg == old){
 			isn_replace_input_with_load(isn, old, spill, &arg, ctx);
-			dynarray_ent(args, i) = arg;
+			val_release(dynarray_ent(args, i));
+			dynarray_ent(args, i) = val_retain(arg);
 		}
 	}
 }
