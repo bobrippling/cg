@@ -1128,8 +1128,6 @@ static void x86_out_block1(block *blk, void *vctx)
 		if(i->skip)
 			continue;
 
-		fprintf(octx->fout, "\t# %s\n", isn_type_to_str(i->type));
-
 		switch(i->type){
 			case ISN_ALLOCA:
 				break;
