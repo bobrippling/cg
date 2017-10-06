@@ -169,7 +169,7 @@ static void create_arg_reg_overlay_isns(
 		const struct regset *regs,
 		const struct isn_insertion *insertion,
 		uniq_type_list *utl,
-		val *argval,
+		val *argval/*nullable*/,
 		type *argty,
 		const enum regoverlay_direction overlay_direction)
 {
@@ -190,24 +190,37 @@ static void create_arg_reg_overlay_isns(
 		/* simply assign to the argval from the abival */
 		const int is_fp = !!(regclass->regs[0] & SSE);
 		unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
-		val *abiv;
-		isn *copy;
 
 		assert(regclass->regs[1] == NO_CLASS);
 
-		abiv = val_new_abi_reg(
-				regset_nth(regs, *reg_index, is_fp),
-				argty); /* argty is acceptable here */
+		if(argval){
+			val *abiv;
+			isn *copy;
 
-		copy = isn_copy(
-				overlay_direction == OVERLAY_FROM_REGS ? argval : abiv,
-				overlay_direction == OVERLAY_FROM_REGS ? abiv : argval);
+			abiv = val_new_abi_reg(
+					regset_nth(regs, *reg_index, is_fp),
+					argty); /* argty is acceptable here */
 
-		/* this is an instruction involving an abi register/stack slot,
-		 * so needs to go into abi_copies and dealt with later */
-		ISN_APPEND_OR_SET(state->abi_copies, copy);
+			copy = isn_copy(
+					overlay_direction == OVERLAY_FROM_REGS ? argval : abiv,
+					overlay_direction == OVERLAY_FROM_REGS ? abiv : argval);
+
+			/* this is an instruction involving an abi register/stack slot,
+			 * so needs to go into abi_copies and dealt with later */
+			ISN_APPEND_OR_SET(state->abi_copies, copy);
+		}
 
 		++*reg_index;
+		return;
+	}
+
+	if(!argval){
+		/* unused, just alter the state as if we used it */
+		for(i = 0; i < 2 && regclass->regs[i] != NO_CLASS; i++){
+			const int is_fp = !!(regclass->regs[i] & SSE);
+			unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
+			++*reg_index;
+		}
 		return;
 	}
 
@@ -323,13 +336,12 @@ static void create_arg_reg_overlay_isns(
 
 static void classify_and_create_abi_isns_for_arg(
 		const struct regset *regs,
-		val *argval,
+		val *argval /*nullable*/, type *argty,
 		struct regpass_state *const state,
 		uniq_type_list *utl,
 		isn *const insertion_point,
 		const enum regoverlay_direction direction)
 {
-	type *argty = val_type(argval);
 	struct typeclass cls;
 
 	classify_type(argty, &cls);
@@ -347,6 +359,10 @@ static void classify_and_create_abi_isns_for_arg(
 	}
 
 	if(cls.inmem){
+		if(!argval){
+			/* no dependent state */
+			return;
+		}
 		convert_incoming_arg_stack(state, utl, argty, argval, direction);
 
 	}else{
@@ -443,7 +459,8 @@ static void convert_incoming_args(
 	 * - stret
 	 * - struct arguments
 	 */
-	type *retty = type_func_call(function_type(fn), NULL, NULL);
+	dynarray *args;
+	type *retty = type_func_call(function_type(fn), &args, NULL);
 	unsigned i;
 	struct regpass_state state = { 0 };
 	struct typeclass retcls;
@@ -460,12 +477,11 @@ static void convert_incoming_args(
 
 	for(i = 0; i < function_arg_count(fn); i++){
 		val *argval = function_arg_val(fn, i);
-
-		if(!argval)
-			continue;
+		type *argty = dynarray_ent(args, i);
+		/* ^ maybe null if unused - must still go through the motions for subsequent args */
 
 		classify_and_create_abi_isns_for_arg(
-				regs, argval, &state, utl,
+				regs, argval, argty, &state, utl,
 				block_first_isn(entry),
 				OVERLAY_FROM_REGS);
 	}
@@ -581,7 +597,7 @@ static isn *convert_outgoing_args_and_call_isn(
 		val *argval = dynarray_ent(fnargs, i);
 
 		classify_and_create_abi_isns_for_arg(
-				&target->abi.arg_regs, argval, &arg_state, utl,
+				&target->abi.arg_regs, argval, val_type(argval), &arg_state, utl,
 				inst, OVERLAY_TO_REGS);
 	}
 

@@ -482,6 +482,11 @@ int main(int argc, const char *argv[])
 			".word 0x3",
 			&target);
 
+	test_ir_x86(
+			"$f = i4(i4 $a, i4 $b){ ret $b }",
+			"mov %esi, %eax",
+			&target);
+
 	test_ir_error(
 			"$main = i4(){\n"
 			"	$z = alloca i4()\n"
