@@ -219,6 +219,19 @@ block *function_block_find(
 	return b;
 }
 
+static void add_arguments_to_map(function *f, dynmap *values_to_block)
+{
+	size_t i;
+	block *entry = function_entry_block(f, false);
+	assert(entry);
+
+	dynarray_iter(&f->arg_names, i){
+		val *v = f->arg_vals[i];
+		if(v)
+			dynmap_set(val *, block *, values_to_block, v, entry);
+	}
+}
+
 void function_finalize(function *f)
 {
 	dynmap *values_to_block;
@@ -228,6 +241,9 @@ void function_finalize(function *f)
 
 	/* find out which values live outside their block */
 	values_to_block = dynmap_new(val *, NULL, val_hash);
+
+	/* all arguments are implicitly live in the first block */
+	add_arguments_to_map(f, values_to_block);
 
 	function_onblocks(f, block_check_val_life, values_to_block);
 
