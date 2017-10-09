@@ -5,6 +5,7 @@
 
 #include "isn_replace.h"
 
+#include "function.h"
 #include "isn.h"
 #include "isn_struct.h"
 #include "val.h"
@@ -17,6 +18,11 @@ struct replace_ctx
 {
 	block *block;
 	unsigned isn_count;
+};
+
+struct replace_block_ctx
+{
+	val *old, *spill;
 };
 
 #define ISN_SWITCH_IO()                \
@@ -192,15 +198,16 @@ static void replace_args_with_load_store(
 	}
 }
 
-void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *any_isn, block *blk)
+static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
 {
+	struct replace_block_ctx *args = vctx;
 	struct replace_ctx ctx = { 0 };
+	isn *any_isn;
+	val *const old = args->old, *const spill = args->spill;
 
 	ctx.block = blk;
-	ctx.isn_count = 0;
 
-	for(any_isn = isn_first(any_isn);
+	for(any_isn = block_first_isn(blk);
 			any_isn;
 			any_isn = isn_next(any_isn), ctx.isn_count++)
 	{
@@ -228,6 +235,17 @@ void isn_replace_uses_with_load_store(
 
 		replace_args_with_load_store(any_isn, old, spill, &ctx);
 	}
+}
+
+void isn_replace_uses_with_load_store(
+		struct val *old, struct val *spill, struct isn *any_isn, function *fn)
+{
+	struct replace_block_ctx ctx;
+
+	ctx.old = old;
+	ctx.spill = spill;
+
+	function_onblocks(fn, isn_replace_uses_with_load_store_block, &ctx);
 }
 
 static void isn_replace_val_with_val_call(isn *isn, val *old, val *new)

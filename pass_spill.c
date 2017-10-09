@@ -58,7 +58,7 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	isn_insert_before(use_isn, alloca);
 
 	/* no reg overlap - we just setup the values, regalloc can deal with the rest */
-	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->blk);
+	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->fn);
 }
 
 static void isn_spill(val *v, isn *isn, void *vctx)
@@ -75,7 +75,10 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 		return;
 
 	if(v->live_across_blocks){
-		/* NOTE: we assume it's spilt */
+		/* optimisation - ensure the value is in the same register for all blocks
+		 * mem2reg or something similar should do this */
+		if(isn_defines_val(isn, v))
+			spill(v, isn, ctx);
 		return;
 	}
 

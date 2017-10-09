@@ -7,6 +7,7 @@
 struct val;
 struct isn;
 struct block;
+struct function;
 
 enum replace_mode
 {
@@ -15,7 +16,7 @@ enum replace_mode
 };
 
 void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *, struct block *);
+		struct val *old, struct val *spill, struct isn *, struct function *);
 
 void isn_replace_val_with_val(
 		struct isn *,

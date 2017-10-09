@@ -223,10 +223,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 
 	/* if it lives across blocks we use memory */
 	if(v->live_across_blocks){
-		/* optimisation - ensure the value is in the same register for all blocks
-		 * mem2reg or something similar should do this */
-		assert(0 && "TODO: grab a free reg for live_across_blocks spill");
-		/*regalloc_spill(v, isn, ctx);*/
+		/* handled in spill pass */
 		return;
 	}
 
