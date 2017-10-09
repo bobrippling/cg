@@ -625,6 +625,55 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 	return false;
 }
 
+bool isn_defines_val(isn *isn, struct val *v)
+{
+	switch(isn->type){
+		case ISN_STORE:
+		case ISN_RET:
+		case ISN_JMP:
+		case ISN_JMP_COMPUTED:
+		case ISN_LABEL:
+		case ISN_BR:
+		case ISN_IMPLICIT_USE:
+			return false;
+
+		case ISN_LOAD:
+			return v == isn->u.load.to;
+
+		case ISN_ALLOCA:
+			return v == isn->u.alloca.out;
+
+		case ISN_ELEM:
+			return v == isn->u.elem.res;
+
+		case ISN_PTRADD:
+		case ISN_PTRSUB:
+			return v == isn->u.ptraddsub.out;
+
+		case ISN_OP:
+			return v == isn->u.op.res;
+
+		case ISN_CMP:
+			return v == isn->u.cmp.res;
+
+		case ISN_COPY:
+			return v == isn->u.copy.to;
+
+		case ISN_EXT_TRUNC:
+			return v == isn->u.ext.to;
+
+		case ISN_PTR2INT:
+		case ISN_INT2PTR:
+			return v == isn->u.ptr2int.to;
+
+		case ISN_PTRCAST:
+			return v == isn->u.ptrcast.to;
+
+		case ISN_CALL:
+			return v == isn->u.call.into;
+	}
+}
+
 static void isn_on_vals(
 		isn *current,
 		void fn(val *, isn *, void *),
