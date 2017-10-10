@@ -256,14 +256,13 @@ static void test_ir_ret(
 	}
 }
 
-static void test_ir_x86(
+static void test_ir_emit(
 		const char *ir,
 		const char *x86,
 		const struct target *target)
 {
 	int err;
 	unit *u = compile_and_pass_string(ir, &err, target);
-
 	if(err){
 		fprintf(stderr, ":(\n");
 		goto out;
@@ -380,8 +379,9 @@ int main(int argc, const char *argv[])
 		return 1;
 	}
 
-	struct target target;
+	struct target target, target_ir;
 	target_default(&target);
+	target_parse("ir-linux", &target_ir);
 
 	test_ir_ret(
 			"$is_5 = i4(i4 $x){"
@@ -470,22 +470,34 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
-	test_ir_x86(
+	test_ir_emit(
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
 			"}",
 			"mov $3, %eax",
 			&target);
 
-	test_ir_x86(
+	test_ir_emit(
 			"$x = {i4,i2} global aliasinit i2 3",
 			".word 0x3",
 			&target);
 
-	test_ir_x86(
+	test_ir_emit(
 			"$f = i4(i4 $a, i4 $b){ ret $b }",
 			"mov %esi, %eax",
 			&target);
+
+	test_ir_emit(
+			"$g = i4(...)"
+			"$f = i4(i4 $x){"
+			"	jmp $blk"
+			"$blk:"
+			"	$g_ = call $g()"
+			"	$s = add $x, $g_" /* $x should be spilt */
+			"	ret $s"
+			"}",
+			"$s<reg 3> = add $reload.3<reg 4>, $g_<reg 5>",
+			&target_ir);
 
 	test_ir_error(
 			"$main = i4(){\n"
