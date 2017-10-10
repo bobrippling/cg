@@ -456,6 +456,22 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$delegate = i4(i4()* $f)"
+			"{"
+			"	$x = call $f()"
+			"	ret $x"
+			"}"
+			"$ret4 = i4() { ret i4 4 }"
+			"$entry = i4()"
+			"{"
+			"	$x = call $delegate($ret4)"
+			"	ret $x"
+			"}",
+			4,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
