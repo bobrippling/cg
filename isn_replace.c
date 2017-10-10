@@ -14,6 +14,8 @@
 #include "lifetime_struct.h"
 #include "location.h"
 
+#define REPLACE_CALL_ARGUMENTS 0
+
 struct replace_ctx
 {
 	block *block;
@@ -175,6 +177,7 @@ static void isn_replace_output_with_store(
 	*output = tmp;
 }
 
+#if REPLACE_CALL_ARGUMENTS
 static void replace_args_with_load_store(
 		isn *isn,
 		val *old,
@@ -198,6 +201,7 @@ static void replace_args_with_load_store(
 		}
 	}
 }
+#endif
 
 static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
 {
@@ -234,7 +238,10 @@ static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
 		if(writeback)
 			isn_vals_set(any_isn, inputs, &output);
 
+#if REPLACE_CALL_ARGUMENTS
+		/* not necessary - abi spills these into normal abi variables early on */
 		replace_args_with_load_store(any_isn, old, spill, &ctx);
+#endif
 	}
 }
 
