@@ -264,7 +264,6 @@ static void test_ir_emit(
 	int err;
 	unit *u = compile_and_pass_string(ir, &err, target);
 	if(err){
-		fprintf(stderr, ":(\n");
 		goto out;
 	}
 
