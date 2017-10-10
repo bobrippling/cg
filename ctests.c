@@ -38,6 +38,16 @@ struct path_and_file
 
 static unsigned failed, passed;
 
+static void report(int lno, const char *errmsg)
+{
+	if(errmsg){
+		fprintf(stderr, "%s:%d: %s\n", __FILE__, lno, errmsg);
+		failed++;
+	}else{
+		passed++;
+	}
+}
+
 static void free_path_and_file(struct path_and_file *paf)
 {
 	if(paf->f && fclose(paf->f))
@@ -117,19 +127,14 @@ static unit *compile_and_pass_string(const char *str, int *const err, const stru
 	return u;
 }
 
-static void test_ir_compiles(const char *str, const struct target *target)
+static void test_ir_compiles(int lno, const char *str, const struct target *target)
 {
 	int err;
 	unit *u = compile_and_pass_string(str, &err, target);
 
 	unit_free(u);
 
-	if(err){
-		fprintf(stderr, "compilation failure\n");
-		failed++;
-	}else{
-		passed++;
-	}
+	report(lno, err ? "compilation failure" : NULL);
 }
 
 static int assemble_ir(const char *str, const struct target *target)
@@ -166,16 +171,11 @@ out:
 	return -1;
 }
 
-static void test_ir_assembles(const char *str, const struct target *target)
+static void test_ir_assembles(int lno, const char *str, const struct target *target)
 {
 	int ec = assemble_ir(str, target);
 
-	if(ec){
-		fprintf(stderr, "as return failure\n");
-		failed++;
-	}else{
-		passed++;
-	}
+	report(lno, ec ? "as return failure" : NULL);
 }
 
 static int execute_ir(
@@ -236,27 +236,25 @@ out_err:
 }
 
 static void test_ir_ret(
+		int lno,
 		const char *str, int ret, const struct target *target,
 		const char *maybe_c_harness)
 {
 	const char *c_harness = "int entry(void) __asm__(\"entry\"); int main(){return entry();}";
 	int err;
 	int ec = execute_ir(target, &err, str, maybe_c_harness ? maybe_c_harness : c_harness);
-	if(err || ec != ret){
-		fprintf(stderr, "ir return failure, expected %d, got ", ret);
-		if(err)
-			fprintf(stderr, "error");
-		else
-			fprintf(stderr, "%d", ec);
-		fprintf(stderr, "\n");
+	const char *emsg = NULL;
 
-		failed++;
-	}else{
-		passed++;
-	}
+	if(err)
+		emsg = "ir compilation failure";
+	else if(ec != ret)
+		emsg = "ir return failure";
+
+	report(lno, emsg);
 }
 
 static void test_ir_emit(
+		int lno,
 		const char *ir,
 		const char *x86,
 		const struct target *target)
@@ -293,19 +291,18 @@ static void test_ir_emit(
 
 out:
 	if(err){
-		fprintf(stderr, "error compiling\n");
-		failed++;
+		report(lno, "error compiling");
 	}else if(!found){
-		fprintf(stderr, "couldn't find \"%s\"\n", x86);
-		failed++;
+		report(lno, "couldn't find emitted string");
 	}else{
-		passed++;
+		report(lno, NULL);
 	}
 
 	unit_free(u);
 }
 
 static void test_ir_error(
+		int lno,
 		const char *ir,
 		const struct target *target,
 		const char *err, int line,
@@ -319,11 +316,8 @@ static void test_ir_error(
 	token_fin(tok, &tok_err);
 	unit_free(u);
 
-	int had_error = 0;
-
 	if(tok_err){
 		fprintf(stderr, "tokenisation error\n");
-		had_error = 1;
 		goto out;
 	}
 
@@ -333,20 +327,17 @@ static void test_ir_error(
 	struct error *e;
 	for(e = ctx.errors; e; e = e->next){
 		if(e->line != line){
-			fprintf(stderr, "error mismatch: expected error on line %d, got it on line %d\n", line, e->line);
-			had_error = 1;
+			report(lno, "mismatching error lines");
 			goto out_va_end;
 		}else if(strcmp(e->fmt, err)){
-			fprintf(stderr, "error mismatch: expected \"%s\", got \"%s\"\n", err, e->fmt);
-			had_error = 1;
+			report(lno, "mismatching error strings");
 			goto out_va_end;
 		}
 
 		err = va_arg(l, const char *);
 		if(!err){
 			if(e->next){
-				fprintf(stderr, "error count mismatch: got more than expected\n");
-				had_error = 1;
+				report(lno, "more errors than expected");
 				goto out_va_end;
 			}
 			break;
@@ -355,8 +346,7 @@ static void test_ir_error(
 	}
 
 	if(err){
-		fprintf(stderr, "error count mismatch: got fewer than expected\n");
-		had_error = 1;
+		report(lno, "fewer errors than expected");
 	}
 
 out_va_end:
@@ -364,12 +354,9 @@ out_va_end:
 
 out:
 	free_compile_ctx(&ctx);
-
-	if(had_error)
-		failed++;
-	else
-		passed++;
 }
+
+#define TEST(fn, ...) test_##fn(__LINE__, __VA_ARGS__)
 
 int main(int argc, const char *argv[])
 {
@@ -382,7 +369,7 @@ int main(int argc, const char *argv[])
 	target_default(&target);
 	target_parse("ir-linux", &target_ir);
 
-	test_ir_ret(
+	TEST(ir_ret,
 			"$is_5 = i4(i4 $x){"
 			"  $b = eq $x, i4 5"
 			"  $be = zext i4, $b"
@@ -396,7 +383,7 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
-	test_ir_ret(
+	TEST(ir_ret,
 			"$div = i4(i4 $a, i4 $b)"
 			"{"
 			"  $d = udiv $a, $b"
@@ -412,7 +399,7 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
-	test_ir_ret(
+	TEST(ir_ret,
 			"type $a = {i4,i4}"
 			"$f = $a() {"
 			"  $stack = alloca $a"
@@ -429,7 +416,7 @@ int main(int argc, const char *argv[])
 			"extern A f(void) __asm__(\"f\");"
 			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
 
-	test_ir_ret(
+	TEST(ir_ret,
 			"$x = i4 global 3"
 			"$f = i4()"
 			"{"
@@ -454,7 +441,7 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
-	test_ir_ret(
+	TEST(ir_ret,
 			"$entry = i4()"
 			"{"
 			"  $stack1 = alloca i4"
@@ -469,24 +456,24 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
-	test_ir_emit(
+	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
 			"}",
 			"mov $3, %eax",
 			&target);
 
-	test_ir_emit(
+	TEST(ir_emit,
 			"$x = {i4,i2} global aliasinit i2 3",
 			".word 0x3",
 			&target);
 
-	test_ir_emit(
+	TEST(ir_emit,
 			"$f = i4(i4 $a, i4 $b){ ret $b }",
 			"mov %esi, %eax",
 			&target);
 
-	test_ir_emit(
+	TEST(ir_emit,
 			"$vf = void()"
 			"$f = i4(){"
 			"  $x = call $vf()"
@@ -495,7 +482,7 @@ int main(int argc, const char *argv[])
 			"mov $0, %eax",
 			&target);
 
-	test_ir_emit(
+	TEST(ir_emit,
 			"$g = i4(...)"
 			"$f = i4(i4 $x){"
 			"	jmp $blk"
@@ -507,7 +494,7 @@ int main(int argc, const char *argv[])
 			"$s<reg 3> = add $reload.3<reg 4>, $g_<reg 5>",
 			&target_ir);
 
-	test_ir_error(
+	TEST(ir_error,
 			"$main = i4(){\n"
 			"	$z = alloca i4()\n"
 			"	ret i4 0\n"
@@ -516,7 +503,7 @@ int main(int argc, const char *argv[])
 			"alloca of function type", 1,
 			(char *)NULL);
 
-	test_ir_compiles(
+	TEST(ir_compiles,
 			"$f = i4*(){"
 			"	$p = alloca i4"
 			"	$plus = ptradd $p, i8 3"
@@ -524,7 +511,7 @@ int main(int argc, const char *argv[])
 			"}",
 			&target);
 
-	test_ir_compiles(
+	TEST(ir_compiles,
 			"type $alias = { i4, { i1* }* }"
 			"$i1 = i1 global 7"
 			"$si1 = {i1*} global { $i1 }"
@@ -540,7 +527,7 @@ int main(int argc, const char *argv[])
 			"}",
 			&target);
 
-	test_ir_assembles(
+	TEST(ir_assembles,
 			"$f = i4(i4 $i)"
 			"{"
 			"	label $lbl"
