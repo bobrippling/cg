@@ -1085,7 +1085,7 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 				}
 			}
 
-			putchar('\n');
+			fputc('\n', f);
 		}
 
 		dynmap_free(vals);

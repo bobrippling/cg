@@ -46,7 +46,7 @@ void global_dump(struct unit *unit, global *glob, FILE *fout)
 			struct init_toplvl *init = variable_global_init(glob->u.var);
 
 			if(init){
-				putchar(' ');
+				fputc(' ', fout);
 				init_dump(init, fout);
 			}
 

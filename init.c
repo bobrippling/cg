@@ -18,9 +18,9 @@ static void init_dump_r(struct init *init, FILE *f)
 			break;
 
 		case init_str:
-			putchar('\"');
+			fputc('\"', f);
 			dump_escaped_string(&init->u.str, f);
-			putchar('\"');
+			fputc('\"', f);
 			break;
 
 		case init_array:

@@ -1413,7 +1413,7 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 			}else{
 				fprintf(octx->fout, "%lu", init->u.ptr.u.integral);
 			}
-			putchar('\n');
+			fputc('\n', octx->fout);
 			break;
 		}
 	}

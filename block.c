@@ -210,7 +210,7 @@ void block_dump1(block *blk, FILE *f)
 			comma = ", ";
 		}
 
-		putchar('\n');
+		fputc('\n', f);
 	}
 
 	fprintf(f, "# block: %p\n", blk);
