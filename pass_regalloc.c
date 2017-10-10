@@ -256,6 +256,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		&& (abi_locn = val_location(isn->u.copy.from))
 		&& abi_locn->where == NAME_IN_REG
 		&& !reg_in_non_implicituse_during(abi_locn->u.reg, &after_abi_lifetime))
+		/* ^ if the register's in use by something else (likely already having used this optimisation), ignore */
 		{
 			assert(regset_mark_count(isn->regusemarks, abi_locn->u.reg) == 1
 					&& "the register should be in-use just by the abi-assignment isn");
