@@ -1132,7 +1132,8 @@ static void x86_out_block1(block *blk, void *vctx)
 			case ISN_ALLOCA:
 				break;
 
-			case ISN_IMPLICIT_USE:
+			case ISN_IMPLICIT_USE_START:
+			case ISN_IMPLICIT_USE_END:
 				break;
 
 			case ISN_RET:

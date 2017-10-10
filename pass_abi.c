@@ -401,21 +401,25 @@ static void insert_state_isns(
 		isn *insertion_point,
 		bool insert_before)
 {
-	isn *implicituse, *i;
+	isn *iu_start, *iu_end, *i;
 
 	if(!state->abi_copies)
 		return;
 
-	implicituse = isn_implicit_use();
+	isn_implicit_use(&iu_start, &iu_end);
 
 	/* emit ABI copies as the first thing the function does: */
 	for(i = isn_first(state->abi_copies); i; i = isn_next(i)){
-		isn_on_all_vals(i, add_state_isns_helper, implicituse);
+		isn_on_all_vals(i, add_state_isns_helper, iu_end);
 	}
 
 	/* repurpose abi_copies to emit an implicit use of all abi values,
 	 * so they're preserved up until the final point */
-	isn_insert_after(isn_last(state->abi_copies), implicituse);
+	isn_insert_after(isn_last(state->abi_copies), iu_end);
+
+	/* add an implicit use at the start to ensure any operations (e.g. spill)
+	 * on abi regs respect the entire set of abi regs we have at this point */
+	isn_insert_before(isn_first(state->abi_copies), iu_start);
 
 	(insert_before ? isns_insert_before : isns_insert_after)(
 			insertion_point, state->abi_copies);

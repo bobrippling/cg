@@ -30,8 +30,9 @@ struct isn
 		ISN_LABEL,
 		ISN_RET,
 		ISN_CALL,
-		ISN_IMPLICIT_USE
-#define ISN_TYPE_COUNT (ISN_IMPLICIT_USE+1)
+		ISN_IMPLICIT_USE_START,
+		ISN_IMPLICIT_USE_END
+#define ISN_TYPE_COUNT (ISN_IMPLICIT_USE_END+1)
 	} type;
 
 	union
@@ -114,8 +115,13 @@ struct isn
 
 		struct
 		{
+			struct isn *link;
+		} implicit_use_start;
+
+		struct
+		{
 			dynarray vals;
-		} implicit_use;
+		} implicit_use_end;
 	} u;
 
 	struct isn *next, *prev;
@@ -127,5 +133,10 @@ struct isn
 
 const char *isn_type_to_str(enum isn_type);
 struct isn *isn_new(enum isn_type t);
+
+#define isn_is_implicituse(t) ((t) == ISN_IMPLICIT_USE_START || (t) == ISN_IMPLICIT_USE_END)
+
+#define isn_implicit_use_vals(i) \
+	(&((i)->type == ISN_IMPLICIT_USE_START ? (i)->u.implicit_use_start.link : (i))->u.implicit_use_end.vals)
 
 #endif

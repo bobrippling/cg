@@ -133,7 +133,8 @@ static bool reg_in_non_implicituse_during(regt reg, struct lifetime *lt)
 
 	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
 		if(regset_is_marked(isn_iter->regusemarks, reg)
-		&& isn_iter->type != ISN_IMPLICIT_USE)
+		&& isn_iter->type != ISN_IMPLICIT_USE_START
+		&& isn_iter->type != ISN_IMPLICIT_USE_END)
 		{
 			return true;
 		}
@@ -191,7 +192,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 		dynmap_set(val *, long, ctx->alloced_vars, v, 1L);
 	}
 
-	if(isn->type == ISN_IMPLICIT_USE)
+	if(isn_is_implicituse(isn->type))
 		return;
 
 	if(!regalloc_applies_to(v))

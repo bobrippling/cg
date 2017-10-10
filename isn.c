@@ -213,13 +213,15 @@ static void isn_free_1(isn *isn)
 			dynarray_reset(&isn->u.call.args);
 			break;
 		}
-		case ISN_IMPLICIT_USE:
+		case ISN_IMPLICIT_USE_START:
+			break;
+		case ISN_IMPLICIT_USE_END:
 		{
 			size_t i;
 
-			dynarray_iter(&isn->u.implicit_use.vals, i)
-				val_release(dynarray_ent(&isn->u.implicit_use.vals, i));
-			dynarray_reset(&isn->u.implicit_use.vals);
+			dynarray_iter(&isn->u.implicit_use_end.vals, i)
+				val_release(dynarray_ent(&isn->u.implicit_use_end.vals, i));
+			dynarray_reset(&isn->u.implicit_use_end.vals);
 			break;
 		}
 	}
@@ -259,7 +261,8 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_PTR2INT:return "ptr2int";
 		case ISN_INT2PTR:return "int2ptr";
 		case ISN_PTRCAST:return "ptrcast";
-		case ISN_IMPLICIT_USE: return "implicituse";
+		case ISN_IMPLICIT_USE_START: return "implicit_use_start";
+		case ISN_IMPLICIT_USE_END: return "implicit_use_end";
 	}
 	return NULL;
 }
@@ -467,17 +470,19 @@ isn *isn_copy(val *to, val *from)
 	return isn;
 }
 
-isn *isn_implicit_use()
+void isn_implicit_use(isn **const start, isn **const end)
 {
-	isn *isn = isn_new(ISN_IMPLICIT_USE);
-	dynarray_init(&isn->u.implicit_use.vals);
-	return isn;
+	*start = isn_new(ISN_IMPLICIT_USE_START);
+	*end = isn_new(ISN_IMPLICIT_USE_END);
+
+	(*start)->u.implicit_use_start.link = *end;
+	dynarray_init(&(*end)->u.implicit_use_end.vals);
 }
 
 void isn_implicit_use_add(isn *i, val *v)
 {
-	assert(i->type == ISN_IMPLICIT_USE);
-	dynarray_add(&i->u.implicit_use.vals, val_retain(v));
+	assert(i->type == ISN_IMPLICIT_USE_END);
+	dynarray_add(&i->u.implicit_use_end.vals, val_retain(v));
 }
 
 isn *isn_alloca(val *v)
@@ -606,7 +611,8 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 			break;
 
 		case ISN_LABEL:
-		case ISN_IMPLICIT_USE:
+		case ISN_IMPLICIT_USE_START:
+		case ISN_IMPLICIT_USE_END:
 			return true;
 
 		case ISN_PTR2INT:
@@ -634,7 +640,8 @@ bool isn_defines_val(isn *isn, struct val *v)
 		case ISN_JMP_COMPUTED:
 		case ISN_LABEL:
 		case ISN_BR:
-		case ISN_IMPLICIT_USE:
+		case ISN_IMPLICIT_USE_START:
+		case ISN_IMPLICIT_USE_END:
 			return false;
 
 		case ISN_LOAD:
@@ -775,12 +782,14 @@ static void isn_on_vals(
 			break;
 		}
 
-		case ISN_IMPLICIT_USE:
+		case ISN_IMPLICIT_USE_START:
+		case ISN_IMPLICIT_USE_END:
 		{
+			dynarray *vals = isn_implicit_use_vals(current);
 			size_t i;
 
-			dynarray_iter(&current->u.implicit_use.vals, i)
-				fn(dynarray_ent(&current->u.implicit_use.vals, i), current, ctx);
+			dynarray_iter(vals, i)
+				fn(dynarray_ent(vals, i), current, ctx);
 			break;
 		}
 	}
@@ -967,15 +976,18 @@ static void isn_dump1(isn *i, FILE *f)
 			break;
 		}
 
-		case ISN_IMPLICIT_USE:
+		case ISN_IMPLICIT_USE_START:
+		case ISN_IMPLICIT_USE_END:
 		{
+			const bool is_start = i->type == ISN_IMPLICIT_USE_START;
 			size_t j;
 			const char *sep = "";
+			dynarray *vals = isn_implicit_use_vals(i);
 
-			fprintf(f, "\timplicituse ");
+			fprintf(f, "\timplicit_use_%s ", is_start ? "start" : "end");
 
-			dynarray_iter(&i->u.implicit_use.vals, j){
-				fprintf(f, "%s%s", sep, val_str(dynarray_ent(&i->u.implicit_use.vals, j)));
+			dynarray_iter(vals, j){
+				fprintf(f, "%s%s", sep, val_str(dynarray_ent(vals, j)));
 				sep = ", ";
 			}
 			fprintf(f, "\n");
