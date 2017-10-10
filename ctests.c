@@ -487,6 +487,15 @@ int main(int argc, const char *argv[])
 			&target);
 
 	test_ir_emit(
+			"$vf = void()"
+			"$f = i4(){"
+			"  $x = call $vf()"
+			"  ret i4 0"
+			"}",
+			"mov $0, %eax",
+			&target);
+
+	test_ir_emit(
 			"$g = i4(...)"
 			"$f = i4(i4 $x){"
 			"	jmp $blk"

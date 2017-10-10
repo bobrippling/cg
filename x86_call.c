@@ -458,7 +458,7 @@ void x86_emit_call(
 
 	octx->scratch_reg_reserved = false;
 
-	if(into_or_null){
+	if(into_or_null && !type_is_void(val_type(into_or_null))){
 		type *ty = type_func_call(type_deref(fn->ty), NULL, NULL);
 		val eax;
 

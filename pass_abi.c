@@ -97,6 +97,8 @@ static void classify_type(type *argty, struct typeclass *const argclass)
 	unsigned const tysz = type_size(argty);
 	int class_index = 0;
 
+	assert(!type_is_void(argty));
+
 	memset(argclass, 0, sizeof(*argclass));
 
 	if(tysz == 0 || tysz > 16){
@@ -463,16 +465,20 @@ static void convert_incoming_args(
 	type *retty = type_func_call(function_type(fn), &args, NULL);
 	unsigned i;
 	struct regpass_state state = { 0 };
-	struct typeclass retcls;
+	const bool voidret = type_is_void(retty);
 
 	state.uniq_index_per_func = uniq_index_per_func;
 
-	classify_type(retty, &retcls);
-	if(retcls.inmem && !type_is_void(retty)){
-		assert(type_is_struct(retty));
-		/* store stret pointer for return later */
-		*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl);
-		state.int_idx++;
+	if(!voidret){
+		struct typeclass retcls;
+		classify_type(retty, &retcls);
+
+		if(retcls.inmem){
+			assert(type_is_struct(retty));
+			/* store stret pointer for return later */
+			*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl);
+			state.int_idx++;
+		}
 	}
 
 	for(i = 0; i < function_arg_count(fn); i++){
@@ -502,6 +508,9 @@ static isn *convert_call(
 
 	insertion.before = true;
 	insertion.at = inst;
+
+	if(type_is_void(val_type(fnret)))
+		goto out;
 
 	classify_type(val_type(fnret), &cls);
 
@@ -556,7 +565,7 @@ static isn *convert_call(
 		regpass_state_deinit(&ret_state);
 	}
 
-
+out:
 	return isn_next(inst);
 }
 
@@ -574,9 +583,6 @@ static isn *convert_outgoing_args_and_call_isn(
 	dynarray *fnargs; dynarray *arg_tys;
 
 	if(!isn_call_getfnval_ret_args(inst, &fnval, &fnret, &fnargs))
-		return next;
-
-	if(type_is_void(val_type(fnret)))
 		return next;
 
 	regpass_state_init(&arg_state, uniq_index_per_func);
