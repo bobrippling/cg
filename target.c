@@ -169,8 +169,9 @@ void target_parse(const char *const triple, struct target *out)
 {
 	char *const triple_dup = xstrdup(triple);
 	char *p, *strtok_ctx;
+	bool found_1_arch = false, found_1_sys = false;
 
-	target_default(out);
+	memset(out, 0, sizeof(*out));
 
 	for(p = strtok_r(triple_dup, "-", &strtok_ctx);
 			p;
@@ -182,6 +183,13 @@ void target_parse(const char *const triple, struct target *out)
 		if(!found_arch && !found_sys){
 			die("couldn't parse target entry '%s'", p);
 		}
+
+		found_1_arch |= found_arch;
+		found_1_sys |= found_sys;
+	}
+
+	if(!found_1_arch || !found_1_sys){
+		die("couldn't parse target into sys + arch: '%s'", triple);
 	}
 
 	free(triple_dup);
