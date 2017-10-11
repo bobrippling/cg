@@ -491,7 +491,7 @@ int main(int argc, const char *argv[])
 			"	$s = add $x, $g_" /* $x should be spilt */
 			"	ret $s"
 			"}",
-			"$s<reg 3> = add $reload.3<reg 4>, $g_<reg 5>",
+			"$s<reg 3> = add $reload.4<reg 4>, $g_<reg 5>",
 			&target_ir);
 
 	TEST(ir_error,
