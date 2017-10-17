@@ -555,6 +555,22 @@ val *val_new_localf(struct type *ty, bool alloca, const char *fmt, ...)
 	return val_new_local(buf, ty, alloca);
 }
 
+const char *val_frontend_name(val *v)
+{
+	switch(v->kind){
+		case FROM_ISN: return v->u.local.name;
+		case ALLOCA: return v->u.alloca.name;
+		case ARGUMENT: return v->u.argument.name;
+
+		case LITERAL:
+		case GLOBAL:
+		case LABEL:
+		case BACKEND_TEMP:
+		case ABI_TEMP:
+			break;
+	}
+	return NULL;
+}
 
 void val_temporary_init(val *vtmp, type *ty)
 {

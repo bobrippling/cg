@@ -58,6 +58,8 @@ char *val_str(val *);
 char *val_str_r(char buf[], val *);
 char *val_str_rn(unsigned bufindex, val *);
 
+const char *val_frontend_name(val *);
+
 unsigned val_hash(val *);
 
 bool val_is_mem(val *);

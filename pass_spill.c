@@ -41,14 +41,27 @@ static void spill_assign(val *spill, struct spill_ctx *ctx)
 static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 {
 	type *const ty = val_type(v);
-	val *spill = val_new_localf(
-			type_get_ptr(ctx->utl, ty),
-			true,
-			"spill.%d",
-			/*something unique:*/(int)v);
+	val *spill;
 	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
 	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
-	isn *alloca = isn_alloca(spill);
+	isn *alloca;
+	const char *name = val_frontend_name(v);
+
+	if(name){
+		spill = val_new_localf(
+				type_get_ptr(ctx->utl, ty),
+				true,
+				"spill.for.%s",
+				name);
+	}else{
+		spill = val_new_localf(
+				type_get_ptr(ctx->utl, ty),
+				true,
+				"spill.%d",
+				/*something unique:*/(int)v);
+	}
+
+	alloca = isn_alloca(spill);
 
 	spill_assign(spill, ctx);
 
