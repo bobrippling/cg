@@ -1033,15 +1033,21 @@ static void parse_function(
 	enum function_attributes attr = 0;
 
 	/* look for weak (and other attributes) */
-	while(token_accept(p->tok, tok_bareword)){
-		char *bareword = token_last_bareword(p->tok);
+	for(;;){
+		if(token_accept(p->tok, tok_internal)){
+			attr |= function_attribute_internal;
+		}else if(token_accept(p->tok, tok_bareword)){
+			char *bareword = token_last_bareword(p->tok);
 
-		if(!strcmp(bareword, "weak"))
-			attr |= function_attribute_weak;
-		else
-			parse_error(p, "unknown function modifier '%s'", bareword);
+			if(!strcmp(bareword, "weak"))
+				attr |= function_attribute_weak;
+			else
+				parse_error(p, "unknown function modifier '%s'", bareword);
 
-		free(bareword);
+			free(bareword);
+		}else{
+			break;
+		}
 	}
 
 	function_add_attributes(fn, attr);

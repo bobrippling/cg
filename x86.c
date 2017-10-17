@@ -1253,7 +1253,8 @@ static void x86_emit_prologue(
 
 	fprintf(octx->fout, ".text\n");
 	fname = function_name(func);
-	fprintf(octx->fout, ".globl %s\n", fname);
+	if((function_attributes(func) & function_attribute_internal) == 0)
+		fprintf(octx->fout, ".globl %s\n", fname);
 	fprintf(octx->fout, "%s:\n", fname);
 
 	fprintf(octx->fout, "\tpush %%%cbp\n"
