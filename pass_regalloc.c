@@ -22,8 +22,7 @@
 #include "lifetime.h"
 #include "lifetime_struct.h"
 
-#define SHOW_REGALLOC 0
-#define SHOW_REGALLOC_VERBOSE 0
+#define REGALLOC_VERBOSITY 0
 #define SHOW_STACKALLOC 0
 
 #define MAP_GUARDED_VALS 0
@@ -156,7 +155,7 @@ static void regalloc_val_noupdate(
 	unsigned freecount = 0;
 	regt foundreg = regt_make_invalid();
 
-	if(SHOW_REGALLOC_VERBOSE)
+	if(REGALLOC_VERBOSITY > 1)
 		regalloc_debug(v, is_fp, lt, ctx);
 
 	for(i = 0; i < ctx->scratch_regs->count; i++){
@@ -171,7 +170,7 @@ static void regalloc_val_noupdate(
 	assert(regt_is_valid(foundreg));
 	assert(freecount > 0);
 
-	if(SHOW_REGALLOC)
+	if(REGALLOC_VERBOSITY)
 		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
 
 	val_locn->where = NAME_IN_REG;
@@ -262,7 +261,7 @@ static void regalloc_greedy1(val *v, isn *isn, void *vctx)
 					&& "the register should be in-use just by the abi-assignment isn");
 
 			memcpy(val_locn, abi_locn, sizeof(*val_locn));
-			if(SHOW_REGALLOC){
+			if(REGALLOC_VERBOSITY){
 				fprintf(stderr, "regalloc(%s) => reg %#x (mirroring abi reg %s)\n",
 						val_str(v), val_locn->u.reg, val_str_rn(0, isn->u.copy.from));
 			}
