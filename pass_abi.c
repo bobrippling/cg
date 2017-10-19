@@ -11,6 +11,7 @@
 #include "type.h"
 #include "type_iter.h"
 #include "mem.h"
+#include "isn_struct.h"
 
 #include "pass_abi.h"
 
@@ -573,6 +574,18 @@ out:
 	return isn_next(inst);
 }
 
+static void remove_args_from_call(isn *call)
+{
+	size_t i;
+
+	assert(call->type == ISN_CALL);
+
+	dynarray_iter(&call->u.call.args, i){
+		val_release(dynarray_ent(&call->u.call.args, i));
+	}
+	dynarray_reset(&call->u.call.args);
+}
+
 static isn *convert_outgoing_args_and_call_isn(
 		isn *inst,
 		unsigned *const uniq_index_per_func,
@@ -613,6 +626,8 @@ static isn *convert_outgoing_args_and_call_isn(
 
 	insert_state_isns(&arg_state, inst, true);
 	regpass_state_deinit(&arg_state);
+
+	remove_args_from_call(inst);
 
 	return next;
 }
