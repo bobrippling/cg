@@ -110,13 +110,66 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 	}
 }
 
-static bool reg_free_during(regt reg, struct lifetime *lt)
+static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime *lt, val *for_val)
 {
 	struct isn *isn_iter;
+	struct isn *current_implicit_use = NULL;
 
 	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
-		if(regset_is_marked(isn_iter->regusemarks, reg))
-			return false;
+		if(regset_is_marked(isn_iter->regusemarks, reg)){
+			/*
+			 * Register is in use - could we still use it for `for_val` ?
+			 *
+			 * $a = ...
+			 * ...
+			 * $arg1<abi 1> = $a
+			 * $r = call $f($arg1<abi 1>)
+			 *
+			 * We can reuse <abi 1> if it's only in use during $a's lifetime as a
+			 * trivial copy.
+			 *
+			 * In short: if the current isn is an implicit_use, we can ignore any
+			 * trivial copies of `for_val` until we hit the end of the implicit_use.
+			 * Upon the end of the implicit use, `for_val`'s lifetime should end, or
+			 * the candidate register (`reg`) shouldn't be used.
+			 */
+
+			if(isn_iter->type == ISN_IMPLICIT_USE_START){
+				assert(!current_implicit_use);
+				current_implicit_use = isn_iter;
+
+			}else if(isn_iter->type == ISN_IMPLICIT_USE_END){
+				assert(current_implicit_use);
+				current_implicit_use = NULL;
+
+			}else if(!current_implicit_use){
+				if(REGALLOC_VERBOSITY > 2)
+					fprintf(stderr, "  rejected - not inside implicit use (%p)\n", (void *)isn_iter);
+				return false;
+
+			}else if(isn_iter->type == ISN_COPY){
+				if(isn_iter->u.copy.from == for_val
+				&& val_is_abi_reg_specific(isn_iter->u.copy.to, reg))
+				{
+					/* fine */
+					*priority = 2; /* no transfer required, better to pick this */
+					if(REGALLOC_VERBOSITY > 2){
+						fprintf(stderr, "  isn %s (%p) is a copy from %s to reg %#x\n",
+								isn_type_to_str(isn_iter->type), (void *)isn_iter, val_str(for_val), reg);
+					}
+
+				}else{
+					/* trivial copy involving something else - allow */
+				}
+
+			}else if(!isn_is_noop(isn_iter)){
+				if(REGALLOC_VERBOSITY > 2)
+					fprintf(stderr, "  rejected - not a noop (%p)\n", (void *)isn_iter);
+				return false;
+			}
+
+			/* continue */
+		}
 
 		if(isn_iter == lt->end)
 			break;
@@ -153,28 +206,50 @@ static void regalloc_val_noupdate(
 	const bool is_fp = type_is_float(val_type(v), 1);
 	unsigned i;
 	unsigned freecount = 0;
-	regt foundreg = regt_make_invalid();
+	struct regsearch {
+		regt reg;
+		unsigned priority;
+	} foundreg;
+
+	foundreg.reg = regt_make_invalid();
+	foundreg.priority = 0;
 
 	if(REGALLOC_VERBOSITY > 1)
 		regalloc_debug(v, is_fp, lt, ctx);
 
 	for(i = 0; i < ctx->scratch_regs->count; i++){
-		const regt reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
+		struct regsearch search;
 
-		if(reg_free_during(reg, lt)){
-			foundreg = reg;
+		search.reg = regt_make(ctx->scratch_regs->regs[i], is_fp);
+		search.priority = 1;
+
+		if(REGALLOC_VERBOSITY > 2)
+			fprintf(stderr, "val %s, candidate reg %#x...\n", val_str(v), search.reg);
+
+		if(reg_free_during(search.reg, &search.priority, lt, v)){
+			bool overwrite = search.priority > foundreg.priority;
+
+			if(REGALLOC_VERBOSITY > 2){
+				fprintf(stderr, "  reg %#x is free - %s priority (%u)\n",
+						search.reg,
+						overwrite ? "higher" : "lower",
+						search.priority);
+			}
+
+			if(overwrite)
+				foundreg = search;
 			freecount++;
 		}
 	}
 
-	assert(regt_is_valid(foundreg));
+	assert(regt_is_valid(foundreg.reg));
 	assert(freecount > 0);
 
 	if(REGALLOC_VERBOSITY)
-		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg);
+		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg.reg);
 
 	val_locn->where = NAME_IN_REG;
-	val_locn->u.reg = foundreg;
+	val_locn->u.reg = foundreg.reg;
 }
 
 static void regalloc_greedy1(val *v, isn *isn, void *vctx)
