@@ -19,6 +19,8 @@
 #include "pass_spill.h"
 #include "pass_regalloc.h"
 
+#define SHOW_SPILL 0
+
 struct spill_ctx
 {
 	block *blk;
@@ -91,8 +93,14 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 	if(v->live_across_blocks){
 		/* optimisation - ensure the value is in the same register for all blocks
 		 * mem2reg or something similar should do this */
-		if(isn_defines_val(isn, v))
+		if(isn_defines_val(isn, v)){
+			if(SHOW_SPILL){
+				fprintf(stderr, "spilling %s (at %s-isn %p) - live across blocks\n",
+						val_str(v), isn_type_to_str(isn->type), (void *)isn);
+			}
+
 			spill(v, isn, ctx);
+		}
 		return;
 	}
 
@@ -111,6 +119,11 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 		if(ctx->used_count >= ctx->regcount - 1
 		&& !val_is_abi_reg(v))
 		{
+			if(SHOW_SPILL){
+				fprintf(stderr, "spilling %s (at %s-isn %p) - no free regs (total %u)\n",
+						val_str(v), isn_type_to_str(isn->type), (void *)isn, ctx->regcount);
+			}
+
 			spill(v, isn, ctx);
 		}
 
