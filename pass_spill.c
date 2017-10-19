@@ -71,6 +71,7 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	isn_insert_before(use_isn, alloca);
 
 	/* no reg overlap - we just setup the values, regalloc can deal with the rest */
+	assert(!val_is_abi_reg(v) && "undoing pass_abi's work");
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->fn);
 }
 
