@@ -590,7 +590,7 @@ isn *isn_label(val *lblval)
 	return isn;
 }
 
-bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
+bool isn_is_noop(isn *isn)
 {
 	switch(isn->type){
 		case ISN_STORE:
@@ -613,19 +613,12 @@ bool isn_is_noop(isn *isn, struct val **const src, struct val **const dest)
 		case ISN_LABEL:
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
+		case ISN_PTRCAST: /* assumes all pointers are the same size and representation */
 			return true;
 
 		case ISN_PTR2INT:
 		case ISN_INT2PTR:
-			*src = isn->u.ptr2int.from;
-			*dest = isn->u.ptr2int.to;
-			return val_size(*src) == val_size(*dest);
-
-		case ISN_PTRCAST:
-			/* assumes all pointers are the same size and representation */
-			*src = isn->u.ptrcast.from;
-			*dest = isn->u.ptrcast.to;
-			return true;
+			return val_size(isn->u.ptr2int.from) == val_size(isn->u.ptr2int.to);
 	}
 
 	return false;

@@ -48,7 +48,7 @@ isn *isn_call(struct val *into, struct val *fn, dynarray *args /*not consumed*/)
 void isn_implicit_use(isn **start, isn **end);
 void isn_implicit_use_add(isn *, struct val *);
 
-bool isn_is_noop(struct isn *, struct val **src, struct val **dest);
+bool isn_is_noop(struct isn *isn);
 bool isn_defines_val(struct isn *, struct val *);
 
 bool isn_call_getfnval_ret_args(
