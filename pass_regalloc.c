@@ -103,7 +103,7 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 				space = ", ";
 			}
 		}
-		fprintf(stderr, "\n");
+		fprintf(stderr, " [%s]\n", isn_type_to_str(isn_iter->type));
 
 		if(isn_iter == lt->end)
 			break;
