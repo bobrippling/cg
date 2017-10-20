@@ -472,6 +472,45 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$x = i4 internal 0\n"
+			"$f = i4(i4 $a, i4 $b, i4 $c, i4 $d)\n"
+			"{\n"
+			"  $a_ = eq $a, i4 9\n"
+			"  br $a_, $next1, $abort\n"
+			"$next1:\n"
+			"  $b_ = eq $b, i4 2\n"
+			"  br $b_, $next2, $abort\n"
+			"$next2:\n"
+			"  $c_ = eq $c, i4 7\n"
+			"  br $b_, $next3, $abort\n"
+			"$next3:\n"
+			"  $d_ = eq $d, i4 3\n"
+			"  br $b_, $next4, $abort\n"
+			"$next4:\n"
+			"  ret i4 0\n"
+			"$abort:\n"
+			"  ret i4 1\n"
+			"}\n"
+			"$entry = i4()\n"
+			"{\n"
+			"  $a_ = load $x\n"
+			"  $a = add $a_, i4 9\n"
+			"  $b_ = load $x\n"
+			"  $b = add $b_, i4 2\n"
+			"  $c_ = load $x\n"
+			"  $c = add $c_, i4 7\n"
+			"  $d_ = load $x\n"
+			"  $d = add $d_, i4 3\n"
+			"  \n"
+			"  $r = call $f($a, $b, $c, $d)\n" /* shouldn't mix up registers when assigning */
+			"  \n"
+			"  ret $r\n"
+			"}\n",
+			0,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
