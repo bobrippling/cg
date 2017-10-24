@@ -134,7 +134,7 @@ size_t isns_count(isn *i)
 	return n;
 }
 
-static void isn_free_1(isn *isn)
+void isn_free_1(isn *isn)
 {
 	switch(isn->type){
 		case ISN_STORE:

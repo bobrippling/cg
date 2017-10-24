@@ -994,7 +994,7 @@ static void parse_block(parse *p)
 
 				free(ident), ident = NULL;
 
-				if(p->entry && block_unknown_ending(from)){
+				if(p->entry && from && block_unknown_ending(from)){
 					/* current block is fall-thru */
 					block_add_isn(from, isn_jmp(p->entry));
 					block_set_jmp(from, p->entry);

@@ -594,6 +594,16 @@ int main(int argc, const char *argv[])
 			&target);
 
 	TEST(ir_compiles,
+			"$test = i4()"
+			"{"
+			"	jmp $l"
+			"	ret i4 3"
+			"$l:"
+			"	ret i4 1"
+			"}",
+			&target);
+
+	TEST(ir_compiles,
 			"type $alias = { i4, { i1* }* }"
 			"$i1 = i1 global 7"
 			"$si1 = {i1*} global { $i1 }"

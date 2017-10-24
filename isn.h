@@ -81,6 +81,7 @@ void isns_flag(isn *start, bool);
 size_t isns_count(isn *);
 
 void isn_free_r(struct isn *);
+void isn_free_1(struct isn *);
 
 void isn_dump(struct isn *, struct block *, FILE *);
 

@@ -89,6 +89,12 @@ isn *block_first_isn(block *b)
 
 void block_add_isn(block *b, struct isn *i)
 {
+	if(!b){
+		/* unreachable code */
+		isn_free_1(i);
+		return;
+	}
+
 	if(!b->isnhead){
 		b->isnhead = i;
 		b->isntail = i;
@@ -108,20 +114,24 @@ int block_tenative(block *b)
 
 bool block_unknown_ending(block *blk)
 {
-	if(!blk)
-		return false;
-
+	assert(blk);
 	return blk->type == BLK_UNKNOWN;
 }
 
 void block_set_type(block *blk, enum block_type type)
 {
+	if(!blk)
+		return;
+
 	assert(block_unknown_ending(blk));
 	blk->type = type;
 }
 
 void block_set_branch(block *current, val *cond, block *btrue, block *bfalse)
 {
+	if(!current)
+		return;
+
 	block_set_type(current, BLK_BRANCH);
 
 	block_add_pred(btrue, current);
@@ -134,6 +144,9 @@ void block_set_branch(block *current, val *cond, block *btrue, block *bfalse)
 
 void block_set_jmp(block *current, block *new)
 {
+	if(!current)
+		return;
+
 	block_set_type(current, BLK_JMP);
 	block_add_pred(new, current);
 	current->u.jmp.target = new; /* weak ref */
