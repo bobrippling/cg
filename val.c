@@ -70,9 +70,20 @@ bool val_is_mem(val *v)
 {
 	struct location *loc = val_location(v);
 
-	if(v->kind == GLOBAL){
-		assert(!loc);
-		return true;
+	switch(v->kind){
+		case GLOBAL:
+			assert(!loc);
+			return true;
+		case ALLOCA:
+			return true;
+
+		case LABEL:
+		case LITERAL:
+		case ARGUMENT:
+		case FROM_ISN:
+		case BACKEND_TEMP:
+		case ABI_TEMP:
+			break;
 	}
 
 	if(loc)

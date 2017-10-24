@@ -287,21 +287,6 @@ static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_t
 	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
 }
 
-static bool mem_constraint_met(val *v)
-{
-	struct location *loc = val_location(v);
-
-	if(loc && loc->where == NAME_SPILT)
-		return true;
-	assert(!loc || loc->where == NAME_NOWHERE);
-
-	if(v->kind == ALLOCA){
-		return true;
-	}
-
-	return false;
-}
-
 static void gen_constraint_isns(
 		isn *isn_to_constrain,
 		struct constraint const *req,
@@ -325,7 +310,7 @@ static void gen_constraint_isns(
 		return;
 	}
 
-	if(req->req & REQ_MEM && mem_constraint_met(v))
+	if(req->req & REQ_MEM && val_is_mem(v))
 		return;
 
 	if(req->req & REQ_REG){
@@ -343,9 +328,7 @@ static void gen_constraint_isns(
 	}
 
 	if(req->req & REQ_MEM){
-		if(mem_constraint_met(v))
-			return;
-
+		assert(!val_is_mem(v) && "should've been checked above");
 		constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
 		return;
 	}

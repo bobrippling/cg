@@ -569,6 +569,13 @@ int main(int argc, const char *argv[])
 			"$s<reg 3> = add $reload.4<reg 2>, $g_<reg 0>",
 			&target_ir);
 
+	TEST(ir_emit,
+			"$gi = i2"
+			"$gp = i2*"
+			"$test = void() { store $gp, $gi ret void }",
+			"lea gi(%rip), %rax\nmov %rax, gp(%rip)",
+			&target);
+
 	TEST(ir_error,
 			"$main = i4(){\n"
 			"	$z = alloca i4()\n"
