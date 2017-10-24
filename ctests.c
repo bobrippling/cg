@@ -582,6 +582,12 @@ int main(int argc, const char *argv[])
 			"}",
 			&target);
 
+	TEST(ir_compiles,
+			"$g = i4()"
+			"$f = i4() { $x = call $g() ret $x }"
+			"$g = i4() { $x = call $f() ret $x }",
+			&target);
+
 	TEST(ir_assembles,
 			"$f = i4(i4 $i)"
 			"{"
