@@ -1,7 +1,0 @@
-# test=irdiff
-$main = i4()
-{
-	$tmp_0 = eq i4 1, i4 2
-	$tmp_1 = zext i4, $tmp_0
-	ret $tmp_1
-}

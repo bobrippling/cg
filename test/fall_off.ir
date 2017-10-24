@@ -1,5 +1,0 @@
-# test=error
-$main = i4()
-{
-}
-# check: control reaches end of function
