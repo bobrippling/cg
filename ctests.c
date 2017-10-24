@@ -279,15 +279,35 @@ static void test_ir_emit(
 	if(errno)
 		die("read:");
 
+	const char *nl = strchr(x86, '\n');
+	char *x86_tokens = (char *)x86;
+	char *x86_dup = NULL;
+	if(nl){
+		x86_dup = xstrdup(x86);
+		x86_tokens = strtok(x86_dup, "\n");
+	}
+
 	bool found = false;
 	size_t i;
 	for(i = 0; i < nlines; i++){
-		if(strstr(lines[i], x86)){
-			found = true;
+		if(strstr(lines[i], x86_tokens)){
+			if(nl){
+				/* next line */
+				x86_tokens = strtok(NULL, "\n");
+				if(!x86_tokens){
+					found = true;
+					nl = NULL;
+					x86_tokens = "";
+				}
+			}else{
+				/* a single line */
+				found = true;
+			}
 		}
 		free(lines[i]);
 	}
 	free(lines);
+	free(x86_dup);
 
 out:
 	if(err){
