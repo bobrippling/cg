@@ -45,7 +45,7 @@ utests: ${OBJ_UTEST} strbuf/strbuf.a
 
 ctests: ${OBJ_CTEST}
 	@echo link $@
-	$Q${CC} -o $@ ${OBJ_CTEST} strbuf/strbuf.a ${LDFLAGS}
+	$Q${CC} -o $@ ${OBJ_CTEST} strbuf/strbuf.a ${LDFLAGS} -ldl
 
 %.o: %.c
 	@echo compile $<
