@@ -308,7 +308,7 @@ static const char *x86_val_str(
 			xsnprintf(buf, sizeof bufs[0],
 					"%s%s%s",
 					indir ? "" : "$",
-					global_name(val->u.global),
+					global_name_mangled(val->u.global, unit_target_info(octx->unit)),
 					x64 ? "(%rip)" : "");
 			break;
 		}
@@ -902,7 +902,7 @@ loc:
 
 			/* TODO: pic */
 			fprintf(octx->fout, "\tlea %s+%ld%s, %s\n",
-					global_name(lval->u.global),
+					global_name_mangled(lval->u.global, unit_target_info(octx->unit)),
 					offset,
 					x64 ? "(%rip)" : "",
 					result_str);
@@ -1252,7 +1252,7 @@ static void x86_emit_prologue(
 	char regch = x86_target_regch(target);
 
 	fprintf(octx->fout, ".text\n");
-	fname = function_name(func);
+	fname = function_name_mangled(func, target);
 	if((function_attributes(func) & function_attribute_internal) == 0)
 		fprintf(octx->fout, ".globl %s\n", fname);
 	fprintf(octx->fout, "%s:\n", fname);
@@ -1432,7 +1432,7 @@ static void x86_out_align(unsigned align, const struct target *target, x86_octx 
 static void x86_out_var(variable_global *var, const struct target *target_info, x86_octx *octx)
 {
 	variable *inner = variable_global_var(var);
-	const char *name = variable_name(inner);
+	const char *name = variable_name_mangled(inner, unit_target_info(octx->unit));
 	struct init_toplvl *init_top = variable_global_init(var);
 	type *var_ty = variable_type(inner);
 
@@ -1473,12 +1473,14 @@ void x86_out(unit *unit, global *glob, FILE *ctx)
 	octx.unit = unit;
 
 	if(global_is_forward_decl(glob)){
-		x86_comment(&octx, "forward decl %s", global_name(glob));
+		x86_comment(&octx, "forward decl %s", global_name_mangled(glob, unit_target_info(unit)));
 
 		if(glob->kind == GLOBAL_FUNC
 		&& function_attributes(glob->u.fn) & function_attribute_weak)
 		{
-			fprintf(octx.fout, "%s %s\n", target->sys.weak_directive_func, global_name(glob));
+			fprintf(octx.fout, "%s %s\n",
+					target->sys.weak_directive_func,
+					global_name_mangled(glob, unit_target_info(unit)));
 		}
 		return;
 	}

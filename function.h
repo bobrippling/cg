@@ -10,10 +10,12 @@
 
 typedef struct function function;
 struct unit;
+struct target;
 
 void function_free(function *);
 
 const char *function_name(function *);
+const char *function_name_mangled(function *, const struct target *);
 struct type *function_type(function *);
 void function_dump(function *, FILE *);
 

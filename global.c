@@ -74,6 +74,20 @@ const char *global_name(global *g)
 	}
 }
 
+const char *global_name_mangled(global *g, const struct target *target)
+{
+	switch(g->kind){
+		case GLOBAL_FUNC:
+			return function_name_mangled(g->u.fn, target);
+
+		case GLOBAL_VAR:
+			return variable_name_mangled(variable_global_var(g->u.var), target);
+
+		case GLOBAL_TYPE:
+			return type_alias_name(g->u.ty);
+	}
+}
+
 struct type *global_type_noptr(global *g)
 {
 	switch(g->kind){

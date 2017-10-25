@@ -446,7 +446,9 @@ void x86_emit_call(
 #endif
 
 	if(fn->kind == GLOBAL){
-		fprintf(octx->fout, "\tcall %s\n", global_name(fn->u.global));
+		fprintf(octx->fout,
+				"\tcall %s\n",
+				global_name_mangled(fn->u.global, unit_target_info(octx->unit)));
 	}else{
 		emit_isn_operand operand;
 

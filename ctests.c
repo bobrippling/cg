@@ -385,9 +385,10 @@ int main(int argc, const char *argv[])
 		return 1;
 	}
 
-	struct target target, target_ir;
+	struct target target, target_ir, target_nomangle;
 	target_default(&target);
 	target_parse("ir-linux", &target_ir);
+	target_parse("x86_64-linux", &target_nomangle);
 
 	TEST(ir_ret,
 			"$is_5 = i4(i4 $x){"
@@ -433,7 +434,7 @@ int main(int argc, const char *argv[])
 			1,
 			&target,
 			"typedef struct { int a, b; } A;"
-			"extern A f(void) __asm__(\"f\");"
+			"extern A f(void);"
 			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
 
 	TEST(ir_ret,
@@ -574,7 +575,7 @@ int main(int argc, const char *argv[])
 			"$gp = i2*"
 			"$test = void() { store $gp, $gi ret void }",
 			"lea gi(%rip), %rax\nmov %rax, gp(%rip)",
-			&target);
+			&target_nomangle);
 
 	TEST(ir_error,
 			"$main = i4(){\n"

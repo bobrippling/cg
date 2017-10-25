@@ -6,7 +6,7 @@
 
 struct variable
 {
-	char *name;
+	char *name, *name_mangled;
 	type *ty;
 };
 

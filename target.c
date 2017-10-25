@@ -95,7 +95,8 @@ static const struct
 			".rodata",
 			".weak",
 			".weak",
-			false /* align_is_pow2 */
+			false, /* align_is_pow2 */
+			false  /* leading_underscore */
 		}
 	},
 	{
@@ -105,7 +106,8 @@ static const struct
 			".section __TEXT,__const",
 			".weak_reference",
 			".weak_definition",
-			true /* align_is_pow2 */
+			true, /* align_is_pow2 */
+			true  /* leading_underscore */
 		}
 	},
 };

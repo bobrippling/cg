@@ -9,7 +9,7 @@
 
 struct function
 {
-	char *name;
+	char *name, *name_mangled;
 	block *entry, *exit;
 
 	unsigned *uniq_counter;

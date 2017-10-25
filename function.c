@@ -15,6 +15,7 @@
 #include "variable_struct.h"
 #include "function_struct.h"
 #include "isn_struct.h"
+#include "mangle.h"
 #if 0
 #include "regalloc.h"
 #endif
@@ -64,6 +65,7 @@ void function_free(function *f)
 	dynarray_foreach(&f->arg_names, free);
 	dynarray_reset(&f->arg_names);
 
+	mangle_free(f->name, &f->name_mangled);
 	free(f->arg_vals);
 
 	free(f->blocks);
@@ -334,6 +336,11 @@ void function_dump(function *f, FILE *fout)
 const char *function_name(function *f)
 {
 	return f->name;
+}
+
+const char *function_name_mangled(function *f, const struct target *target)
+{
+	return mangle(f->name, &f->name_mangled, target);
 }
 
 struct type *function_type(function *f)
