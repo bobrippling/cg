@@ -457,7 +457,7 @@ int main(int argc, const char *argv[])
 	target_parse("x86_64-linux", &target_nomangle);
 
 	TEST(ir_ret,
-			"$is_5 = i4(i4 $x){"
+			"$is_5 = i4(i4 $x) internal {"
 			"  $b = eq $x, i4 5"
 			"  $be = zext i4, $b"
 			"  ret $be"
@@ -471,7 +471,7 @@ int main(int argc, const char *argv[])
 			NULL);
 
 	TEST(ir_ret,
-			"$div = i4(i4 $a, i4 $b)"
+			"$div = i4(i4 $a, i4 $b) internal"
 			"{"
 			"  $d = udiv $a, $b"
 			"  $e = udiv $b, i4 2"
@@ -504,8 +504,8 @@ int main(int argc, const char *argv[])
 			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
 
 	TEST(ir_ret,
-			"$x = i4 global 3"
-			"$f = i4()"
+			"$x = i4 internal 3"
+			"$f = i4() internal"
 			"{"
 			"  $a = load $x"
 			"  $b = load $x"
@@ -544,12 +544,12 @@ int main(int argc, const char *argv[])
 			NULL);
 
 	TEST(ir_ret,
-			"$delegate = i4(i4()* $f)"
+			"$delegate = i4(i4()* $f) internal"
 			"{"
 			"	$x = call $f()"
 			"	ret $x"
 			"}"
-			"$ret4 = i4() { ret i4 4 }"
+			"$ret4 = i4() internal { ret i4 4 }"
 			"$entry = i4()"
 			"{"
 			"	$x = call $delegate($ret4)"
@@ -561,7 +561,7 @@ int main(int argc, const char *argv[])
 
 	TEST(ir_ret,
 			"$x = i4 internal 0\n"
-			"$f = i4(i4 $a, i4 $b, i4 $c, i4 $d)\n"
+			"$f = i4(i4 $a, i4 $b, i4 $c, i4 $d) internal\n"
 			"{\n"
 			"  $a_ = eq $a, i4 9\n"
 			"  br $a_, $next1, $abort\n"
