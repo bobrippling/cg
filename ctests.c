@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <dlfcn.h>
 
 #include "die.h"
 #include "mem.h"
@@ -178,7 +179,7 @@ static void test_ir_assembles(int lno, const char *str, const struct target *tar
 	report(lno, ec ? "as return failure" : NULL);
 }
 
-static int execute_ir(
+static int execute_ir_via_cc(
 		const struct target *target, int *const err, const char *str,
 		const char *c_harness)
 {
@@ -235,14 +236,79 @@ out_err:
 	goto out;
 }
 
+static int execute_ir_via_so(const struct target *target, int *const err, const char *str)
+{
+	struct path_and_file as = { 0 }, so = { 0 };
+	int ec = 0;
+	int so_err;
+	char sysbuf[512];
+	unit *u = compile_and_pass_string(str, err, target);
+
+	if(*err)
+		goto out_err;
+
+	as.f = temp_file(&as.path);
+	if(!as.f)
+		die("open %s:", as.path);
+
+	unit_on_globals(u, target->emit, as.f);
+	if(fclose(as.f))
+		die("close:");
+	as.f = NULL;
+
+	so.f = temp_file(&so.path);
+
+	xsnprintf(
+			sysbuf,
+			sizeof(sysbuf),
+			"cc -shared -w -o %s -x assembler %s",
+			so.path, as.path);
+
+	so_err = system(sysbuf);
+	if(so_err)
+		goto out_err;
+
+	void *dl = dlopen(so.path, RTLD_NOW | RTLD_LOCAL);
+	if(!dl)
+		die("dlopen(): %s", dlerror());
+
+	int (*entry)(void) = dlsym(dl, "entry");
+	if(!entry)
+		die("dlsym(): %s", dlerror());
+
+	ec = entry();
+	dlclose(dl);
+
+out:
+	unit_free(u);
+	free_path_and_file(&as);
+	free_path_and_file(&so);
+
+	return ec;
+
+out_err:
+	*err = 1;
+	goto out;
+}
+
+static int execute_ir(
+		const struct target *target, int *const err, const char *str,
+		const char *c_harness)
+{
+	if(c_harness){
+		return execute_ir_via_cc(target, err, str, c_harness);
+	}else{
+		return execute_ir_via_so(target, err, str);
+	}
+}
+
 static void test_ir_ret(
 		int lno,
 		const char *str, int ret, const struct target *target,
 		const char *maybe_c_harness)
 {
-	const char *c_harness = "int entry(void) __asm__(\"entry\"); int main(){return entry();}";
 	int err;
-	int ec = execute_ir(target, &err, str, maybe_c_harness ? maybe_c_harness : c_harness);
+	int ec = execute_ir(target, &err, str, maybe_c_harness);
 	const char *emsg = NULL;
 
 	if(err)
