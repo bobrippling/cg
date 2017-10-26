@@ -1,3 +1,0 @@
-# test=irdiff
-$i = i4 { 0x5 }
-$s = [i1 x 0] "hi\000"

@@ -1,8 +1,0 @@
-# test=irdiff
-$main = i4()
-{
-	$tmp_0 = load i4* 0
-	$tmp_1 = load i4* 1
-	$tmp_2 = sub $tmp_0, $tmp_1
-	ret $tmp_2
-}
