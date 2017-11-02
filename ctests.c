@@ -309,12 +309,15 @@ static void test_ir_ret(
 {
 	int err;
 	int ec = execute_ir(target, &err, str, maybe_c_harness);
+	char ebuf[64];
 	const char *emsg = NULL;
 
-	if(err)
+	if(err){
 		emsg = "ir compilation failure";
-	else if(ec != ret)
-		emsg = "ir return failure";
+	}else if(ec != ret){
+		xsnprintf(ebuf, sizeof(ebuf), "ir returned %#x, expected %#x", ec, ret);
+		emsg = ebuf;
+	}
 
 	report(lno, emsg);
 }
