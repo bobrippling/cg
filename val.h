@@ -66,6 +66,7 @@ unsigned val_hash(val *);
 bool val_is_mem(val *);
 bool val_is_int(val *, size_t *);
 bool val_is_volatile(val *); /* e.g. reg */
+bool val_is_undef(val *);
 
 enum operand_category val_operand_category(val *v, bool dereference);
 bool val_operand_category_matches(enum operand_category, enum operand_category);

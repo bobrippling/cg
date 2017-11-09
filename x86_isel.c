@@ -14,6 +14,7 @@ static void check_lea_result(val *v_result)
 	enum operand_category cat;
 
 	switch(v_result->kind){
+		case UNDEF:
 		case LITERAL:
 		case GLOBAL:
 		case ARGUMENT:

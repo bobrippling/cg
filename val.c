@@ -77,6 +77,9 @@ bool val_is_mem(val *v)
 		case ALLOCA:
 			return true;
 
+		case UNDEF:
+			return false;
+
 		case LABEL:
 		case LITERAL:
 		case ARGUMENT:
@@ -108,6 +111,11 @@ bool val_is_volatile(val *v)
 	return loc && location_is_reg(loc->where);
 }
 
+bool val_is_undef(val *v)
+{
+	return v->kind == UNDEF;
+}
+
 bool val_is_abi_reg(val *v)
 {
 	return v->kind == ABI_TEMP
@@ -133,6 +141,7 @@ bool val_can_move(val *v)
 		case LABEL:
 		case ARGUMENT:
 		case ALLOCA:
+		case UNDEF:
 			return false;
 
 		case BACKEND_TEMP:
@@ -152,6 +161,10 @@ unsigned val_hash(val *v)
 	switch(v->kind){
 		case LITERAL:
 			h ^= v->u.i;
+			break;
+
+		case UNDEF:
+			h ^= 0xdead;
 			break;
 
 		case GLOBAL:
@@ -204,6 +217,7 @@ const char *val_kind_to_str(enum val_kind k)
 		case FROM_ISN: return "FROM_ISN";
 		case BACKEND_TEMP: return "BACKEND_TEMP";
 		case ABI_TEMP: return "ABI_TEMP";
+		case UNDEF: return "UNDEF";
 	}
 
 	return NULL;
@@ -228,6 +242,7 @@ struct location *val_location(val *v)
 		case GLOBAL:
 		case LITERAL:
 		case LABEL:
+		case UNDEF:
 			break;
 	}
 	return NULL;
@@ -244,6 +259,9 @@ enum operand_category val_operand_category(val *v, bool dereference)
 		case GLOBAL:
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
+
+		case UNDEF:
+			return OPERAND_REG;
 
 		case ABI_TEMP:
 		case BACKEND_TEMP:
@@ -396,6 +414,9 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 		case ABI_TEMP:
 			xsnprintf(buf, VAL_STR_SZ, "<abi %p>", (void *)v);
 			break;
+		case UNDEF:
+			xsnprintf(buf, VAL_STR_SZ, "undef");
+			break;
 	}
 
 	if(loc){
@@ -464,6 +485,8 @@ static void val_free(val *v)
 			break;
 		case BACKEND_TEMP:
 			break;
+		case UNDEF:
+			break;
 	}
 	free(v);
 }
@@ -524,8 +547,7 @@ val *val_new_void(struct uniq_type_list *us)
 
 val *val_new_undef(struct type *ty)
 {
-	val *v = val_new(LITERAL, ty);
-	v->u.i = 0xdead;
+	val *v = val_new(UNDEF, ty);
 	return v;
 }
 
@@ -577,6 +599,7 @@ const char *val_frontend_name(val *v)
 		case FROM_ISN: return v->u.local.name;
 		case ALLOCA: return v->u.alloca.name;
 		case ARGUMENT: return v->u.argument.name;
+		case UNDEF: return "undef";
 
 		case LITERAL:
 		case GLOBAL:

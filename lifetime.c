@@ -38,6 +38,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 		case GLOBAL:
 		case LABEL:
 		case ALLOCA:
+		case UNDEF:
 			return;
 	}
 

@@ -87,6 +87,7 @@ static enum operand_category val_category(val *v, bool dereference)
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
 
 		case ABI_TEMP:
+		case UNDEF:
 			return OPERAND_REG;
 
 		case BACKEND_TEMP:
@@ -107,6 +108,7 @@ static bool must_lea_val(val *v)
 		case LABEL:
 			return true;
 
+		case UNDEF:
 		case LITERAL:
 		case ARGUMENT:
 		case FROM_ISN:
@@ -204,6 +206,7 @@ static bool x86_can_infer_size(val *val)
 		case LITERAL: return false;
 		case GLOBAL: return false;
 		case LABEL: return false;
+		case UNDEF: return false;
 
 		case ABI_TEMP:
 			loc = &val->u.abi;
@@ -337,6 +340,10 @@ loc:
 					operand_output_ty,
 					unit_target_info(octx->unit));
 		}
+
+		case UNDEF:
+			xsnprintf(buf, sizeof bufs[0], "%%eax /*undef*/");
+			break;
 	}
 
 	return buf;
@@ -815,6 +822,9 @@ static void emit_elem(isn *i, x86_octx *octx)
 
 	switch(lval->kind){
 			struct location *loc;
+
+		case UNDEF:
+			break;
 
 		case LITERAL:
 			break;

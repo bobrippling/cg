@@ -42,7 +42,8 @@ struct val
 		FROM_ISN, /* $y = load i4* 1 */
 		ALLOCA,   /* $z = alloca i4 */
 		BACKEND_TEMP, /* mov $3, %eax ; ret */
-		ABI_TEMP /* an actual register or stack slot */
+		ABI_TEMP, /* an actual register or stack slot */
+		UNDEF     /* undef */
 	} kind;
 };
 

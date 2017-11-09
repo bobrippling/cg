@@ -1027,6 +1027,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 
 	switch(v->kind){
 		case LITERAL:
+		case UNDEF:
 		case GLOBAL:
 		case LABEL:
 			return;
