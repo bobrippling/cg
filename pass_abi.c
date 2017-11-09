@@ -665,6 +665,8 @@ static isn *convert_return_isn(
 
 	if(!retval)
 		goto out;
+	if(val_is_undef(retval))
+		goto out;
 
 	retty = val_type(retval);
 	if(type_is_struct(retty)){
