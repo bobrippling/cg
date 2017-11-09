@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <assert.h>
 
 #include "dynmap.h"
@@ -95,6 +96,8 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 	for(isn_iter = lt->start; isn_iter; isn_iter = isn_next(isn_iter)){
 		const char *space = "";
 		unsigned i;
+		dynarray *clobbers = isn_clobbers(isn_iter);
+
 		fprintf(stderr, "  [%p]: ", isn_iter);
 
 		for(i = 0; i < ctx->scratch_regs->count; i++){
@@ -104,6 +107,19 @@ static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greed
 				space = ", ";
 			}
 		}
+
+		if(!dynarray_is_empty(clobbers)){
+			fprintf(stderr, " (clobbers:");
+			space = "";
+
+			dynarray_iter(clobbers, i){
+				regt reg = (regt)(uintptr_t)dynarray_ent(clobbers, i);
+				fprintf(stderr, "%s <reg %d>", space, reg);
+				space = ",";
+			}
+			fprintf(stderr, ")");
+		}
+
 		fprintf(stderr, " [%s]\n", isn_type_to_str(isn_iter->type));
 
 		if(isn_iter == lt->end)
@@ -376,6 +392,22 @@ static void regalloc_greedy_pre(val *v, isn *isn, void *vctx)
 	}
 }
 
+static void mark_isn_clobbers(isn *isn)
+{
+	dynarray *clobbers = isn_clobbers(isn);
+	size_t i;
+
+	dynarray_iter(clobbers, i){
+		regt reg = (regt)(uintptr_t)dynarray_ent(clobbers, i);
+		struct lifetime lt;
+
+		lt.start = isn;
+		lt.end = isn;
+
+		mark_in_use_isns(reg, &lt, true);
+	}
+}
+
 static void mark_callee_save_as_used(isn *begin, const struct regset *callee_saves)
 {
 	struct lifetime all;
@@ -406,6 +438,7 @@ static void blk_regalloc_pass(block *blk, void *vctx)
 	/* pre-scan - mark any existing abi regs as used across their lifetime */
 	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){
 		isn_on_live_vals(isn_iter, regalloc_greedy_pre, &alloc_ctx);
+		mark_isn_clobbers(isn_iter);
 	}
 
 	for(isn_iter = head; isn_iter; isn_iter = isn_next(isn_iter)){

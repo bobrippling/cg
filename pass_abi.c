@@ -174,7 +174,8 @@ static void create_arg_reg_overlay_isns(
 		uniq_type_list *utl,
 		val *argval/*nullable*/,
 		type *argty,
-		const enum regoverlay_direction overlay_direction)
+		const enum regoverlay_direction overlay_direction,
+		const bool add_clobber)
 {
 	/* we either have rdx:rax (or a subset)
 	 * or xmm1:xmm0 (or a subset),
@@ -199,9 +200,10 @@ static void create_arg_reg_overlay_isns(
 		if(argval){
 			val *abiv;
 			isn *copy;
+			const regt regtouse = regset_nth(regs, *reg_index, is_fp);
 
 			abiv = val_new_abi_reg(
-					regset_nth(regs, *reg_index, is_fp),
+					regtouse,
 					argty); /* argty is acceptable here */
 
 			copy = isn_copy(
@@ -211,6 +213,9 @@ static void create_arg_reg_overlay_isns(
 			/* this is an instruction involving an abi register/stack slot,
 			 * so needs to go into abi_copies and dealt with later */
 			ISN_APPEND_OR_SET(state->abi_copies, copy);
+
+			if(add_clobber)
+				isn_add_reg_clobber(insertion->at, regtouse);
 		}
 
 		++*reg_index;
@@ -254,6 +259,10 @@ static void create_arg_reg_overlay_isns(
 		type *regty;
 		isn *elem_isn, *ptrcast_isn;
 		val *abiv, *elemp, *ptrcast, *abi_copy;
+		const regt regtouse = regset_nth(regs, *reg_index, is_fp);
+
+		if(add_clobber)
+			isn_add_reg_clobber(insertion->at, regtouse);
 
 		regty = type_get_primitive(
 				utl,
@@ -262,7 +271,7 @@ static void create_arg_reg_overlay_isns(
 					is_fp));
 
 		abiv = val_new_abi_reg(
-				regset_nth(regs, *reg_index, is_fp),
+				regtouse,
 				regty);
 
 		abi_copy = val_new_localf(
@@ -382,7 +391,8 @@ static void classify_and_create_abi_isns_for_arg(
 				utl,
 				argval,
 				argty,
-				direction);
+				direction,
+				false);
 	}
 }
 
@@ -542,7 +552,8 @@ static isn *convert_call(
 				utl,
 				stret_alloca,
 				val_type(stret_alloca),
-				OVERLAY_TO_REGS);
+				OVERLAY_TO_REGS,
+				true);
 
 		/* afterwards we load from stret into retval */
 		load = isn_load(fnret, stret_alloca);
@@ -564,7 +575,8 @@ static isn *convert_call(
 				utl,
 				fnret,
 				val_type(fnret),
-				OVERLAY_FROM_REGS);
+				OVERLAY_FROM_REGS,
+				true);
 
 		insert_state_isns(&ret_state, inst, false);
 		regpass_state_deinit(&ret_state);
@@ -704,7 +716,8 @@ static isn *convert_return_isn(
 					utl,
 					retval,
 					retty,
-					OVERLAY_TO_REGS);
+					OVERLAY_TO_REGS,
+					false);
 
 			insert_state_isns(&state, inst, true);
 			regpass_state_deinit(&state);

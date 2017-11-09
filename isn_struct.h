@@ -126,6 +126,7 @@ struct isn
 
 	struct isn *next, *prev;
 	regset_marks regusemarks;
+	dynarray clobbers;
 
 	bool skip;
 	bool flag; /* for spills */

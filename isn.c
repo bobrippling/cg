@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <assert.h>
 
 #include "mem.h"
@@ -20,6 +21,7 @@ isn *isn_new(enum isn_type t)
 	isn *isn = xcalloc(1, sizeof *isn);
 	isn->type = t;
 	isn->regusemarks = regset_marks_new();
+	dynarray_init(&isn->clobbers);
 	return isn;
 }
 
@@ -483,6 +485,16 @@ void isn_implicit_use_add(isn *i, val *v)
 {
 	assert(i->type == ISN_IMPLICIT_USE_END);
 	dynarray_add(&i->u.implicit_use_end.vals, val_retain(v));
+}
+
+void isn_add_reg_clobber(isn *i, regt reg)
+{
+	dynarray_add(&i->clobbers, (void *)(uintptr_t)reg);
+}
+
+dynarray *isn_clobbers(isn *i)
+{
+	return &i->clobbers;
 }
 
 isn *isn_alloca(val *v)

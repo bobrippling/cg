@@ -601,6 +601,29 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$psub = i8(i4* $a, i4* $b){"
+			"	$diff = ptrsub $a, $b"
+			"	ret $diff"
+			"}"
+			"$sub = i4(i4 $a, i4 $b){"
+			"	$diff = sub $a, $b"
+			"	ret $diff"
+			"}"
+			"$entry = i4(){"
+			"	$ap = int2ptr i4*, i4 24"
+			"	$bp = int2ptr i4*, i4 28"
+			"	$diffp = call $psub($bp, $ap)"
+			"	$diff = call $sub(i4 5, i4 3)"
+			"	$diff_shift = shiftl $diff, i4 4"
+			"	$diffp_cast = trunc i4, $diffp"
+			"	$diff_ret = or $diff_shift, $diffp_cast"
+			"	ret $diff_ret"
+			"}",
+			((5-3) << 4) | 1,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
@@ -636,7 +659,7 @@ int main(int argc, const char *argv[])
 			"	$s = add $x, $g_" /* $x should be spilt */
 			"	ret $s"
 			"}",
-			"$s<reg 3> = add $reload.4<reg 2>, $g_<reg 0>",
+			"$s<reg 3> = add $reload.4<reg 0>, $g_<reg 2>",
 			&target_ir);
 
 	TEST(ir_emit,

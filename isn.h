@@ -48,6 +48,9 @@ isn *isn_call(struct val *into, struct val *fn, dynarray *args /*not consumed*/)
 void isn_implicit_use(isn **start, isn **end);
 void isn_implicit_use_add(isn *, struct val *);
 
+void isn_add_reg_clobber(isn *, regt);
+dynarray *isn_clobbers(isn *);
+
 bool isn_is_noop(struct isn *isn);
 bool isn_defines_val(struct isn *, struct val *);
 
