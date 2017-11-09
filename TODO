@@ -1,3 +1,5 @@
+########################### todo
+
 live-across-block values
 position independent code
 alloca and global data alignment
@@ -7,7 +9,11 @@ function arguments
 	- callee save registers
 	- i386 function call ABI
 
-###########################
+########################### ideas
+
+decide whether to make register save/restore on call explicit in ir
+
+########################### optimisations
 
 regalloc improvements
 
