@@ -754,6 +754,7 @@ static void x86_op(
 		/* use the three-operand mode */
 		emit_isn_operand operands[3] = { 0 };
 
+		/* XXX: Note for re-enabling this: ops are all done backwards (for sub) */
 		operands[0].val = lhs;
 		operands[1].val = rhs;
 		operands[2].val = res;
@@ -810,10 +811,16 @@ static void x86_op(
 	deref_lhs = val_on_stack(lhs);
 	deref_rhs = val_on_stack(rhs);
 
-	/* to match isel's selections, we must match the rhs and result operands
-	 * to ensure that we do `op <lhs>, <rhs/res>` */
-	x86_mov(rhs, res, octx);
-	emit_isn_binary(&opisn, octx, lhs, deref_lhs, res, deref_rhs, NULL);
+	/* to match isel's selections (or more specifically, how we define backend
+	 * instructions in x86_isns.c as l=INPUT r=INPUT|OUTPUT), we must match the
+	 * rhs and result operands to ensure that we do `op <lhs>, <rhs/res>`
+	 *
+	 * except to preserve things like `a - b`, we must ensure the right hand side
+	 * operand is `a`. hence why we move `lhs` into `res` here, and hence the
+	 * changed corresponding isn definitions.
+	 */
+	x86_mov_deref(lhs, res, octx, deref_lhs, false);
+	emit_isn_binary(&opisn, octx, rhs, deref_rhs, res, deref_rhs, NULL);
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
