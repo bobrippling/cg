@@ -850,7 +850,7 @@ static void parse_ret(parse *p)
 	type *expected_ty = type_func_call(function_type(p->func), NULL, NULL);
 	val *v = parse_val(p);
 
-	if(val_type(v) != expected_ty){
+	if(!type_eq(val_type(v), expected_ty)){
 		char buf[256];
 
 		sema_error(p, "mismatching return type (returning %s to %s)",
@@ -871,7 +871,7 @@ static void parse_store(parse *p)
 	eat(p, "store comma", tok_comma);
 	rval = parse_val(p);
 
-	if(type_deref(val_type(lval)) != val_type(rval)){
+	if(!type_eq(type_deref(val_type(lval)), val_type(rval))){
 		char buf[256];
 
 		sema_error(p, "store type mismatch (storing %s to %s)",
