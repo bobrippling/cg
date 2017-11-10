@@ -523,6 +523,27 @@ type *type_struct_element(type *t, size_t i)
 	return dynarray_ent(&t->u.struct_.membs, i);
 }
 
+unsigned type_struct_offset(type *sty, const size_t at)
+{
+	unsigned i, off, next = 0;
+
+	assert(type_struct_element(sty, at));
+
+	for(i = 0; i <= at; i++){
+		type *t = type_struct_element(sty, i);
+		unsigned sz, align;
+
+		type_size_align(t, &sz, &align);
+
+		off = next;
+		off += gap_for_alignment(next, align);
+
+		next += sz;
+	}
+
+	return off;
+}
+
 size_t type_array_count(type *t)
 {
 	t = type_resolve(t);

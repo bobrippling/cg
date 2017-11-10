@@ -66,6 +66,7 @@ type *type_func_call(type *, dynarray **, bool *);
 dynarray *type_func_args(type *);
 type *type_array_element(type *);
 type *type_struct_element(type *, size_t);
+unsigned type_struct_offset(type *, size_t);
 size_t type_array_count(type *);
 enum type_primitive *type_primitive(type *);
 
