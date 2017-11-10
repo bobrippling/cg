@@ -507,6 +507,23 @@ int main(int argc, const char *argv[])
 			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
 
 	TEST(ir_ret,
+			"type $tstruct = {i1,i2,i2,i8}"
+			"$f = i4($tstruct* $a, [i4 x 3]* $b){"
+			"	$a_p = elem $a, i8 2"
+			"	$a_x = load $a_p"
+			"	$a_z = zext i4, $a_x"
+			"	$b_p = elem $b, i8 1"
+			"	$b_x = load $b_p"
+			" $c = xor $a_z, $b_x"
+			"	ret $c"
+			"}",
+			3 ^ 6,
+			&target,
+			"typedef struct { char c; short a, b; long l; } A;"
+			"extern int f(const A *, int [3]);"
+			"int main() { A a = { 1, 2, 3, 4 }; int b[] = { 5, 6, 7 }; return f(&a, &b); }");
+
+	TEST(ir_ret,
 			"$x = i4 internal 3"
 			"$f = i4() internal"
 			"{"

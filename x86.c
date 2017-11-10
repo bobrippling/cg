@@ -826,9 +826,18 @@ static void x86_op(
 static void emit_elem(isn *i, x86_octx *octx)
 {
 	val *const lval = i->u.elem.lval;
-	long offset;
+	long offset = -1;
+	type *maybe_suty = type_deref(val_type(lval));
 
-	if(elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset)){
+
+	if(!type_array_element(maybe_suty)){
+		assert(type_is_struct(maybe_suty));
+		assert(i->u.elem.index->kind == LITERAL);
+
+		offset = type_struct_offset(maybe_suty, i->u.elem.index->u.i);
+	}
+
+	if(offset >= 0 || elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset)){
 		switch(lval->kind){
 				struct location *loc;
 

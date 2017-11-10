@@ -15,6 +15,7 @@
 #include "unit.h"
 #include "target.h"
 #include "backend_isn.h"
+#include "imath.h"
 
 #define ISEL_DEBUG 0
 
@@ -463,12 +464,20 @@ static void isel_create_ptrmath_isn(isn *i, unit *unit)
 			isel_create_ptrsub_isn(i, unit);
 			break;
 		case ISN_ELEM:
-			isel_create_ptradd_isn(
-					i,
-					unit,
-					type_deref(val_type(i->u.elem.res)),
-					i->u.elem.index);
+		{
+			type *ty = val_type(i->u.elem.lval);
+
+			if(type_array_element(ty)){
+				isel_create_ptradd_isn(
+						i,
+						unit,
+						type_deref(val_type(i->u.elem.res)),
+						i->u.elem.index);
+			}else{
+				/* backend handles offsetting */
+			}
 			break;
+		}
 	}
 }
 
