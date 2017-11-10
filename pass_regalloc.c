@@ -84,7 +84,7 @@ bool regalloc_applies_to(val *v)
 			break;
 		}
 	}
-	return true;
+	return !type_is_void(val_type(v));
 }
 
 static void regalloc_debug(val *v, bool is_fp, struct lifetime *lt, struct greedy_ctx *ctx)
