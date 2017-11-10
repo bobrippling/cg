@@ -15,6 +15,7 @@ char *read_line(FILE *f)
 		char *nl, *got;
 		size_t nr;
 
+		errno = 0;
 		got = fgets(buf + off, l - off, f);
 
 		if(!got || (nr = strlen(buf + off)) == 0){
