@@ -53,7 +53,7 @@ struct location *val_location(val *);
 
 
 /* --- util */
-#define VAL_STR_SZ 32
+#define VAL_STR_SZ 64
 
 char *val_str(val *);
 char *val_str_r(char buf[], val *);
