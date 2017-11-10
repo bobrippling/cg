@@ -23,7 +23,7 @@
 #include "lifetime.h"
 #include "lifetime_struct.h"
 
-#define REGALLOC_VERBOSITY 0
+#define REGALLOC_VERBOSITY 0 /* 0 - 3 */
 #define SHOW_STACKALLOC 0
 
 #define MAP_GUARDED_VALS 0
@@ -184,6 +184,11 @@ static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime 
 					fprintf(stderr, "  rejected - not a noop (%p)\n", (void *)isn_iter);
 				return false;
 			}
+
+			if(REGALLOC_VERBOSITY > 2)
+				fprintf(stderr,
+						"  (%s: technically in use - only in abi copies inside implicit use blocks)\n",
+						isn_type_to_str(isn_iter->type));
 
 			/* continue */
 		}
