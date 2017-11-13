@@ -826,110 +826,106 @@ static void x86_op(
 static void emit_elem(isn *i, x86_octx *octx)
 {
 	val *const lval = i->u.elem.lval;
+	long offset;
 
-	switch(lval->kind){
-			struct location *loc;
+	if(elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset)){
+		switch(lval->kind){
+				struct location *loc;
 
-		case UNDEF:
-			break;
+			case UNDEF:
+				break;
 
-		case LITERAL:
-			break;
+			case LITERAL:
+				break;
 
-		case ARGUMENT:
-			loc = &lval->u.argument.loc;
-			goto loc;
-		case ALLOCA:
-			loc = &lval->u.alloca.loc;
-			goto loc;
-		case FROM_ISN:
-			loc = &lval->u.local.loc;
-			goto loc;
-		case BACKEND_TEMP:
-			loc = &lval->u.temp_loc;
-			goto loc;
-		case ABI_TEMP:
-			loc = &lval->u.abi;
-			goto loc;
+			case ARGUMENT:
+				loc = &lval->u.argument.loc;
+				goto loc;
+			case ALLOCA:
+				loc = &lval->u.alloca.loc;
+				goto loc;
+			case FROM_ISN:
+				loc = &lval->u.local.loc;
+				goto loc;
+			case BACKEND_TEMP:
+				loc = &lval->u.temp_loc;
+				goto loc;
+			case ABI_TEMP:
+				loc = &lval->u.abi;
+				goto loc;
 
 loc:
-		{
-			long offset;
-			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset))
-				break;
-
-			switch(loc->where){
-				case NAME_NOWHERE:
-				case NAME_IN_REG_ANY:
-					assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend");
-
-				case NAME_IN_REG:
 				{
-					const char *pointer_str = x86_val_str(
-							i->u.elem.lval, 0, octx,
-							val_type(i->u.elem.lval),
-							DEREFERENCE_FALSE);
+					switch(loc->where){
+						case NAME_NOWHERE:
+						case NAME_IN_REG_ANY:
+							assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend");
 
-					const char *result_str = x86_val_str(
-							i->u.elem.res, 1, octx,
-							val_type(i->u.elem.res),
-							DEREFERENCE_FALSE);
+						case NAME_IN_REG:
+						{
+							const char *pointer_str = x86_val_str(
+									i->u.elem.lval, 0, octx,
+									val_type(i->u.elem.lval),
+									DEREFERENCE_FALSE);
 
-					fprintf(octx->fout, "\tlea %ld(%s), %s\n",
-							offset,
-							pointer_str,
-							result_str);
-					return;
+							const char *result_str = x86_val_str(
+									i->u.elem.res, 1, octx,
+									val_type(i->u.elem.res),
+									DEREFERENCE_FALSE);
+
+							fprintf(octx->fout, "\tlea %ld(%s), %s\n",
+									offset,
+									pointer_str,
+									result_str);
+							return;
+						}
+
+						case NAME_SPILT:
+						{
+							char regch = x86_target_regch(unit_target_info(octx->unit));
+
+							fprintf(octx->fout, "\tlea %ld(%%%cbp), %s\n",
+									-(long)loc->u.off + offset,
+									regch,
+									x86_val_str(
+										i->u.elem.res,
+										0,
+										octx,
+										val_type(i->u.elem.res),
+										DEREFERENCE_FALSE));
+							return;
+						}
+					}
+					break;
 				}
 
-				case NAME_SPILT:
-				{
-					char regch = x86_target_regch(unit_target_info(octx->unit));
+			case GLOBAL:
+			{
+				const char *result_str;
+				int x64;
 
-					fprintf(octx->fout, "\tlea %ld(%%%cbp), %s\n",
-							-(long)loc->u.off + offset,
-							regch,
-							x86_val_str(
-								i->u.elem.res,
-								0,
-								octx,
-								val_type(i->u.elem.res),
-								DEREFERENCE_FALSE));
-					return;
-				}
+				x64 = x86_target_switch(unit_target_info(octx->unit), 0, 1);
+
+				result_str = x86_val_str(
+						i->u.elem.res, 1, octx,
+						val_type(i->u.elem.res),
+						DEREFERENCE_FALSE);
+
+				/* TODO: pic */
+				fprintf(octx->fout, "\tlea %s+%ld%s, %s\n",
+						global_name_mangled(lval->u.global, unit_target_info(octx->unit)),
+						offset,
+						x64 ? "(%rip)" : "",
+						result_str);
+				return;
 			}
-			break;
+
+			case LABEL:
+				assert(0 && "unreachable");
 		}
-
-		case GLOBAL:
-		{
-			const char *result_str;
-			long offset;
-			int x64;
-
-			if(!elem_get_offset(i->u.elem.index, val_type(i->u.elem.res), &offset))
-				break;
-
-			x64 = x86_target_switch(unit_target_info(octx->unit), 0, 1);
-
-			result_str = x86_val_str(
-					i->u.elem.res, 1, octx,
-					val_type(i->u.elem.res),
-					DEREFERENCE_FALSE);
-
-			/* TODO: pic */
-			fprintf(octx->fout, "\tlea %s+%ld%s, %s\n",
-					global_name_mangled(lval->u.global, unit_target_info(octx->unit)),
-					offset,
-					x64 ? "(%rip)" : "",
-					result_str);
-			return;
-		}
-
-		case LABEL:
-			assert(0 && "unreachable");
 	}
 
+	assert(type_array_element(val_type(lval)));
 	/* do the equivalent of x86_op/add,
 	 * but with more control over deref_[lr]hs and lea'ing of the lval */
 	x86_mov(lval, i->u.elem.res, octx);
