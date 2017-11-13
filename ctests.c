@@ -641,6 +641,31 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$x = i4 internal 3"
+			"$f = i4() internal"
+			"{"
+			"  $a = load $x"
+			"  $b = load $x"
+			"  $c = load $x"
+			"  $d = load $x"
+			"  $e = load $x"
+			"  $1 = add $a, $b"
+			"  $2 = add $1, $c"
+			"  $3 = add $2, $d"
+			"  $4 = add $3, $e"
+			"  ret $4"
+			"}"
+			"$entry = i4()"
+			"{"
+			"	store $x, i4 3"
+			"	$i = call $f()"
+			"	ret $i"
+			"}",
+			15,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
