@@ -251,7 +251,7 @@ static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size
 {
 	val *const v = *out_v;
 	type *curtype = val_type(v);
-	enum type_primitive *curprim = type_primitive(curtype);
+	const enum type_primitive *curprim = type_primitive(curtype);
 	isn *i;
 	val *out;
 

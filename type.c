@@ -95,7 +95,7 @@ bool type_eq(type *t1, type *t2)
 	return t1 == t2;
 }
 
-enum type_primitive *type_primitive(type *t)
+const enum type_primitive *type_primitive(type *t)
 {
 	t = type_resolve(t);
 	if(!t)
@@ -109,7 +109,7 @@ enum type_primitive *type_primitive(type *t)
 
 bool type_is_primitive(type *t, enum type_primitive prim)
 {
-	enum type_primitive *p = type_primitive(t);
+	const enum type_primitive *p = type_primitive(t);
 	return p && *p == prim;
 }
 
