@@ -12,7 +12,9 @@ int dump_escaped_string(const struct string *str, FILE *f)
 		char ch = str->str[i];
 		int r;
 
-		if(isprint(ch))
+		if(ch == '"')
+			r = fprintf(f, "\\\"");
+		else if(isprint(ch))
 			r = fprintf(f, "%c", ch);
 		else
 			r = fprintf(f, "\\%03o", (unsigned)ch);
