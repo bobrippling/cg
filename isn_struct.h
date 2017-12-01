@@ -6,6 +6,7 @@
 #include "dynarray.h"
 #include "op.h"
 #include "regset_marks.h"
+#include "string.h"
 
 struct isn
 {
@@ -30,6 +31,7 @@ struct isn
 		ISN_LABEL,
 		ISN_RET,
 		ISN_CALL,
+		ISN_ASM,
 		ISN_IMPLICIT_USE_START,
 		ISN_IMPLICIT_USE_END
 #define ISN_TYPE_COUNT (ISN_IMPLICIT_USE_END+1)
@@ -112,6 +114,8 @@ struct isn
 		} call;
 
 		struct val *ret;
+
+		struct string as;
 
 		struct
 		{

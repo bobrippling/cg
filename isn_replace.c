@@ -95,6 +95,8 @@ struct replace_block_ctx
 		case ISN_BR:                       \
 			IO(inputs[0], i->u.branch.cond);  \
 			break;                           \
+		case ISN_ASM:                      \
+			break;                           \
 		case ISN_IMPLICIT_USE_START:       \
 		case ISN_IMPLICIT_USE_END:         \
 			break;                           \

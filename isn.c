@@ -15,6 +15,7 @@
 #include "block.h"
 #include "type.h"
 #include "val_struct.h"
+#include "string.h"
 
 isn *isn_new(enum isn_type t)
 {
@@ -215,6 +216,9 @@ void isn_free_1(isn *isn)
 			dynarray_reset(&isn->u.call.args);
 			break;
 		}
+		case ISN_ASM:
+			free(isn->u.as.str);
+			break;
 		case ISN_IMPLICIT_USE_START:
 			break;
 		case ISN_IMPLICIT_USE_END:
@@ -263,6 +267,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_PTR2INT:return "ptr2int";
 		case ISN_INT2PTR:return "int2ptr";
 		case ISN_PTRCAST:return "ptrcast";
+		case ISN_ASM: return "asm";
 		case ISN_IMPLICIT_USE_START: return "implicit_use_start";
 		case ISN_IMPLICIT_USE_END: return "implicit_use_end";
 	}
@@ -559,6 +564,16 @@ isn *isn_call(val *into, val *fn, dynarray *args)
 	return isn;
 }
 
+isn *isn_asm(struct string *str)
+{
+	isn *isn = isn_new(ISN_ASM);
+
+	memcpy(&isn->u.as, str, sizeof(*str));
+	memset(str, 0, sizeof(*str));
+
+	return isn;
+}
+
 isn *isn_br(val *cond, block *btrue, block *bfalse)
 {
 	isn *isn;
@@ -620,6 +635,7 @@ bool isn_is_noop(isn *isn)
 		case ISN_JMP_COMPUTED:
 		case ISN_BR:
 		case ISN_CALL:
+		case ISN_ASM:
 			break;
 
 		case ISN_LABEL:
@@ -647,6 +663,7 @@ bool isn_defines_val(isn *isn, struct val *v)
 		case ISN_BR:
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
+		case ISN_ASM:
 			return false;
 
 		case ISN_LOAD:
@@ -786,6 +803,9 @@ static void isn_on_vals(
 			}
 			break;
 		}
+
+		case ISN_ASM:
+			break;
 
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
@@ -978,6 +998,14 @@ static void isn_dump1(isn *i, FILE *f)
 					val_str(i->u.branch.cond),
 					i->u.branch.t->lbl,
 					i->u.branch.f->lbl);
+			break;
+		}
+
+		case ISN_ASM:
+		{
+			fprintf(f, "\tasm \"");
+			dump_escaped_string(&i->u.as, f);
+			fprintf(f, "\"\n");
 			break;
 		}
 

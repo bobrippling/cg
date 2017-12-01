@@ -147,6 +147,7 @@ const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_LABEL*/        { NULL, NULL },
 	/*ISN_RET*/          { NULL, NULL },
 	/*ISN_CALL*/         { &call, NULL },
+	/*ISN_ASM*/          { NULL, NULL },
 	/*ISN_IMPLICIT_USE_START*/ { NULL, NULL },
 	/*ISN_IMPLICIT_USE_END*/ { NULL, NULL },
 };

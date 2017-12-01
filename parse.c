@@ -956,6 +956,17 @@ static void parse_label(parse *p)
 	function_block_find(p->func, p->unit, lbl, NULL);
 }
 
+static void parse_asm(parse *p)
+{
+	struct string str;
+
+	eat(p, "asm string", tok_string);
+
+	token_last_string(p->tok, &str);
+
+	block_add_isn(p->entry, isn_asm(&str));
+}
+
 static void parse_block(parse *p)
 {
 	enum token ct = token_next(p->tok);
@@ -1019,6 +1030,10 @@ static void parse_block(parse *p)
 
 		case tok_label:
 			parse_label(p);
+			break;
+
+		case tok_asm:
+			parse_asm(p);
 			break;
 	}
 }

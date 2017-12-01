@@ -54,6 +54,7 @@
 	KW(internal)        \
 	KW(aliasinit)       \
 	KW(type)            \
+	KW(asm)             \
 	OP(add)             \
 	OP(sub)             \
 	OP(mul)             \

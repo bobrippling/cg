@@ -1253,6 +1253,12 @@ static void x86_out_block1(block *blk, void *vctx)
 						octx);
 				break;
 			}
+
+			case ISN_ASM:
+				fprintf(octx->fout, "\t");
+				fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
+				fprintf(octx->fout, "\n");
+				break;
 		}
 	}
 }
