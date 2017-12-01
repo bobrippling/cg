@@ -16,6 +16,7 @@
 #include "target.h"
 #include "backend_isn.h"
 #include "imath.h"
+#include "mem.h"
 
 #define ISEL_DEBUG 0
 
@@ -77,17 +78,7 @@ static void populate_constraints(
 					req_lhs->reg[1] = regt_make_invalid();
 					req_lhs->val = isn->u.op.lhs;
 
-#if 0
-					/* for the moment, this is handled by isel_pad_cisc_isn() */
-					if(type_size(req_lhs->val->ty) >= 4){
-						/* we'll be doing a
-						 * a    cltd - edx:eax
-						 * or a cqto - rdx:rax
-						 * or mov $0, %[er]dx (if unsigned)
-						 */
-						req_lhs->reg[1] = regt_make(REG_EDX, 0);
-					}
-#endif
+					/* %edx s/zext is handled by isel_pad_cisc_isn() */
 
 					req_rhs->req = REQ_REG | REQ_MEM;
 					req_rhs->reg[0] = regt_make_invalid();
@@ -354,27 +345,55 @@ static void isel_reserve_cisc_isn(isn *isn, uniq_type_list *utl, function *fn)
 static void isel_pad_cisc_isn(isn *i)
 {
 	if(i->type == ISN_OP){
+		bool is_signed = false;
+
 		switch(i->u.op.op){
 			case op_sdiv:
 			case op_smod:
-			{
-				/* FIXME: need a zero/sign-extension of the value into edx */
-				break;
-			}
+				is_signed = true;
 			case op_udiv:
 			case op_umod:
 			{
-				type *opty = val_type(i->u.op.lhs);
-				val *edx = val_new_abi_reg(regt_make(REG_EDX, 0), opty);
-				val *zero = val_new_i(0, opty);
-				isn *copy = isn_copy(edx, zero);
-				isn *use_start, *use_end;
-				isn_implicit_use(&use_start, &use_end);
-				isn_implicit_use_add(use_end, edx);
+				type *const opty = val_type(i->u.op.lhs);
+				unsigned const optysz = type_size(opty);
+				val *edx;
+				const regt reg_edx = regt_make(REG_EDX, 0);
 
-				isn_insert_before(i, copy);
-				isn_insert_before(i, use_start);
-				isn_insert_after(i, use_end);
+				if(optysz < 4)
+					break;
+
+				/* we'll be doing a
+				 * a    cltd - edx:eax
+				 * or a cqto - rdx:rax
+				 * or mov $0, %[er]dx (if unsigned)
+				 */
+				edx = val_new_abi_reg(reg_edx, opty);
+
+				if(is_signed){
+					isn *edx_ext;
+					struct string str;
+
+					assert((optysz == 4 || optysz == 8) && "unreachable");
+
+					str.str = xstrdup(optysz == 4 ? "cltd" : "cqto");
+					str.len = strlen(str.str);
+
+					edx_ext = isn_asm(&str);
+
+					isn_add_reg_clobber(edx_ext, reg_edx);
+					isn_insert_before(i, edx_ext);
+				}else{
+					isn *use_start, *use_end;
+					isn *edx_set = isn_copy(edx, val_new_i(0, opty));
+
+					isn_implicit_use(&use_start, &use_end);
+
+					isn_implicit_use_add(use_end, edx);
+
+					isn_insert_before(i, edx_set);
+					isn_insert_before(i, use_start);
+					isn_insert_after(i, use_end);
+				}
 				break;
 			}
 			default:

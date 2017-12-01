@@ -666,6 +666,20 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$d = i4(i4 $a){"
+			"	$x = sdiv $a, i4 2"
+			"	ret $x"
+			"}"
+			"$entry = i4()"
+			"{"
+			"  $x = call $d(i4 -10)"
+			"  ret $x"
+			"}",
+			-5,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
