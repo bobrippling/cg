@@ -20,6 +20,7 @@
 #include "regalloc.h"
 #endif
 #include "unit_internal.h"
+#include "imath.h"
 
 struct traverse_jmpcomp
 {
@@ -425,7 +426,12 @@ void func_regalloc(
 
 unsigned function_alloc_stack_space(function *f, type *for_ty)
 {
-	f->stackspace += type_size(for_ty);
+	unsigned sz, align;
+	type_size_align(for_ty, &sz, &align);
+
+	f->stackspace += sz;
+	f->stackspace += gap_for_alignment(f->stackspace, align);
+
 	return f->stackspace;
 }
 
