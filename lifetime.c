@@ -4,6 +4,7 @@
 #include "mem.h"
 
 #include "function.h"
+#include "function_struct.h"
 #include "val.h"
 #include "val_struct.h"
 #include "isn.h"
@@ -82,4 +83,5 @@ static void lifetime_fill_block(block *b, void *vctx)
 void lifetime_fill_func(function *func)
 {
 	function_onblocks(func, lifetime_fill_block, NULL);
+	func->lifetime_filled = true;
 }

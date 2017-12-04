@@ -15,6 +15,7 @@
 #include "variable_struct.h"
 #include "function_struct.h"
 #include "isn_struct.h"
+#include "isn.h"
 #include "mangle.h"
 #if 0
 #include "regalloc.h"
@@ -186,6 +187,33 @@ block *function_block_new(function *f, unit *unit)
 	block *b = block_new(lbl_new_private(f->uniq_counter, unit_lbl_private_prefix(unit)));
 	function_add_block(f, b);
 	return b;
+}
+
+void function_block_split(function *f, unit *unit, block *blk, struct isn *first_new, block **const newblk)
+{
+	block *new = function_block_new(f, unit);
+
+	/* Housekeeping 1: block lifetimes
+	 *
+	 * `val_lifetimes` is empty in `newblk`.
+	 * We assume function_block_split() is called before any lifetime logic (regalloc and spill)
+	 */
+	assert(!f->lifetime_filled);
+
+	/* Housekeeping 2: type and associated bits */
+	new->type = blk->type;
+	blk->type = BLK_UNKNOWN;
+	memcpy(&new->u, &blk->u, sizeof(new->u));
+	memset(&blk->u, 0, sizeof(blk->u));
+
+	/* Housekeeping 3: isns */
+	isns_detach(first_new);
+	block_set_isns(new, first_new);
+
+	/* Housekeeping 4: preds */
+	/* not updated */
+
+	*newblk = new;
 }
 
 block *function_block_find(

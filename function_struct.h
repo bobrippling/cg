@@ -25,6 +25,7 @@ struct function
 	unsigned stackspace;
 
 	enum function_attributes attr;
+	bool lifetime_filled;
 };
 
 #endif

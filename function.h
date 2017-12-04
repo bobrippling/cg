@@ -37,6 +37,7 @@ block *function_block_find(
 		int *const created);
 
 block *function_block_new(function *f, struct unit *unit);
+void function_block_split(function *f, struct unit *unit, block *blk, struct isn *first_new, block **const newblk);
 
 bool function_arg_find(
 		function *f, const char *name,
