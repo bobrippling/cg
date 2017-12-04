@@ -40,7 +40,7 @@ struct constraint {
 
 struct constrain_ctx {
 	const struct target *target;
-	uniq_type_list *utl;
+	unit *unit;
 	function *fn;
 };
 
@@ -779,7 +779,12 @@ static void isel_generic(
 	}
 }
 
-static void isel_constrain_isn(isn *fi, const struct target *target, uniq_type_list *utl, function *fn)
+static void isel_constrain_isn(
+		isn *fi,
+		const struct target *target,
+		unit *unit,
+		function *fn,
+		block *block)
 {
 	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
@@ -795,7 +800,7 @@ static void isel_constrain_isn(isn *fi, const struct target *target, uniq_type_l
 	if(!bi)
 		return;
 
-	isel_generic(fi, target, bi, utl, fn);
+	isel_generic(fi, target, bi, unit_uniqtypes(unit), fn);
 }
 
 static void isel_constrain_isns_block(block *block, void *vctx)
@@ -809,14 +814,14 @@ static void isel_constrain_isns_block(block *block, void *vctx)
 
 	for(i = block_first_isn(block); i; i = i->next){
 		if(i->flag)
-			isel_constrain_isn(i, ctx->target, ctx->utl, ctx->fn);
+			isel_constrain_isn(i, ctx->target, ctx->unit, ctx->fn, block);
 	}
 }
 
-static void isel_constrain_isns(function *fn, const struct target *target, uniq_type_list *utl)
+static void isel_constrain_isns(function *fn, const struct target *target, unit *unit)
 {
 	struct constrain_ctx ctx;
-	ctx.utl = utl;
+	ctx.unit = unit;
 	ctx.target = target;
 	ctx.fn = fn;
 	function_onblocks(fn, isel_constrain_isns_block, &ctx);
@@ -847,5 +852,5 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 
 	isel_create_ptrmath(fn, unit);
 	isel_reserve_cisc(fn, unit_uniqtypes(unit), fn);
-	isel_constrain_isns(fn, target, unit_uniqtypes(unit));
+	isel_constrain_isns(fn, target, unit);
 }
