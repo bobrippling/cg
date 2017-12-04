@@ -436,6 +436,9 @@ isn *isn_ptradd(val *lhs, val *rhs, val *out)
 {
 	isn *isn;
 
+	assert(type_eq(val_type(lhs), val_type(out)));
+	assert(type_is_int(val_type(rhs)));
+
 	val_retain(lhs);
 	val_retain(rhs);
 	val_retain(out);
@@ -450,6 +453,9 @@ isn *isn_ptradd(val *lhs, val *rhs, val *out)
 isn *isn_ptrsub(val *lhs, val *rhs, val *out)
 {
 	isn *isn;
+
+	assert(type_eq(val_type(lhs), val_type(rhs)));
+	assert(type_is_int(val_type(out)));
 
 	val_retain(lhs);
 	val_retain(rhs);
