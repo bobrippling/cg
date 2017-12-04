@@ -87,6 +87,9 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 		return;
 	}
 
+	if(isn_is_noop(isn))
+		return;
+
 	if(!regalloc_applies_to(v))
 		return;
 
