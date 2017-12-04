@@ -116,28 +116,6 @@ static void populate_constraints(
 			}
 			break;
 
-		case ISN_CMP:
-		{
-			/* a <cmp> b
-			 *  ->   b     a
-			 * cmp const, r/m
-			 * cmp r,     r/m
-			 * cmp r/m,   r
-			 * cmp r/m,   r
-			 * cmp r/m,   r
-			 */
-			req_lhs->req = REQ_REG | REQ_MEM;
-			req_lhs->reg[0] = regt_make_invalid();
-			req_lhs->reg[1] = regt_make_invalid();
-			req_lhs->val = isn->u.cmp.lhs;
-
-			req_rhs->req = REQ_CONST | REQ_REG | REQ_MEM;
-			req_rhs->reg[0] = regt_make_invalid();
-			req_rhs->reg[1] = regt_make_invalid();
-			req_rhs->val = isn->u.cmp.rhs;
-			break;
-		}
-
 		default:
 			return;
 	}

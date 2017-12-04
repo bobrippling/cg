@@ -810,6 +810,15 @@ int main(int argc, const char *argv[])
 			"}",
 			&target);
 
+	TEST(ir_assembles,
+			"$f = i1(i4 $a){"
+			"	$y = gt $a, i4 2" /* check x86's cmp $literal, %reg */
+			"	$x = gt i4 2, $a"
+			"	$p = add $x, $y"
+			"	ret $p"
+			"}",
+			&target);
+
 	/* TODO:
 	 * interested in:
 	 *   -[X] ./test a b c; test $? -eq ...
