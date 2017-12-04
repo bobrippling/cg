@@ -96,6 +96,7 @@ void block_add_isn(block *b, struct isn *i)
 	}
 
 	if(!b->isnhead){
+		assert(!b->isntail);
 		b->isnhead = i;
 		b->isntail = i;
 		return;
