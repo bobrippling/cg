@@ -967,6 +967,23 @@ static void parse_asm(parse *p)
 	block_add_isn(p->entry, isn_asm(&str));
 }
 
+static void parse_memcpy(parse *p)
+{
+	val *dest, *src;
+
+	dest = parse_val(p);
+	eat(p, "memcpy", tok_comma);
+	src = parse_val(p);
+
+	if(!type_eq(val_type(dest), val_type(src))){
+		sema_error(p, "mismatching memcpy types");
+	}else if(!type_deref(val_type(dest))){
+		sema_error(p, "memcpy type is not a pointer");
+	}
+
+	block_add_isn(p->entry, isn_memcpy(dest, src));
+}
+
 static void parse_block(parse *p)
 {
 	enum token ct = token_next(p->tok);
@@ -1034,6 +1051,10 @@ static void parse_block(parse *p)
 
 		case tok_asm:
 			parse_asm(p);
+			break;
+
+		case tok_memcpy:
+			parse_memcpy(p);
 			break;
 	}
 }

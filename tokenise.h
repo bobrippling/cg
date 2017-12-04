@@ -37,6 +37,7 @@
 	KW(ptr2int)         \
 	KW(int2ptr)         \
 	KW(ptrcast)         \
+	KW(memcpy)          \
 	KW(ret)             \
 	KW(zext) KW(sext)   \
 	KW(trunc)           \

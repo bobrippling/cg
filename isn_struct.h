@@ -21,6 +21,7 @@ struct isn
 		ISN_PTRADD,
 		ISN_PTRSUB,
 		ISN_COPY,
+		ISN_MEMCPY,
 		ISN_EXT_TRUNC,
 		ISN_PTR2INT,
 		ISN_INT2PTR,
@@ -79,6 +80,12 @@ struct isn
 		{
 			struct val *from, *to;
 		} copy, ptr2int, ptrcast;
+
+		struct
+		{
+			struct val *from, *to;
+			bool expanded;
+		} memcpy;
 
 		struct
 		{

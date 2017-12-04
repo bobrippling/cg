@@ -172,6 +172,10 @@ void isn_free_1(isn *isn)
 			val_release(isn->u.cmp.rhs);
 			val_release(isn->u.cmp.res);
 			break;
+		case ISN_MEMCPY:
+			val_release(isn->u.memcpy.from);
+			val_release(isn->u.memcpy.to);
+			break;
 		case ISN_COPY:
 			val_release(isn->u.copy.from);
 			val_release(isn->u.copy.to);
@@ -257,6 +261,7 @@ const char *isn_type_to_str(enum isn_type t)
 		case ISN_OP:     return "op";
 		case ISN_CMP:    return "cmp";
 		case ISN_COPY:   return "copy";
+		case ISN_MEMCPY:return "memcpy";
 		case ISN_EXT_TRUNC: return "zext/sext/trunc";
 		case ISN_RET:    return "ret";
 		case ISN_BR:     return "br";
@@ -483,6 +488,21 @@ isn *isn_copy(val *to, val *from)
 	return isn;
 }
 
+isn *isn_memcpy(val *to, val *from)
+{
+	isn *isn;
+
+	val_retain(to);
+	val_retain(from);
+
+	assert(val_type(to) == val_type(from));
+
+	isn = isn_new(ISN_MEMCPY);
+	isn->u.memcpy.from = from;
+	isn->u.memcpy.to = to;
+	return isn;
+}
+
 void isn_implicit_use(isn **const start, isn **const end)
 {
 	*start = isn_new(ISN_IMPLICIT_USE_START);
@@ -644,6 +664,7 @@ bool isn_is_noop(isn *isn)
 		case ISN_ASM:
 			break;
 
+		case ISN_MEMCPY: /* actual isns generated from it do the work */
 		case ISN_LABEL:
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
@@ -670,6 +691,7 @@ bool isn_defines_val(isn *isn, struct val *v)
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
 		case ISN_ASM:
+		case ISN_MEMCPY:
 			return false;
 
 		case ISN_LOAD:
@@ -761,6 +783,11 @@ static void isn_on_vals(
 		case ISN_COPY:
 			fn(current->u.copy.to, current, ctx);
 			fn(current->u.copy.from, current, ctx);
+			break;
+
+		case ISN_MEMCPY:
+			fn(current->u.memcpy.to, current, ctx);
+			fn(current->u.memcpy.from, current, ctx);
 			break;
 
 		case ISN_EXT_TRUNC:
@@ -910,6 +937,14 @@ static void isn_dump1(isn *i, FILE *f)
 			fprintf(f, "\t%s = %s\n",
 					val_str_rn(0, i->u.copy.to),
 					val_str_rn(1, i->u.copy.from));
+			break;
+		}
+
+		case ISN_MEMCPY:
+		{
+			fprintf(f, "\tmemcpy %s, %s\n",
+					val_str_rn(0, i->u.memcpy.to),
+					val_str_rn(1, i->u.memcpy.from));
 			break;
 		}
 

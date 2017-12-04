@@ -65,6 +65,10 @@ struct replace_block_ctx
 			IO(inputs[0], i->u.copy.from);    \
 			IO(*output, i->u.copy.to);        \
 			break;                           \
+		case ISN_MEMCPY:                   \
+			IO(inputs[0], i->u.memcpy.from); \
+			IO(*output, i->u.memcpy.to);     \
+			break;                           \
 		case ISN_EXT_TRUNC:                \
 			IO(inputs[0], i->u.ext.from);     \
 			IO(*output, i->u.ext.to);         \

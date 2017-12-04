@@ -22,6 +22,7 @@ isn *isn_ptradd(struct val *lhs, struct val *rhs, struct val *out);
 isn *isn_ptrsub(struct val *lhs, struct val *rhs, struct val *out);
 
 isn *isn_copy(struct val *to, struct val *from);
+isn *isn_memcpy(struct val *to, struct val *from);
 
 isn *isn_op(enum op op, struct val *lhs, struct val *rhs, struct val *res);
 isn *isn_cmp(enum op_cmp, struct val *lhs, struct val *rhs, struct val *res);

@@ -1219,6 +1219,9 @@ static void x86_out_block1(block *blk, void *vctx)
 				break;
 			}
 
+			case ISN_MEMCPY:
+				break;
+
 			case ISN_JMP:
 			{
 				x86_jmp(octx, i->u.jmp.target);
