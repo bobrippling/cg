@@ -29,6 +29,7 @@ int block_tenative(block *);
 
 struct isn *block_first_isn(block *);
 void block_add_isn(block *, struct isn *);
+void block_add_isns(block *, struct isn *);
 
 void block_set_type(block *blk, enum block_type type);
 void block_set_branch(

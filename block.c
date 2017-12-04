@@ -108,6 +108,25 @@ void block_add_isn(block *b, struct isn *i)
 	b->isntail = i;
 }
 
+void block_add_isns(block *b, struct isn *i)
+{
+	if(!b){
+		/* unreachable code */
+		isn_free_r(i);
+		return;
+	}
+
+	if(!b->isnhead){
+		assert(!b->isntail);
+		b->isnhead = i;
+		b->isntail = isn_last(i);
+		return;
+	}
+
+	isns_insert_after(b->isntail, i);
+	b->isntail = isn_last(i);
+}
+
 int block_tenative(block *b)
 {
 	return block_first_isn(b) == NULL;
