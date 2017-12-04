@@ -83,6 +83,8 @@ void isn_insert_after(isn *, isn *);
 void isns_insert_before(isn *, isn *list);
 void isns_insert_after(isn *, isn *list);
 
+void isns_detach(isn *first_new);
+
 void isns_flag(isn *start, bool);
 
 size_t isns_count(isn *);

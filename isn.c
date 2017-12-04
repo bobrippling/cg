@@ -111,6 +111,16 @@ void isns_insert_after(isn *target, isn *list)
 	target->next = head;
 }
 
+void isns_detach(isn *first_new)
+{
+	if(first_new->prev){
+		assert(first_new->prev->next == first_new);
+		first_new->prev->next = NULL;
+	}
+
+	first_new->prev = NULL;
+}
+
 isn *isn_first(isn *i)
 {
 	while(i->prev)
