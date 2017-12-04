@@ -327,6 +327,7 @@ static void gen_constraint_isns(
 	}
 
 	/* no constraint */
+	assert(req->req == 0 && "couldn't constrain value");
 }
 
 static void isel_reserve_cisc_isn(isn *isn, uniq_type_list *utl, function *fn)
