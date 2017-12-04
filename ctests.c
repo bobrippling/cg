@@ -680,6 +680,30 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$memset = i1*(...)"
+			"type $T = { i8, i8, i8, i4 }"
+			"$entry = i4() {"
+			"	$a = alloca $T"
+			"	$b = alloca $T"
+			"	$_1 = call $memset($b, i1 0xff, i8 28)"
+			"	$t0 = elem $a, i8 0"
+			"	$t1 = elem $a, i8 1"
+			"	$t2 = elem $a, i8 2"
+			"	$t3 = elem $a, i8 3"
+			"	store $t0, i8 0"
+			"	store $t1, i8 1"
+			"	store $t2, i8 2"
+			"	store $t3, i4 3"
+			"	memcpy $b, $a"
+			"	$x0 = elem $b, i8 3"
+			"	$x0_ = load $x0"
+			"	ret $x0_"
+			"}",
+			3,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"

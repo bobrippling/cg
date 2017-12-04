@@ -17,6 +17,7 @@
 #include "backend_isn.h"
 #include "imath.h"
 #include "mem.h"
+#include "builtins.h"
 
 #define ISEL_DEBUG 0
 
@@ -791,6 +792,10 @@ static void isel_constrain_isn(
 
 	if(fi->type == ISN_LABEL)
 		return;
+	if(fi->type == ISN_MEMCPY){
+		builtin_expand_memcpy(fi, block, fn, unit);
+		return;
+	}
 
 	if(arch_isn->custom_isel){
 		arch_isn->custom_isel(fi, target);
