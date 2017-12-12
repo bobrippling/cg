@@ -568,7 +568,7 @@ isn *isn_call(val *into, val *fn, dynarray *args)
 {
 	isn *isn;
 	size_t i;
-	type *fn_ret;
+	type *fn_ret, *into_type;
 	dynarray *argtys;
 	bool variadic;
 
@@ -582,7 +582,11 @@ isn *isn_call(val *into, val *fn, dynarray *args)
 
 	fn_ret = type_func_call(type_deref(val_type(fn)), &argtys, &variadic);
 
-	assert(!into || type_eq(val_type(into), fn_ret));
+	into_type = val_type(into);
+	if(type_is_struct(fn_ret)){
+		into_type = type_deref(into_type);
+	}
+	assert(!into || type_eq(into_type, fn_ret));
 
 	if(variadic){
 		assert(dynarray_count(args) >= dynarray_count(argtys));

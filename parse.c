@@ -453,6 +453,7 @@ static void parse_call(parse *p, char *ident)
 	bool variadic = false;
 	bool tyerror = false;
 	type *retty = NULL;
+	bool stret;
 	size_t i;
 
 	target = parse_val(p);
@@ -468,7 +469,12 @@ static void parse_call(parse *p, char *ident)
 				type_to_str(val_type(target)));
 	}
 
-	into = uniq_val(p, ident, retty, VAL_CREATE);
+	stret = type_is_struct(retty);
+	if(stret){
+		retty = type_get_ptr(unit_uniqtypes(p->unit), retty);
+	}
+
+	into = uniq_val(p, ident, retty, VAL_CREATE | (stret ? VAL_ALLOCA : 0));
 	/* void results are fine */
 
 	eat(p, "call paren", tok_lparen);
@@ -845,12 +851,21 @@ static void parse_ident(parse *p, char *spel)
 	}
 }
 
+static bool permitted_to_return(type *expr, type *to)
+{
+	if(type_is_struct(to)){
+		return type_eq(type_deref(expr), to);
+	}else{
+		return type_eq(expr, to);
+	}
+}
+
 static void parse_ret(parse *p)
 {
 	type *expected_ty = type_func_call(function_type(p->func), NULL, NULL);
 	val *v = parse_val(p);
 
-	if(!type_eq(val_type(v), expected_ty)){
+	if(!permitted_to_return(val_type(v), expected_ty)){
 		char buf[256];
 
 		sema_error(p, "mismatching return type (returning %s to %s)",
