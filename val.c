@@ -571,6 +571,10 @@ val *val_new_local(char *name, struct type *ty, bool alloca)
 	val *p = val_new(alloca ? ALLOCA : FROM_ISN, ty);
 	p->u.local.name = name;
 	location_init_reg(&p->u.local.loc);
+
+	if(alloca)
+		assert(type_deref(ty));
+
 	return p;
 }
 
