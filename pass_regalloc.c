@@ -176,7 +176,8 @@ static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime 
 					}
 
 				}else{
-					/* trivial copy involving something else - allow */
+					/* trivial copy involving something else - disallow */
+					return false;
 				}
 
 			}else if(!isn_is_noop(isn_iter)){

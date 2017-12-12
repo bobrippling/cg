@@ -119,7 +119,7 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 	if(lt->start == isn){
 		ctx->used_count++;
 
-		if(ctx->used_count >= ctx->regcount - 1
+		if(ctx->used_count >= ctx->regcount - 2
 		&& !val_is_abi_reg(v))
 		{
 			if(SHOW_SPILL){
