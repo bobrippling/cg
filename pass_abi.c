@@ -60,6 +60,7 @@ struct convert_out_ctx
 struct convert_ret_ctx
 {
 	val *stret_stash;
+	function *func;
 	uniq_type_list *utl;
 	const struct target *target;
 	unsigned *uniq_index_per_func;
@@ -181,11 +182,12 @@ static void create_arg_reg_overlay_isns(
 	 * or xmm1:xmm0 (or a subset),
 	 * so we read from memory into those regs */
 	/* first arg: */
-	isn *alloca = NULL;
 	val *spilt_arg;
+	val *ptrcast;
 	int i;
 	unsigned bytes_to_copy = type_size(argty);
 	isn *current_isn = NULL;
+	isn *ptrcast_isn;
 
 	/* if it's a struct (or larger than machine word size),
 	 * we need to spill it */
@@ -232,33 +234,24 @@ static void create_arg_reg_overlay_isns(
 		return;
 	}
 
-	spilt_arg = val_new_localf(
-			type_get_ptr(utl, argty),
-			true,
-			"spill.%d",
+	/* struct is already an lvalue, don't need to spill */
+	spilt_arg = argval;
+	ptrcast = val_new_localf(
+			type_get_ptr(utl, type_get_sizet(utl)),
+			false,
+			"spill_cast.%d",
 			(*state->uniq_index_per_func)++);
+	ptrcast_isn = isn_ptrcast(spilt_arg, ptrcast);
+	assert(!current_isn);
+	current_isn = ptrcast_isn;
 
-	/* need a local storage space for the (struct) argument/return value */
-	alloca = isn_alloca(spilt_arg);
-	current_isn = alloca;
-
-	if(overlay_direction == OVERLAY_TO_REGS){
-		/* spill the struct to somewhere we can elem it from */
-		isn *initial_spill = isn_store(argval, spilt_arg);
-
-		assert(current_isn);
-		isn_insert_after(current_isn, initial_spill);
-		current_isn = initial_spill;
-	}
-
-	assert(current_isn);
 
 	for(i = 0; i < 2 && regclass->regs[i] != NO_CLASS; i++){
 		const int is_fp = !!(regclass->regs[i] & SSE);
 		unsigned *const reg_index = is_fp ? &state->fp_idx : &state->int_idx;
 		type *regty;
-		isn *elem_isn, *ptrcast_isn;
-		val *abiv, *elemp, *ptrcast, *abi_copy;
+		isn *ptradd_isn;
+		val *abiv, *ptradd, *temporary, *ptrcast2;
 		const regt regtouse = regset_nth(regs, *reg_index, is_fp);
 
 		if(add_clobber)
@@ -269,75 +262,68 @@ static void create_arg_reg_overlay_isns(
 				type_primitive_less_or_equal(
 					bytes_to_copy,
 					is_fp));
+		abiv = val_new_abi_reg(regtouse, regty);
 
-		abiv = val_new_abi_reg(
-				regtouse,
-				regty);
-
-		abi_copy = val_new_localf(
+		temporary = val_new_localf(
 				regty, false,
 				"abi.%d.%d",
 				i, (*state->uniq_index_per_func)++);
 
-		/* compute spill position / elem for register */
-		elemp = val_new_localf(
-				type_get_ptr(utl, argty),
+		if(!type_eq(regty, type_get_sizet(utl))){
+			isn *load_cast;
+
+			ptrcast2 = val_new_localf(regty, false, "recast.%d", (*state->uniq_index_per_func)++);
+			load_cast = isn_ptrcast(ptrcast, ptrcast2);
+			isn_insert_after(current_isn, load_cast);
+			current_isn = load_cast;
+		}else{
+			ptrcast2 = ptrcast;
+		}
+
+		/* compute spill position for register */
+		ptradd = val_new_localf(
+				type_get_ptr(utl, regty),
 				false,
-				"spill.%d.%d",
+				"ptr.%d.%d",
 				i,
-				(*state->uniq_index_per_func)++);
-		elem_isn = isn_elem(
-				spilt_arg,
-				val_new_i(i, type_get_sizet(utl)),
-				elemp);
+				(*state->uniq_index_per_func)++,
+				type_to_str(regty));
+		ptradd_isn = isn_ptradd(
+				ptrcast2,
+				val_new_i(i, regty),
+				ptradd);
 
-		isn_insert_after(current_isn, elem_isn);
-		current_isn = elem_isn;
-
-		ptrcast = val_new_localf(
-				type_get_ptr(utl, regty), /* using regty here ensures correct size */
-				false,
-				"spill_cast.%d.%d",
-				i,
-				(*state->uniq_index_per_func)++);
-		ptrcast_isn = isn_ptrcast(elemp, ptrcast);
-
-		isn_insert_after(current_isn, ptrcast_isn);
-		current_isn = ptrcast_isn;
+		isn_insert_after(current_isn, ptradd_isn);
+		current_isn = ptradd_isn;
 
 		/* copy from abiv -> local register,
 		 * or vice-versa */
 		if(overlay_direction == OVERLAY_FROM_REGS){
 			isn *store;
-			isn *copy = isn_copy(abi_copy, abiv);
+			isn *copy;
+
+			copy = isn_copy(temporary, abiv);
 			ISN_APPEND_OR_SET(state->abi_copies, copy);
 
 			/* copy from abiv -> spilt arg (inside struct) */
-			store = isn_store(abi_copy, ptrcast);
+			store = isn_store(temporary, ptradd);
 			isn_insert_after(current_isn, store);
 			current_isn = store;
 		}else{
 			isn *load, *copy;
 
 			/* load from inside struct / arg */
-			load = isn_load(abi_copy, ptrcast);
+			load = isn_load(temporary, ptradd);
 			isn_insert_after(current_isn, load);
 			current_isn = load;
 
 			/* move to abi reg */
-			copy = isn_copy(abiv, abi_copy);
+			copy = isn_copy(abiv, temporary);
 			ISN_APPEND_OR_SET(state->abi_copies, copy);
 		}
 
 		bytes_to_copy -= type_size(regty);
 		++*reg_index;
-	}
-
-	if(overlay_direction == OVERLAY_FROM_REGS){
-		/* insert the final assignment - the constructed struct */
-		isn *final_load = isn_load(argval, spilt_arg);
-
-		isn_insert_after(current_isn, final_load);
 	}
 
 	if(insertion->before)
@@ -513,6 +499,7 @@ static void convert_incoming_args(
 static isn *convert_call(
 		isn *inst,
 		val *fnret,
+		type *retty, /* may not be val_type(fnret) because of stret */
 		struct regpass_state *arg_state,
 		unsigned *const uniq_index_per_func,
 		const struct target *target,
@@ -524,10 +511,10 @@ static isn *convert_call(
 	insertion.before = true;
 	insertion.at = inst;
 
-	if(type_is_void(val_type(fnret)))
+	if(type_is_void(retty))
 		goto out;
 
-	classify_type(val_type(fnret), &cls);
+	classify_type(retty, &cls);
 
 	if(cls.inmem){
 		isn *alloca;
@@ -535,7 +522,7 @@ static isn *convert_call(
 		val *stret_alloca;
 
 		stret_alloca = val_new_localf(
-				type_get_ptr(utl, val_type(fnret)),
+				type_get_ptr(utl, retty),
 				true,
 				"stret.%d",
 				(*uniq_index_per_func)++);
@@ -574,7 +561,7 @@ static isn *convert_call(
 				&insertion,
 				utl,
 				fnret,
-				val_type(fnret),
+				retty,
 				OVERLAY_FROM_REGS,
 				true);
 
@@ -623,6 +610,7 @@ static isn *convert_outgoing_args_and_call_isn(
 	convert_call(
 			inst,
 			fnret,
+			retty,
 			&arg_state,
 			uniq_index_per_func,
 			target,
@@ -665,13 +653,12 @@ static void convert_outgoing_args_and_call(
 	function_onblocks(func, convert_outgoing_args_and_call_block, &ctx);
 }
 
-static isn *convert_return_isn(
-		isn *inst,
-		val *stret_stash,
-		uniq_type_list *utl,
-		unsigned *const uniq_index_per_func,
-		const struct target *target)
+static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 {
+	val *stret_stash = ctx->stret_stash;
+	uniq_type_list *utl = ctx->utl;
+	unsigned *const uniq_index_per_func = ctx->uniq_index_per_func;
+	const struct target *target = ctx->target;
 	val *retval = isn_is_ret(inst);
 	type *retty;
 
@@ -680,21 +667,13 @@ static isn *convert_return_isn(
 	if(val_is_undef(retval))
 		goto out;
 
-	retty = val_type(retval);
+	retty = type_func_call(function_type(ctx->func), NULL, NULL);
 	if(type_is_struct(retty)){
 		if(stret_stash){
 			/* return via memory */
-			isn *load, *store;
-			val *loadtmp = val_new_localf(
-					type_get_ptr(utl, retty),
-					false,
-					"stret.val");
+			isn *store = isn_memcpy(stret_stash, retval);
 
-			load = isn_load(loadtmp, stret_stash);
-			store = isn_store(retval, loadtmp);
-
-			isn_insert_before(inst, load);
-			isn_insert_after(load, store);
+			isn_insert_before(inst, store);
 		}else{
 			struct typeclass cls;
 			struct regpass_state state;
@@ -750,12 +729,7 @@ static void convert_return(block *blk, void *const vctx)
 	isn *i = block_first_isn(blk);
 
 	while(i){
-		i = convert_return_isn(
-				i,
-				ctx->stret_stash,
-				ctx->utl,
-				ctx->uniq_index_per_func,
-				ctx->target);
+		i = convert_return_isn(i, ctx);
 	}
 }
 
@@ -770,6 +744,7 @@ static void convert_returns(
 	ctx.stret_stash = stret_stash;
 	ctx.utl = utl;
 	ctx.target = target;
+	ctx.func = func;
 	ctx.uniq_index_per_func = uniq_index_per_func;
 
 	function_onblocks(func, convert_return, &ctx);
