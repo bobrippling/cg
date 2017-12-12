@@ -82,7 +82,7 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 	struct spill_ctx *ctx = vctx;
 	const struct lifetime *lt;
 
-	if(v->kind == ALLOCA && isn->type == ISN_ALLOCA){
+	if(v->kind == ALLOCA && (/*fast case*/isn->type == ISN_ALLOCA || isn_defines_val(isn, v))){
 		spill_assign(v, ctx);
 		return;
 	}
