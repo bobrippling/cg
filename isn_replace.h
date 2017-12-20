@@ -1,6 +1,8 @@
 #ifndef ISN_REPLACE_H
 #define ISN_REPLACE_H
 
+#include <stdbool.h>
+
 #include "reg.h"
 #include "macros.h"
 
@@ -28,5 +30,7 @@ void isn_vals_get(
 		struct isn *i,
 		struct val *inputs[attr_static 2],
 		struct val **const outputs);
+
+bool isn_vals_has(struct isn *i, struct val *);
 
 #endif

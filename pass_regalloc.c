@@ -15,6 +15,7 @@
 #include "val_internal.h"
 #include "type.h"
 #include "isn.h"
+#include "isn_replace.h"
 #include "isn_struct.h"
 #include "lifetime.h"
 #include "regset.h"
@@ -180,7 +181,7 @@ static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime 
 					return false;
 				}
 
-			}else if(!isn_is_noop(isn_iter)){
+			}else if(!isn_is_noop(isn_iter) && isn_vals_has(isn_iter, for_val)){
 				if(REGALLOC_VERBOSITY > 2)
 					fprintf(stderr, "  rejected - not a noop (%p)\n", (void *)isn_iter);
 				return false;

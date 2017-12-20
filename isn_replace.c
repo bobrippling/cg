@@ -129,6 +129,17 @@ static void isn_vals_set(isn *i, val *inputs[2], val **const output)
 #undef IO
 }
 
+bool isn_vals_has(struct isn *i, struct val *v)
+{
+	val *inputs[2];
+	val *output;
+
+	isn_vals_get(i, inputs, &output);
+	return v == inputs[0]
+		|| v == inputs[1]
+		|| v == output;
+}
+
 static void isn_replace_input_with_load(
 		isn *at_isn, val *old, val *spill, val **const input,
 		const struct replace_ctx *ctx)
