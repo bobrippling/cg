@@ -73,7 +73,7 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	isn_insert_before(use_isn, alloca);
 
 	/* no reg overlap - we just setup the values, regalloc can deal with the rest */
-	assert(!val_is_abi_reg(v) && "undoing pass_abi's work");
+	assert(val_location(v)->where == NAME_NOWHERE && "undoing previous spill/regalloc");
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->fn);
 }
 
@@ -116,12 +116,12 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 		return;
 	}
 
-	if(lt->start == isn){
+	if(/*isn_defines_val*/lt->start == isn){
 		ctx->used_count++;
 
-		if(ctx->used_count >= ctx->regcount - 2
-		&& !val_is_abi_reg(v))
-		{
+		if(ctx->used_count >= ctx->regcount - 1){
+			assert(val_location(v)->where == NAME_NOWHERE && "impossible situation for spill - too many pre-chosen regs");
+
 			if(SHOW_SPILL){
 				fprintf(stderr, "spilling %s (at %s-isn %p) - no free regs (total %u)\n",
 						val_str(v), isn_type_to_str(isn->type), (void *)isn, ctx->regcount);
