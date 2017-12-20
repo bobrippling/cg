@@ -367,10 +367,10 @@ static char *val_abi_str_r(char buf[VAL_STR_SZ], size_t n, struct location *loc)
 {
 	switch(loc->where){
 		case NAME_NOWHERE:
-			xsnprintf(buf, n, "<unlocated>");
+			/*xsnprintf(buf, n, "<unlocated>");*/
 			break;
 		case NAME_IN_REG_ANY:
-			xsnprintf(buf, n, "<reg any>");
+			xsnprintf(buf, n, "<reg ?>");
 			break;
 		case NAME_IN_REG:
 			xsnprintf(buf, n, "<reg %d>", loc->u.reg);
@@ -421,13 +421,7 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 
 	if(loc){
 		const size_t len = strlen(buf);
-
-		if(loc->where == NAME_IN_REG && regt_is_valid(loc->u.reg)){
-			/* append reg */
-			val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
-		}else if(loc->where == NAME_SPILT){
-			xsnprintf(buf + len, VAL_STR_SZ - len, "<stack %d>", loc->u.off);
-		}
+		val_abi_str_r(buf + len, VAL_STR_SZ - len, loc);
 	}
 
 	return buf;
