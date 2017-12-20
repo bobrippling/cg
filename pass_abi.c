@@ -160,7 +160,7 @@ static void convert_incoming_arg_stack(
 			? -state->stackoff
 			: /* TODO: bottomstack? */state->stackoff;
 
-	stack = val_new_abi_stack(stackoff, type_get_ptr(utl, argty));
+	stack = val_new_stack(stackoff, type_get_ptr(utl, argty));
 
 	loadstore = (direction == OVERLAY_FROM_REGS ? isn_load : isn_store)(argval, stack);
 
@@ -204,7 +204,7 @@ static void create_arg_reg_overlay_isns(
 			isn *copy;
 			const regt regtouse = regset_nth(regs, *reg_index, is_fp);
 
-			abiv = val_new_abi_reg(
+			abiv = val_new_reg(
 					regtouse,
 					argty); /* argty is acceptable here */
 
@@ -262,7 +262,7 @@ static void create_arg_reg_overlay_isns(
 				type_primitive_less_or_equal(
 					bytes_to_copy,
 					is_fp));
-		abiv = val_new_abi_reg(regtouse, regty);
+		abiv = val_new_reg(regtouse, regty);
 
 		temporary = val_new_localf(
 				regty, false,
@@ -387,7 +387,7 @@ static void add_state_isns_helper(val *v, isn *i, void *ctx)
 	isn *implicituse = ctx;
 	(void)i;
 
-	if(!val_is_abi_reg(v))
+	if(!val_is_reg(v))
 		return;
 
 	isn_implicit_use_add(implicituse, v);
@@ -439,7 +439,7 @@ static val *stret_ptr_stash(
 	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), true, ".stret");
 	save_alloca = isn_alloca(alloca_val);
 
-	abiv = val_new_abi_reg(regset_nth(regs, 0, 0), stptr_ty);
+	abiv = val_new_reg(regset_nth(regs, 0, 0), stptr_ty);
 	save_store = isn_store(abiv, alloca_val);
 
 	isn_insert_before(block_first_isn(entry), save_alloca);
@@ -716,7 +716,7 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 
 		assert(type_is_int(retty) || type_deref(retty));
 
-		abiv = val_new_abi_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
+		abiv = val_new_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
 		movret = isn_copy(abiv, retval);
 
 		isn_insert_before(inst, movret);

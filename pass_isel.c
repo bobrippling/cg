@@ -201,7 +201,7 @@ static void constrain_to_reg_specific(
 		val *abi;
 		isn *copy;
 via_temp:
-		abi = val_new_abi_reg(req->reg[0], val_type(v));
+		abi = val_new_reg(req->reg[0], val_type(v));
 
 		assert(regt_is_valid(req->reg[0]));
 
@@ -249,7 +249,7 @@ static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size
 static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_type_list *utl, function *fn)
 {
 	unsigned stack_off = function_alloc_stack_space(fn, val_type(v));
-	val *mem = val_new_abi_stack(stack_off, type_get_ptr(utl, val_type(v)));
+	val *mem = val_new_stack(stack_off, type_get_ptr(utl, val_type(v)));
 	isn *spill = isn_store(v, mem);
 
 	assert(!postisn);
@@ -347,7 +347,7 @@ static void isel_pad_cisc_isn(isn *i)
 				 * or a cqto - rdx:rax
 				 * or mov $0, %[er]dx (if unsigned)
 				 */
-				edx = val_new_abi_reg(reg_edx, opty);
+				edx = val_new_reg(reg_edx, opty);
 
 				if(is_signed){
 					isn *edx_ext;

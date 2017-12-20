@@ -116,15 +116,15 @@ bool val_is_undef(val *v)
 	return v->kind == UNDEF;
 }
 
-bool val_is_abi_reg(val *v)
+bool val_is_reg(val *v)
 {
-	return v->kind == ABI_TEMP
-		&& location_is_reg(v->u.abi.where);
+	struct location *loc = val_location(v);
+	return loc && location_is_reg(loc->where);
 }
 
-bool val_is_abi_reg_specific(val *v, regt reg)
+bool val_is_reg_specific(val *v, regt reg)
 {
-	return val_is_abi_reg(v) && v->u.abi.u.reg == reg;
+	return val_is_reg(v) && val_location(v)->u.reg == reg;
 }
 
 bool val_on_stack(val *v)
@@ -627,7 +627,7 @@ void val_temporary_init(val *vtmp, type *ty)
 	location_init_reg(&vtmp->u.temp_loc);
 }
 
-val *val_new_abi_reg(regt reg, type *ty)
+val *val_new_reg(regt reg, type *ty)
 {
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_IN_REG;
@@ -635,7 +635,7 @@ val *val_new_abi_reg(regt reg, type *ty)
 	return p;
 }
 
-val *val_new_abi_stack(int stack_off, type *ty)
+val *val_new_stack(int stack_off, type *ty)
 {
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_SPILT;

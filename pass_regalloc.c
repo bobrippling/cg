@@ -167,7 +167,7 @@ static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime 
 
 			}else if(isn_iter->type == ISN_COPY){
 				if(isn_iter->u.copy.from == for_val
-				&& val_is_abi_reg_specific(isn_iter->u.copy.to, reg))
+				&& val_is_reg_specific(isn_iter->u.copy.to, reg))
 				{
 					/* fine */
 					*priority = 2; /* no transfer required, better to pick this */
