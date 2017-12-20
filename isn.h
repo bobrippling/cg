@@ -7,6 +7,7 @@
 #include "op.h"
 #include "block.h"
 #include "dynarray.h"
+#include "macros.h"
 
 typedef struct isn isn;
 struct block;
@@ -49,7 +50,8 @@ isn *isn_asm(struct string * /*consumed*/);
 
 /* used for preserving register allocations until their (implicit) use,
  * e.g. call, end of prologue argument spill */
-void isn_implicit_use(isn **start, isn **end);
+void isn_implicit_use(isn **start, isn **end)
+	attr_nonnull((1));
 void isn_implicit_use_add(isn *, struct val *);
 
 void isn_add_reg_clobber(isn *, regt);

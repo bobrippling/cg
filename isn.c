@@ -234,16 +234,16 @@ void isn_free_1(isn *isn)
 			free(isn->u.as.str);
 			break;
 		case ISN_IMPLICIT_USE_START:
-			break;
-		case ISN_IMPLICIT_USE_END:
 		{
 			size_t i;
 
-			dynarray_iter(&isn->u.implicit_use_end.vals, i)
-				val_release(dynarray_ent(&isn->u.implicit_use_end.vals, i));
-			dynarray_reset(&isn->u.implicit_use_end.vals);
+			dynarray_iter(&isn->u.implicit_use_start.vals, i)
+				val_release(dynarray_ent(&isn->u.implicit_use_start.vals, i));
+			dynarray_reset(&isn->u.implicit_use_start.vals);
 			break;
 		}
+		case ISN_IMPLICIT_USE_END:
+			break;
 	}
 
 	regset_marks_free(isn->regusemarks);
@@ -516,16 +516,18 @@ isn *isn_memcpy(val *to, val *from)
 void isn_implicit_use(isn **const start, isn **const end)
 {
 	*start = isn_new(ISN_IMPLICIT_USE_START);
-	*end = isn_new(ISN_IMPLICIT_USE_END);
+	if(end){
+		*end = isn_new(ISN_IMPLICIT_USE_END);
+		(*end)->u.implicit_use_end.link = *start;
+	}
 
-	(*start)->u.implicit_use_start.link = *end;
-	dynarray_init(&(*end)->u.implicit_use_end.vals);
+	dynarray_init(&(*start)->u.implicit_use_start.vals);
 }
 
 void isn_implicit_use_add(isn *i, val *v)
 {
-	assert(i->type == ISN_IMPLICIT_USE_END);
-	dynarray_add(&i->u.implicit_use_end.vals, val_retain(v));
+	assert(i->type == ISN_IMPLICIT_USE_START);
+	dynarray_add(&i->u.implicit_use_start.vals, val_retain(v));
 }
 
 void isn_add_reg_clobber(isn *i, regt reg)

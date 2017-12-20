@@ -126,12 +126,12 @@ struct isn
 
 		struct
 		{
-			struct isn *link;
+			dynarray vals;
 		} implicit_use_start;
 
 		struct
 		{
-			dynarray vals;
+			struct isn *link;
 		} implicit_use_end;
 	} u;
 
@@ -149,6 +149,6 @@ struct isn *isn_new(enum isn_type t);
 #define isn_is_implicituse(t) ((t) == ISN_IMPLICIT_USE_START || (t) == ISN_IMPLICIT_USE_END)
 
 #define isn_implicit_use_vals(i) \
-	(&((i)->type == ISN_IMPLICIT_USE_START ? (i)->u.implicit_use_start.link : (i))->u.implicit_use_end.vals)
+	(&((i)->type == ISN_IMPLICIT_USE_START ? (i) : (i)->u.implicit_use_end.link)->u.implicit_use_start.vals)
 
 #endif

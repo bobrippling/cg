@@ -368,7 +368,7 @@ static void isel_pad_cisc_isn(isn *i)
 
 					isn_implicit_use(&use_start, &use_end);
 
-					isn_implicit_use_add(use_end, edx);
+					isn_implicit_use_add(use_start, edx);
 
 					isn_insert_before(i, edx_set);
 					isn_insert_before(i, use_start);
