@@ -671,9 +671,13 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 			val *stret_tmp = val_new_localf(val_type(retval), false, "stret_load");
 			isn *load = isn_load(stret_tmp, stret_stash);
 			isn *store = isn_memcpy(stret_tmp, retval);
+			val *eax = val_new_reg(regset_nth(&target->abi.ret_regs, 0, 0), val_type(stret_tmp));
+			/* need to reload, as we're in a different block after the memcpy is expanded */
+			isn *ret_stash = isn_load(eax, stret_stash);
 
 			isn_insert_before(inst, load);
 			isn_insert_after(load, store);
+			isn_insert_after(store, ret_stash);
 		}else{
 			struct typeclass cls;
 			struct regpass_state state;
