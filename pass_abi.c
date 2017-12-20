@@ -671,9 +671,12 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 	if(type_is_struct(retty)){
 		if(stret_stash){
 			/* return via memory */
-			isn *store = isn_memcpy(stret_stash, retval);
+			val *stret_tmp = val_new_localf(val_type(retval), false, "stret_load");
+			isn *load = isn_load(stret_tmp, stret_stash);
+			isn *store = isn_memcpy(stret_tmp, retval);
 
-			isn_insert_before(inst, store);
+			isn_insert_before(inst, load);
+			isn_insert_after(load, store);
 		}else{
 			struct typeclass cls;
 			struct regpass_state state;
