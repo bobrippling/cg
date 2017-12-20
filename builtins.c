@@ -91,7 +91,7 @@ static void expand_memcpy_large(
 	block_set_jmp(blk_init, blk_loop);
 
 	block_add_isn(blk_loop, isn_load(lcnt, cnt));
-	block_add_isn(blk_loop, isn_cmp(cmp_le, lcnt, val_new_i(type_size(t_sizet), t_sizet), done));
+	block_add_isn(blk_loop, isn_cmp(cmp_lt, lcnt, val_new_i(type_size(t_sizet), t_sizet), done));
 	block_add_isn(blk_loop, isn_br(done, blk_fin, blk_copy));
 	block_set_branch(blk_loop, done, blk_fin, blk_copy);
 
