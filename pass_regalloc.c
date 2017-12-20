@@ -265,11 +265,11 @@ static void regalloc_val_noupdate(
 		}
 	}
 
-	assert(regt_is_valid(foundreg.reg));
-	assert(freecount > 0);
-
 	if(REGALLOC_VERBOSITY)
 		fprintf(stderr, "regalloc(%s) => reg %#x\n", val_str(v), foundreg.reg);
+
+	assert(regt_is_valid(foundreg.reg));
+	assert(freecount > 0);
 
 	val_locn->where = NAME_IN_REG;
 	val_locn->u.reg = foundreg.reg;
