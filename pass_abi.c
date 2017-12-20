@@ -428,7 +428,8 @@ static val *stret_ptr_stash(
 		type *retty,
 		block *entry,
 		const struct regset *regs,
-		uniq_type_list *utl)
+		uniq_type_list *utl,
+		struct regpass_state *const state)
 {
 	isn *save_alloca;
 	isn *save_store;
@@ -442,8 +443,8 @@ static val *stret_ptr_stash(
 	abiv = val_new_reg(regset_nth(regs, 0, 0), stptr_ty);
 	save_store = isn_store(abiv, alloca_val);
 
-	isn_insert_before(block_first_isn(entry), save_alloca);
-	isn_insert_after(save_alloca, save_store);
+	ISN_APPEND_OR_SET(state->abi_copies, save_alloca);
+	ISN_APPEND_OR_SET(state->abi_copies, save_store);
 
 	return alloca_val;
 }
@@ -477,7 +478,7 @@ static void convert_incoming_args(
 		if(retcls.inmem){
 			assert(type_is_struct(retty));
 			/* store stret pointer for return later */
-			*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl);
+			*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl, &state);
 			state.int_idx++;
 		}
 	}
