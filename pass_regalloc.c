@@ -76,10 +76,10 @@ bool regalloc_applies_to(val *v)
 			struct location *loc = val_location(v);
 			switch(loc->where){
 				case NAME_SPILT:
+				case NAME_IN_REG:
 					return false;
 				case NAME_NOWHERE:
 				case NAME_IN_REG_ANY:
-				case NAME_IN_REG:
 					break;
 			}
 			break;
