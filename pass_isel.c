@@ -769,7 +769,7 @@ static void isel_constrain_isn(
 	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
 
-	if(fi->type == ISN_LABEL)
+	if(isn_is_noop(fi))
 		return;
 	if(fi->type == ISN_MEMCPY){
 		builtin_expand_memcpy(fi, block, fn, unit);
