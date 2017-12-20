@@ -166,19 +166,23 @@ static bool reg_free_during(regt reg, unsigned *const priority, struct lifetime 
 				return false;
 
 			}else if(isn_iter->type == ISN_COPY){
-				if(isn_iter->u.copy.from == for_val
-				&& val_is_reg_specific(isn_iter->u.copy.to, reg))
-				{
-					/* fine */
-					*priority = 2; /* no transfer required, better to pick this */
-					if(REGALLOC_VERBOSITY > 2){
-						fprintf(stderr, "  isn %s (%p) is a copy from %s to reg %#x\n",
-								isn_type_to_str(isn_iter->type), (void *)isn_iter, val_str(for_val), reg);
-					}
+				bool is_copy_to_specific_reg = val_is_reg_specific(isn_iter->u.copy.to, reg);
 
+				if(is_copy_to_specific_reg){
+					if(isn_iter->u.copy.from == for_val){
+						/* fine */
+						*priority = 2; /* no transfer required, better to pick this */
+						if(REGALLOC_VERBOSITY > 2){
+							fprintf(stderr, "  isn %s (%p) is a copy from %s to reg %#x\n",
+									isn_type_to_str(isn_iter->type), (void *)isn_iter, val_str(for_val), reg);
+						}
+
+					}else{
+						/* copy to our-reg, not from our val - we can't use `reg` for `for_val` */
+						return false;
+					}
 				}else{
-					/* trivial copy involving something else - disallow */
-					return false;
+					/* copy to not-our-reg - not interested */
 				}
 
 			}else if(!isn_is_noop(isn_iter) && isn_vals_has(isn_iter, for_val)){
