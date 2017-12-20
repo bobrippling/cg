@@ -497,8 +497,7 @@ int main(int argc, const char *argv[])
 			"  $p2 = elem $stack, i8 1"
 			"  store $p1, i4 1"
 			"  store $p2, i4 2"
-			"  $tmp = load $stack"
-			"  ret $tmp"
+			"  ret $stack"
 			"}",
 			1,
 			&target,
