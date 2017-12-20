@@ -396,18 +396,30 @@ static void add_state_isns_helper(val *v, isn *i, void *ctx)
 static void insert_state_isns(
 		struct regpass_state *state,
 		isn *insertion_point,
-		bool insert_before)
+		bool insert_before,
+		bool with_end)
 {
-	isn *iu_start, *i;
+	isn *iu_start, *iu_end, *i;
+	isn **p_iu_end = &iu_end;
 
 	if(!state->abi_copies)
 		return;
 
-	isn_implicit_use(&iu_start, /*once we've assigned, it's free*/NULL);
+	if(with_end){
+		p_iu_end = &iu_end;
+	}else{
+		p_iu_end = NULL; /*once we've assigned, it's free*/
+	}
+
+	isn_implicit_use(&iu_start, p_iu_end);
 
 	/* emit ABI copies as the first thing the function does: */
 	for(i = isn_first(state->abi_copies); i; i = isn_next(i)){
 		isn_on_all_vals(i, add_state_isns_helper, iu_start);
+	}
+
+	if(p_iu_end){
+		isn_insert_after(isn_last(state->abi_copies), iu_end);
 	}
 
 	/* add an implicit use at the start to ensure any operations (e.g. spill)
@@ -490,7 +502,7 @@ static void convert_incoming_args(
 				OVERLAY_FROM_REGS);
 	}
 
-	insert_state_isns(&state, block_first_isn(entry), true);
+	insert_state_isns(&state, block_first_isn(entry), true, false);
 }
 
 static isn *convert_call(
@@ -562,7 +574,7 @@ static isn *convert_call(
 				OVERLAY_FROM_REGS,
 				true);
 
-		insert_state_isns(&ret_state, inst, false);
+		insert_state_isns(&ret_state, inst, false, true);
 		regpass_state_deinit(&ret_state);
 	}
 
@@ -621,7 +633,7 @@ static isn *convert_outgoing_args_and_call_isn(
 				inst, OVERLAY_TO_REGS);
 	}
 
-	insert_state_isns(&arg_state, inst, true);
+	insert_state_isns(&arg_state, inst, true, true);
 	regpass_state_deinit(&arg_state);
 
 	remove_args_from_call(inst);
@@ -702,7 +714,7 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 					OVERLAY_TO_REGS,
 					false);
 
-			insert_state_isns(&state, inst, true);
+			insert_state_isns(&state, inst, true, true);
 			regpass_state_deinit(&state);
 		}
 
