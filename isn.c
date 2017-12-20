@@ -678,9 +678,9 @@ bool isn_is_noop(isn *isn)
 		case ISN_BR:
 		case ISN_CALL:
 		case ISN_ASM:
+		case ISN_MEMCPY:
 			break;
 
-		case ISN_MEMCPY: /* actual isns generated from it do the work */
 		case ISN_LABEL:
 		case ISN_IMPLICIT_USE_START:
 		case ISN_IMPLICIT_USE_END:
