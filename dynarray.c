@@ -73,3 +73,16 @@ void dynarray_foreach(dynarray *d, void fn(void *))
 		fn(dynarray_ent(d, i));
 	}
 }
+
+void dynarray_splice(dynarray *d, size_t from, size_t count)
+{
+	size_t end = from + count;
+	size_t movecount = dynarray_count(d) - end;
+
+	memmove(
+			&d->entries[from],
+			&d->entries[from + count],
+			sizeof(void *) * movecount);
+
+	dynarray_count(d) -= count;
+}

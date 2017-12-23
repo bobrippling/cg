@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 
 #include "macros.h"
 
@@ -161,6 +162,28 @@ static void test_regset_mark(void)
 	regset_marks_free(marks);
 }
 
+static void test_dynarray(void)
+{
+	dynarray d = DYNARRAY_INIT;
+
+	dynarray_add(&d, (void *)(intptr_t)1);
+	dynarray_add(&d, (void *)(intptr_t)2);
+	dynarray_add(&d, (void *)(intptr_t)3);
+	dynarray_add(&d, (void *)(intptr_t)4);
+	dynarray_add(&d, (void *)(intptr_t)5);
+	dynarray_add(&d, (void *)(intptr_t)6);
+
+	dynarray_splice(&d, 2, 2);
+
+	test(dynarray_count(&d) == 4);
+	test(dynarray_ent(&d, 0) == (void *)1);
+	test(dynarray_ent(&d, 1) == (void *)2);
+	test(dynarray_ent(&d, 2) == (void *)5);
+	test(dynarray_ent(&d, 3) == (void *)6);
+
+	dynarray_reset(&d);
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -173,6 +196,7 @@ int main(int argc, const char *argv[])
 	test_regt();
 	test_regset();
 	test_regset_mark();
+	test_dynarray();
 
 	printf("passed: %d, failed: %d\n", passed, failed);
 
