@@ -159,11 +159,29 @@ static void delete_intervals(dynarray *intervals)
 	dynarray_reset(intervals);
 }
 
-static void create_free_regs(dynarray *regs, const struct target *target)
+static void get_max_reg(const struct regset *regs, unsigned *const max)
 {
 	size_t i;
+	for(i = 0; i < regs->count; i++)
+		if(regs->regs[i] > *max)
+			*max = regs->regs[i];
+}
+
+static void create_free_regs(dynarray *regs, const struct target *target)
+{
+	unsigned max = 0;
+	size_t i;
+
+	get_max_reg(&target->abi.scratch_regs, &max);
+	get_max_reg(&target->abi.callee_saves, &max);
+	get_max_reg(&target->abi.arg_regs, &max);
+	get_max_reg(&target->abi.ret_regs, &max);
+
+	for(i = 0; i < max; i++)
+		dynarray_add(regs, (void *)(intptr_t)false);
+
 	for(i = 0; i < target->abi.scratch_regs.count; i++)
-		dynarray_add(regs, (void *)(intptr_t)true);
+		dynarray_ent(regs, target->abi.scratch_regs.regs[i]) = (void *)(intptr_t)true;
 }
 
 static void delete_free_regs(dynarray *regs)
