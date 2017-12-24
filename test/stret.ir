@@ -1,29 +1,78 @@
+$printf = i4(i1*, ...)
+
 type $struct_regs = { i8, i8 }
-
-$callee_regs = $struct_regs(i4 $1, i4 $2)
-{
-	$a = alloca $struct_regs
-	$st = load $a
-	ret $st
-}
-
-$caller_regs = i4()
-{
-	$y = call $callee_regs(i4 5, i4 6)
-	ret i4 3
-}
-
 type $struct_mem = { i8, i8, i8 }
 
-$callee_mem = $struct_mem(i4 $1, i4 $2)
+#$fmt_ = [i1 x 0] internal "{ %d, %d }\012\000"
+#$dump_regs = void($struct_regs* $p) {
+#	$a_ = elem $p, i8 0
+#	$b_ = elem $p, i8 1
+#	$a = load $a_
+#	$b = load $b_
+#	$fmt = elem $fmt_, i8 0
+#	$_ = call $printf($fmt, $a, $b)
+#	ret void
+#}
+
+$callee_regs = $struct_regs(i8 $1, i8 $2)
 {
-	$a = alloca $struct_mem
-	$st = load $a
-	ret $st
+	$a = alloca $struct_regs
+	$p0 = elem $a, i8 0
+	$p1 = elem $a, i8 1
+	store $p0, $1
+	store $p1, $2
+	ret $a
 }
 
-$caller_mem = i4()
+#$caller_regs = i4()
+#{
+#	$y = call $callee_regs(i8 5, i8 6)
+#	$_ = call $dump_regs($y)
+#	ret i4 3
+#}
+
+#$main = i4(){
+#	$x = call $caller_regs()
+#	ret $x
+#}
+
+#$fmt2_ = [i1 x 0] internal "{ %d, %d }\012\000"
+#$dump_mem = void($struct_mem* $p) {
+#	$a_ = elem $p, i8 0
+#	$b_ = elem $p, i8 1
+#	$c_ = elem $p, i8 2
+#	$a = load $a_
+#	$b = load $b_
+#	$c = load $c_
+#	$fmt = elem $fmt2_, i8 0
+#	$_ = call $printf($fmt, $a, $b, $c)
+#	ret void
+#}
+
+$callee_mem = $struct_mem(i8 $1, i8 $2, i8 $3)
 {
-	$y = call $callee_mem(i4 5, i4 6)
-	ret i4 3
+	$a = alloca $struct_mem
+
+	$p0 = elem $a, i8 0
+	$p1 = elem $a, i8 1
+	$p2 = elem $a, i8 2
+
+	store $p0, $1
+	store $p1, $2
+	store $p2, $3
+
+	ret $a
 }
+
+#$caller_mem = i4()
+#{
+#	$y = call $callee_mem(i4 5, i4 6)
+#	ret i4 3
+#}
+
+#$main = i4(){
+#	$a = call $caller_regs()
+#	$b = call $caller_mem()
+#	$s = add $a, $b
+#	ret $s
+#}
