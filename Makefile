@@ -57,11 +57,11 @@ tags: ${SRC}
 
 clean:
 	make -C strbuf clean
-	rm -f ir ctests utests ${OBJ_ALL} ${OBJ_ALL:%.o=.%.d}
+	rm -f ir ctests utests ${OBJ_ALL} ${OBJ_ALL:%.o=%.d}
 
-.%.d: %.c
+%.d: %.c
 	@echo depend $<
-	$Q${CC} -MM ${CFLAGS} $< > $@
+	$Q${CC} -MM -MT ${<:.c=.o} ${CFLAGS} $< > $@
 
 # va_copy:
 mem.o: CFLAGS += -std=c99
@@ -69,7 +69,7 @@ mem.o: CFLAGS += -std=c99
 # mkstemp:
 io.o: CPPFLAGS += -D_XOPEN_SOURCE=500
 
--include ${OBJ_ALL:%.o=.%.d}
+-include ${OBJ_ALL:%.o=%.d}
 -include Makefile.cfg
 
 STRBUF_PATH = strbuf
