@@ -157,6 +157,7 @@ static void constrain_to_reg_any(
 
 	/* put it in any reg: */
 	loc->where = NAME_IN_REG_ANY;
+	loc->constrain = NAME_CONSTRAIN_REG;
 }
 
 static void constrain_to_reg_specific(
@@ -174,6 +175,7 @@ static void constrain_to_reg_specific(
 	}
 
 	desired.where = NAME_IN_REG;
+	desired.constrain = NAME_CONSTRAIN_REG;
 	memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
 
 	if(location_eq(loc, &desired)){
@@ -251,11 +253,15 @@ static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_t
 	unsigned stack_off = function_alloc_stack_space(fn, val_type(v));
 	val *mem = val_new_stack(stack_off, type_get_ptr(utl, val_type(v)));
 	isn *spill = isn_store(v, mem);
+	struct location *loc = val_location(v);
 
 	assert(!postisn);
 	isn_insert_before(isn_to_constrain, spill);
 
 	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
+
+	assert(loc);
+	loc->constrain = NAME_CONSTRAIN_STACK;
 }
 
 static void gen_constraint_isns(
