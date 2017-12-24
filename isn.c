@@ -247,6 +247,7 @@ void isn_free_1(isn *isn)
 	}
 
 	regset_marks_free(isn->regusemarks);
+	dynarray_reset(&isn->clobbers);
 	free(isn);
 }
 
