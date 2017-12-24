@@ -99,6 +99,11 @@ static void linear_scan_register_allocation(
 
 		expire_old_intervals(i, &active_intervals, free_regs);
 
+		if(i->loc->where != NAME_NOWHERE){
+			/* preallocated reg - skip */
+			continue;
+		}
+
 		if(interval_array_count(&active_intervals) == nregs){
 			spill_at_interval(i, &active_intervals, stack);
 		}else{
