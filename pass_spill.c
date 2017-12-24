@@ -19,7 +19,7 @@
 #include "pass_spill.h"
 #include "pass_regalloc.h"
 
-#define SHOW_SPILL 0
+#define SHOW_SPILL 1
 
 struct spill_ctx
 {
@@ -28,6 +28,11 @@ struct spill_ctx
 	function *fn;
 	unsigned used_count;
 	unsigned regcount;
+
+	struct {
+		val *v;
+		isn *isn;
+	} spill_fallback;
 };
 
 static void spill_assign(val *spill, struct spill_ctx *ctx)
@@ -38,6 +43,11 @@ static void spill_assign(val *spill, struct spill_ctx *ctx)
 
 	spill_loc->where = NAME_SPILT;
 	spill_loc->u.off = function_alloc_stack_space(ctx->fn, type_deref(val_type(spill)));
+}
+
+static bool can_spill(val *v)
+{
+	return val_location(v)->where == NAME_NOWHERE;
 }
 
 static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
@@ -73,7 +83,12 @@ static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
 	isn_insert_before(use_isn, alloca);
 
 	/* no reg overlap - we just setup the values, regalloc can deal with the rest */
-	assert(val_location(v)->where == NAME_NOWHERE && "undoing previous spill/regalloc");
+	if(!can_spill(v)){
+		fprintf(stderr, "val=%s location=%#x\n",
+				val_str(v), val_location(v)->where);
+	}
+	assert(can_spill(v) && "undoing previous spill/regalloc");
+
 	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->fn);
 }
 
@@ -120,17 +135,32 @@ static void isn_spill(val *v, isn *isn, void *vctx)
 		ctx->used_count++;
 
 		if(ctx->used_count >= ctx->regcount - 1){
-			assert(val_location(v)->where == NAME_NOWHERE && "impossible situation for spill - too many pre-chosen regs");
-
 			if(SHOW_SPILL){
-				fprintf(stderr, "spilling %s (at %s-isn %p) - no free regs (total %u)\n",
-						val_str(v), isn_type_to_str(isn->type), (void *)isn, ctx->regcount);
+				fprintf(stderr, "spilling %s (at %s-isn %p) - free regs %u/%u\n",
+						val_str(v), isn_type_to_str(isn->type), (void *)isn, ctx->used_count, ctx->regcount);
 			}
 
-			spill(v, isn, ctx);
+			if(can_spill(v)){
+				spill(v, isn, ctx);
+				ctx->used_count--;
+			}else{
+				assert(ctx->spill_fallback.v);
+
+				spill(ctx->spill_fallback.v, ctx->spill_fallback.isn, ctx);
+				ctx->spill_fallback.v = NULL;
+				ctx->spill_fallback.isn = NULL;
+			}
+		}else{
+			if(SHOW_SPILL){
+				fprintf(stderr, "not spilling %s (at %s-isn %p) - free regs %u/%u\n",
+						val_str(v), isn_type_to_str(isn->type), (void *)isn, ctx->used_count, ctx->regcount);
+			}
+			ctx->spill_fallback.v = v;
+			ctx->spill_fallback.isn = isn;
 		}
 
 	}else if(lt->end == isn){
+		assert(ctx->used_count > 0);
 		ctx->used_count--;
 	}
 }

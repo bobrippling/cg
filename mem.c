@@ -18,8 +18,7 @@ void *xcalloc(size_t n, size_t sz)
 void *xmalloc(size_t l)
 {
 	void *p;
-	if(l == 0)
-		l = 1;
+	assert(l);
 	p = malloc(l);
 	assert(p);
 	return p;

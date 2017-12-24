@@ -21,6 +21,8 @@ void dynarray_copy(dynarray *dest, dynarray *src);
 bool dynarray_refeq(dynarray *, dynarray *);
 void dynarray_foreach(dynarray *, void (void *));
 void dynarray_splice(dynarray *, size_t from, size_t count);
+size_t dynarray_find(dynarray *, void *);
+void dynarray_sort(dynarray *, int (const void *, const void *));
 
 #define dynarray_init(d) memset((d), 0, sizeof(*(d)))
 #define dynarray_is_empty(d) ((d)->n == 0)

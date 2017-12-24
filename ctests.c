@@ -116,7 +116,7 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 
 	pass_abi(fn, unit, target);
 	pass_isel(fn, unit, target);
-	pass_spill(fn, unit, target);
+	/*pass_spill(fn, unit, target);*/
 	pass_regalloc(fn, unit, target);
 }
 

@@ -162,6 +162,13 @@ static void test_regset_mark(void)
 	regset_marks_free(marks);
 }
 
+static int int_cmp(const void *va, const void *vb)
+{
+	intptr_t a = (intptr_t)va;
+	intptr_t b = (intptr_t)vb;
+	return b - a;
+}
+
 static void test_dynarray(void)
 {
 	dynarray d = DYNARRAY_INIT;
@@ -181,7 +188,17 @@ static void test_dynarray(void)
 	test(dynarray_ent(&d, 2) == (void *)5);
 	test(dynarray_ent(&d, 3) == (void *)6);
 
+	dynarray_sort(&d, int_cmp);
+
+	test(dynarray_count(&d) == 4);
+	test(dynarray_ent(&d, 0) == (void *)6);
+	test(dynarray_ent(&d, 1) == (void *)5);
+	test(dynarray_ent(&d, 2) == (void *)2);
+	test(dynarray_ent(&d, 3) == (void *)1);
+
 	dynarray_reset(&d);
+
+	dynarray_sort(&d, int_cmp);
 }
 
 int main(int argc, const char *argv[])

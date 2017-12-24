@@ -44,10 +44,13 @@ void dynarray_copy(dynarray *dest, dynarray *src)
 	dynarray_reset(dest);
 
 	memcpy(dest, src, sizeof *dest);
-	dest->entries = xmalloc(dynarray_count(src) * sizeof *dest->entries);
 
-	dynarray_iter(src, i){
-		dynarray_ent(dest, i) = dynarray_ent(src, i);
+	if(dynarray_count(src)){
+		dest->entries = xmalloc(dynarray_count(src) * sizeof *dest->entries);
+
+		dynarray_iter(src, i){
+			dynarray_ent(dest, i) = dynarray_ent(src, i);
+		}
 	}
 }
 
@@ -85,4 +88,22 @@ void dynarray_splice(dynarray *d, size_t from, size_t count)
 			sizeof(void *) * movecount);
 
 	dynarray_count(d) -= count;
+}
+
+size_t dynarray_find(dynarray *d, void *p)
+{
+	size_t i;
+	dynarray_iter(d, i)
+		if(dynarray_ent(d, i) == p)
+			return i;
+	return -1;
+}
+
+void dynarray_sort(dynarray *ar, int compar(const void *, const void *))
+{
+	qsort(
+			&dynarray_ent(ar, 0),
+			dynarray_count(ar),
+			sizeof(dynarray_ent(ar, 0)),
+			compar);
 }

@@ -7,7 +7,8 @@ OBJ = val.o mem.o dynarray.o op.o init.o \
       lifetime.o mangle.o builtins.o \
       type.o uniq_type_list.o type_iter.o target.o location.o \
       regset.o regset_marks.o \
-      pass_abi.o pass_isel.o pass_spill.o pass_regalloc.o \
+      pass_abi.o pass_isel.o \
+      pass_regalloc_linear.o \
       x86.o x86_isel.o x86_call.o x86_isns.o
 
 OBJ_MAIN = ${OBJ} main.o
@@ -17,6 +18,7 @@ OBJ_CTEST = ${OBJ} ctests.o
 OBJ_ALL = ${OBJ_MAIN} ctests.o utests.o
 
 #opt_cprop.o opt_storeprop.o opt_dse.o opt_loadmerge.o
+#pass_spill.o pass_regalloc.o
 
 SRC = ${OBJ_MAIN:.o=.c}
 

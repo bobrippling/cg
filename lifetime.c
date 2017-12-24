@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "lifetime.h"
 
 #include "dynmap.h"
@@ -82,6 +84,7 @@ static void lifetime_fill_block(block *b, void *vctx)
 
 void lifetime_fill_func(function *func)
 {
+	assert(!func->lifetime_filled);
 	function_onblocks(func, lifetime_fill_block, NULL);
 	func->lifetime_filled = true;
 }
