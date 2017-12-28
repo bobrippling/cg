@@ -131,7 +131,7 @@ const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_LOAD*/         { &mov, NULL },
 	/*ISN_STORE*/        { &mov, NULL },
 	/*ISN_ALLOCA*/       { NULL, NULL },
-	/*ISN_OP*/           { &op, NULL },
+	/*ISN_OP*/           { &op, &x86_isel_op },
 	/*ISN_CMP*/          { &cmp, NULL },
 	/*ISN_ELEM*/         { &lea, &x86_isel_lea },
 	/*ISN_PTRADD*/       { &op, NULL },

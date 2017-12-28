@@ -50,9 +50,26 @@ static void check_lea_result(val *v_result)
 	}
 }
 
-void x86_isel_lea(isn *i, const struct target *target)
+bool x86_isel_lea(isn *i, const struct target *target)
 {
 	assert(i->type == ISN_ELEM);
 
 	check_lea_result(i->u.elem.res);
+
+	return true;
+}
+
+bool x86_isel_op(isn *i, const struct target *target)
+{
+	assert(i->type == ISN_OP);
+
+	switch(i->u.op.op){
+		case op_sdiv:
+		case op_smod:
+		case op_udiv:
+		case op_umod:
+			return true; /* isel done already */
+		default:
+			return false;
+	}
 }

@@ -782,10 +782,8 @@ static void isel_constrain_isn(
 		return;
 	}
 
-	if(arch_isn->custom_isel){
-		arch_isn->custom_isel(fi, target);
+	if(arch_isn->custom_isel && arch_isn->custom_isel(fi, target))
 		return;
-	}
 	bi = arch_isn->backend_isn;
 	if(!bi)
 		return;

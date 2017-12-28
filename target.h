@@ -6,7 +6,7 @@
 #include "unit.h" /* global_emit_func */
 #include "regset.h"
 
-typedef void isel_func(struct isn *, const struct target *);
+typedef bool isel_func(struct isn *, const struct target *);
 
 /* <arch><sub>-<vendor>-<sys>-<abi>
  * arch affects target_arch
