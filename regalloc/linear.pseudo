@@ -1,0 +1,49 @@
+live_intervals: interval[]
+free_regs: bool[]
+active_intervals: custom. length, add(interval), remove(interval), last(), orderd-iter
+
+
+linearScanRegisterAllocation(
+		live_intervals /* sorted inc. start point */,
+		free_regs,
+		stack)
+{
+	nregs = free_regs.length;
+	active_intervals = {}; /* sorted by inc. end point */
+
+	for(interval *i : live_intervals){
+		expireOldIntervals(i, active_intervals, free_regs)
+
+		if(active_intervals.length == nregs) {
+			spillAtInterval(i, active_intervals, stack)
+		}else{
+			i.reg = free_regs.any();
+			active_intervals.add(i);
+		}
+	}
+}
+
+expireOldIntervals(i, active_intervals, free_regs)
+{
+	for(interval *j : active_intervals){
+		if(j.end >= i.start){
+			return;
+		}
+		active_intervals.remove(j);
+		free_regs.add(j.reg);
+	}
+}
+
+spillAtInterval(i, active_intervals, stack)
+{
+	spill = active_intervals.last();
+
+	if(spill.end > i.end){
+		i.reg = spill.reg;
+		spill.reg = INVALID, spill.location = stack.alloc();
+		active_intervals.remove(spill);
+		active_intervals.add(i);
+	}else{
+		i.reg = INVALID, i.location = stack.alloc();
+	}
+}

@@ -20,6 +20,10 @@ size_t interval_array_count(interval_array *a)
 
 void interval_array_add(interval_array *a, interval *i)
 {
+	size_t j;
+	dynarray_iter(&a->ar, j)
+		assert(dynarray_ent(&a->ar, j) != i);
+
 	dynarray_add(&a->ar, i);
 	dynarray_sort(&a->ar, sort_interval_end);
 }

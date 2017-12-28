@@ -98,6 +98,11 @@ static void on_error_simple(
 {
 	int *ctx = vctx;
 	*ctx = 1;
+
+	(void)file;
+	(void)line;
+	(void)fmt;
+	(void)l;
 }
 
 static unit *compile_string(const char *str, int *const err, const struct target *target)

@@ -7,8 +7,11 @@
 typedef struct interval
 {
 	val *val;
-	unsigned start, end;
 	struct location *loc;
+	unsigned start, end;
+
+	dynarray freeregs;
+	unsigned regspace;
 }	interval;
 
 #endif

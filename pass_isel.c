@@ -18,6 +18,7 @@
 #include "imath.h"
 #include "mem.h"
 #include "builtins.h"
+#include "location.h"
 
 #define ISEL_DEBUG 0
 
@@ -29,11 +30,7 @@ enum {
 };
 
 struct constraint {
-	enum {
-		REQ_REG   = 1 << 0,
-		REQ_CONST = 1 << 1,
-		REQ_MEM   = 1 << 2
-	} req;
+	enum location_constraint req;
 	regt reg[2]; /* union if more needed */
 	val *val;
 	int size_req_primitive;
@@ -74,22 +71,27 @@ static void populate_constraints(
 					 * b -> div operand, reg or mem
 					 * r -> (op == /) ? %eax : %edx
 					 */
-					req_lhs->req = REQ_REG;
+					req_lhs->req = CONSTRAINT_REG;
 					req_lhs->reg[0] = regt_make(REG_EAX, 0);
 					req_lhs->reg[1] = regt_make_invalid();
 					req_lhs->val = isn->u.op.lhs;
 
 					/* %edx s/zext is handled by isel_pad_cisc_isn() */
 
-					req_rhs->req = REQ_REG | REQ_MEM;
+					req_rhs->req = CONSTRAINT_REG | CONSTRAINT_MEM;
 					req_rhs->reg[0] = regt_make_invalid();
 					req_rhs->reg[1] = regt_make_invalid();
 					req_rhs->val = isn->u.op.rhs;
 
-					req_ret->req = REQ_REG;
+					req_ret->req = CONSTRAINT_REG;
 					req_ret->reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
 					req_ret->reg[1] = regt_make_invalid();
 					req_ret->val = isn->u.op.res;
+
+					fprintf(stderr, "div isel, l=%#x, r=%#x, out=%#x\n",
+							req_lhs->req,
+							req_rhs->req,
+							req_ret->req);
 					break;
 				}
 
@@ -101,12 +103,12 @@ static void populate_constraints(
 					 * a: reg/mem
 					 * b: %cl or const
 					 */
-					req_lhs->req = REQ_REG | REQ_MEM;
+					req_lhs->req = CONSTRAINT_REG | CONSTRAINT_MEM;
 					req_lhs->reg[0] = regt_make_invalid();
 					req_lhs->reg[1] = regt_make_invalid();
 					req_lhs->val = isn->u.op.lhs;
 
-					req_rhs->req = REQ_REG | REQ_CONST;
+					req_rhs->req = CONSTRAINT_REG | CONSTRAINT_CONST;
 					req_rhs->reg[0] = regt_make(REG_ECX, 0);
 					req_rhs->reg[1] = regt_make_invalid();
 					req_rhs->val = isn->u.op.rhs;
@@ -157,7 +159,7 @@ static void constrain_to_reg_any(
 
 	/* put it in any reg: */
 	loc->where = NAME_IN_REG_ANY;
-	loc->constrain = NAME_CONSTRAIN_REG;
+	loc->constraint = CONSTRAINT_REG;
 }
 
 static void constrain_to_reg_specific(
@@ -175,7 +177,7 @@ static void constrain_to_reg_specific(
 	}
 
 	desired.where = NAME_IN_REG;
-	desired.constrain = NAME_CONSTRAIN_REG;
+	desired.constraint = CONSTRAINT_REG;
 	memcpy(&desired.u.reg, &req->reg, sizeof(desired.u.reg));
 
 	if(location_eq(loc, &desired)){
@@ -261,7 +263,7 @@ static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_t
 	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
 
 	assert(loc);
-	loc->constrain = NAME_CONSTRAIN_STACK;
+	loc->constraint = CONSTRAINT_MEM;
 }
 
 static void gen_constraint_isns(
@@ -276,42 +278,48 @@ static void gen_constraint_isns(
 	 * constant if the value is a constant, otherwise go for reg if available.
 	 */
 	val *v = req->val;
+	struct location *loc;
 
 	if(req->size_req_primitive){
 		constrain_to_size(&v, isn_to_constrain, req->size_req_primitive, utl);
 	}
 
-	if(v->kind == LITERAL && req->req & REQ_CONST){
+	if(v->kind == LITERAL && req->req & CONSTRAINT_CONST){
 		assert(type_is_int(v->ty) || type_deref(v->ty));
 		/* constraint met */
 		return;
 	}
 
-	if(req->req & REQ_MEM && val_is_mem(v))
-		return;
+	if(req->req & CONSTRAINT_MEM && val_is_mem(v))
+		goto out;
 
-	if(req->req & REQ_REG){
+	if(req->req & CONSTRAINT_REG){
 		if(!regt_is_valid(req->reg[0])){
 			constrain_to_reg_any(v, isn_to_constrain);
 
 			assert(!regt_is_valid(req->reg[1]));
-			return;
+			goto out;
 		}
 
 		assert(!regt_is_valid(req->reg[1]) && "TODO");
 
 		constrain_to_reg_specific(req, v, isn_to_constrain, postisn);
-		return;
+		goto out;
 	}
 
-	if(req->req & REQ_MEM){
+	if(req->req & CONSTRAINT_MEM){
 		assert(!val_is_mem(v) && "should've been checked above");
 		constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
-		return;
+		goto out;
 	}
 
 	/* no constraint */
 	assert(req->req == 0 && "couldn't constrain value");
+out:
+	/* stash the reg/mem constraint for later */
+	loc = val_location(v);
+	if(loc)
+		loc->constraint = req->req;
 }
 
 static void isel_reserve_cisc_isn(isn *isn, uniq_type_list *utl, function *fn)
@@ -672,16 +680,16 @@ static void gen_constraint_isns_for_op_category(
 	cat &= OPERAND_MASK_PLAIN;
 	switch(cat){
 		case OPERAND_REG:
-			constraint.req = REQ_REG;
+			constraint.req = CONSTRAINT_REG;
 			constraint.reg[0] = regt_make_invalid();
 			constraint.reg[1] = regt_make_invalid();
 			break;
 		case OPERAND_MEM_PTR:
 		case OPERAND_MEM_CONTENTS:
-			constraint.req = REQ_MEM;
+			constraint.req = CONSTRAINT_MEM;
 			break;
 		case OPERAND_INT:
-			constraint.req = REQ_CONST;
+			constraint.req = CONSTRAINT_CONST;
 			break;
 		case OPERAND_IMPLICIT:
 		case OPERAND_INPUT:

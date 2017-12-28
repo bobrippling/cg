@@ -868,7 +868,11 @@ loc:
 					switch(loc->where){
 						case NAME_NOWHERE:
 						case NAME_IN_REG_ANY:
-							assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend");
+							fprintf(stderr, "%s loc { %#x, %#x }\n",
+									val_str(lval),
+									loc->where,
+									loc->u.reg);
+							assert(0 && "NAME_NOWHERE/NAME_IN_REG_ANY in backend XXX");
 
 						case NAME_IN_REG:
 						{

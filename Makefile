@@ -8,7 +8,7 @@ OBJ = val.o mem.o dynarray.o op.o init.o \
       type.o uniq_type_list.o type_iter.o target.o location.o \
       regset.o regset_marks.o \
       pass_abi.o pass_isel.o \
-      regalloc/linear.o regalloc/interval_array.o \
+      regalloc/linear.o regalloc/interval_array.o regalloc/free_regs.o regalloc/intervals.o regalloc/stack.o \
       x86.o x86_isel.o x86_call.o x86_isns.o
 
 OBJ_MAIN = ${OBJ} main.o
@@ -55,7 +55,7 @@ ctests: ${OBJ_CTEST}
 
 tags: ${SRC}
 	@echo ctags
-	$Q-ctags ${SRC} *.h
+	$Q-ctags ${SRC} *.h */*.h
 
 clean:
 	make -C strbuf clean

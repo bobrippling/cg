@@ -1140,7 +1140,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 	dynmap_set(val *, long, ctx, v, 0l);
 }
 
-#define SHOW_LIFE 1
+#define SHOW_LIFE 0
 #define SHOW_TYPE 0
 void isn_dump(isn *const head, block *blk, FILE *f)
 {

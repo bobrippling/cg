@@ -165,7 +165,7 @@ static void convert_incoming_arg_stack(
 	stack = val_new_stack(stackoff, type_get_ptr(utl, argty));
 	loc = val_location(stack);
 	assert(loc);
-	loc->constrain = NAME_CONSTRAIN_STACK;
+	loc->constraint = CONSTRAINT_MEM;
 
 	loadstore = (direction == OVERLAY_FROM_REGS ? isn_load : isn_store)(argval, stack);
 
@@ -214,7 +214,7 @@ static void create_arg_reg_overlay_isns(
 					regtouse,
 					argty); /* argty is acceptable here */
 			loc = val_location(abiv); assert(loc);
-			loc->constrain = NAME_CONSTRAIN_REG;
+			loc->constraint = CONSTRAINT_REG;
 
 
 			copy = isn_copy(
@@ -274,7 +274,7 @@ static void create_arg_reg_overlay_isns(
 					is_fp));
 		abiv = val_new_reg(regtouse, regty);
 		loc = val_location(abiv); assert(loc);
-		loc->constrain = NAME_CONSTRAIN_REG;
+		loc->constraint = CONSTRAINT_REG;
 
 		temporary = val_new_localf(
 				regty, false,
@@ -463,7 +463,7 @@ static val *stret_ptr_stash(
 
 	abiv = val_new_reg(regset_nth(regs, 0, 0), stptr_ty);
 	loc = val_location(abiv); assert(loc);
-	loc->constrain = NAME_CONSTRAIN_REG;
+	loc->constraint = CONSTRAINT_REG;
 	save_store = isn_store(abiv, alloca_val);
 
 	ISN_APPEND_OR_SET(state->abi_copies, save_alloca);
@@ -704,7 +704,7 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 			struct location *loc;
 
 			loc = val_location(eax); assert(loc);
-			loc->constrain = NAME_CONSTRAIN_REG;
+			loc->constraint = CONSTRAINT_REG;
 
 			isn_insert_before(inst, load);
 			isn_insert_after(load, store);
@@ -751,7 +751,7 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 
 		abiv = val_new_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
 		loc = val_location(abiv); assert(loc);
-		loc->constrain = NAME_CONSTRAIN_REG;
+		loc->constraint = CONSTRAINT_REG;
 		movret = isn_copy(abiv, retval);
 
 		isn_insert_before(inst, movret);

@@ -5,6 +5,14 @@
 
 #include "reg.h"
 
+enum location_constraint
+{
+	CONSTRAINT_NONE  = 0,
+	CONSTRAINT_REG   = 1 << 0,
+	CONSTRAINT_CONST = 1 << 1,
+	CONSTRAINT_MEM   = 1 << 2
+};
+
 struct location
 {
 	enum
@@ -14,12 +22,7 @@ struct location
 		NAME_IN_REG,
 		NAME_SPILT
 	} where : 16;
-	enum
-	{
-		NAME_CONSTRAIN_NONE,
-		NAME_CONSTRAIN_REG,
-		NAME_CONSTRAIN_STACK
-	} constrain : 16; /* tracking metadata used for regalloc validation */
+	enum location_constraint constraint : 16; /* tracking metadata used for regalloc validation */
 	union
 	{
 		regt reg;
@@ -28,7 +31,7 @@ struct location
 };
 #define location_init_reg(l) (\
 		(l)->where = NAME_NOWHERE, \
-		(l)->constrain = NAME_CONSTRAIN_NONE, \
+		(l)->constraint = CONSTRAINT_NONE, \
 		(l)->u.reg = regt_make_invalid()\
 	)
 
@@ -36,5 +39,6 @@ unsigned location_hash(struct location const *);
 bool location_eq(struct location const *, struct location const *);
 
 #define location_is_reg(l) ((l) == NAME_IN_REG || (l) == NAME_IN_REG_ANY)
+#define location_fully_allocated(l) ((l)->where == NAME_IN_REG || (l)->where == NAME_SPILT)
 
 #endif

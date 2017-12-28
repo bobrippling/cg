@@ -6,6 +6,8 @@
 
 #define INTERVAL_ARRAY_INIT { DYNARRAY_INIT }
 
+#define interval_array_iter(iar, i) dynarray_iter(&(iar)->ar, i)
+
 typedef struct interval_array {
 	dynarray ar;
 } interval_array;

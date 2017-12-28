@@ -36,11 +36,13 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 			 * i.e. pass_abi's first assignment from
 			 * an ABI register
 			 */
+		case ALLOCA:
+			/* alloc these so regalloc can find them in
+			 * the lifetime map to assign spill locations */
 			break;
 		case LITERAL:
 		case GLOBAL:
 		case LABEL:
-		case ALLOCA:
 		case UNDEF:
 			return;
 	}

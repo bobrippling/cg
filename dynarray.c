@@ -39,18 +39,14 @@ void dynarray_move(dynarray *dest, dynarray *src)
 
 void dynarray_copy(dynarray *dest, dynarray *src)
 {
-	size_t i;
-
 	dynarray_reset(dest);
 
-	memcpy(dest, src, sizeof *dest);
-
 	if(dynarray_count(src)){
-		dest->entries = xmalloc(dynarray_count(src) * sizeof *dest->entries);
+		dest->capacity = dynarray_count(src);
+		dest->n = dest->capacity;
+		dest->entries = xmalloc(dest->capacity * sizeof *dest->entries);
 
-		dynarray_iter(src, i){
-			dynarray_ent(dest, i) = dynarray_ent(src, i);
-		}
+		memcpy(dest->entries, src->entries, dest->n * sizeof *dest->entries);
 	}
 }
 
@@ -101,9 +97,17 @@ size_t dynarray_find(dynarray *d, void *p)
 
 void dynarray_sort(dynarray *ar, int compar(const void *, const void *))
 {
+	if(dynarray_count(ar) == 0)
+		return; /* ub to pass null to qsort() */
 	qsort(
 			&dynarray_ent(ar, 0),
 			dynarray_count(ar),
 			sizeof(dynarray_ent(ar, 0)),
 			compar);
+}
+
+void dynarray_fill(dynarray *ar, void *ent, size_t n)
+{
+	while(n --> 0)
+		dynarray_add(ar, ent);
 }

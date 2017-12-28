@@ -1,0 +1,93 @@
+live ranges:
+
+o----------------------------------------o <any>
+ o-----------------o                       <any>
+    o-----------------o                    <memory>
+                  o---------------------o  <reg>
+                         o---o             rdi
+									        o--o             rsi
+									         o-o             rdx
+													    o---------o  eax
+
+lsra_constrained(intervals)
+{
+	lsra_space_calc(intervals)
+	lsra_regalloc(intervals)
+}
+
+lsra_space_calc(intervals, backend)
+{
+	active_intervals = {}
+
+	for i : intervals {
+		i.regspace = backend.nregs
+		i.freeregs = regset_copy(backend.scratch_regs)
+
+		expire_old(i, active_intervals, NULL)
+
+		for a : active_intervals {
+			switch i.type {
+				case any:
+				case memory:
+					break;
+				case reg(any):
+					a.regspace--
+					break
+				case reg(x)
+					a.freeregs[x] = false
+					break
+			}
+		}
+
+		if !possible(i) {
+			throw
+		}
+
+		active_intervals.add(i)
+	}
+}
+
+possible(interval)
+{
+	switch interval.type {
+		case any:
+		case memory:
+			return true
+		case reg(any):
+			return interval.regspace > 0
+		case reg(x):
+			return interval.freeregs[x]
+	}
+}
+
+expire_old(interval, active_intervals, free_regs?)
+{
+	for j : active_intervals {
+		if j.end >= interval.start {
+			return
+		}
+		active_intervals.remove(j)
+		if free_regs {
+			free_regs[j.reg] = true
+		}
+	}
+}
+
+lsra_regalloc(intervals)
+{
+	free_regs = regset_copy(scratch_regs)
+	active_intervals = {}
+
+	for i : intervals {
+		expire_old(i, active_intervals, &freeregs)
+
+		if i.regspace == 0 || nfreeregs(i.freeregs) == 0 {
+			i.reg = INVALID
+			i.stack = stack.alloc()
+		} else {
+			i.reg = i.freeregs.any()
+			free_regs[i.reg] = false
+			active_intervals.add(i)
+		}
+	}
+}
