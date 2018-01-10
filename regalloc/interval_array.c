@@ -27,7 +27,7 @@ void interval_array_add(interval_array *a, interval *i)
 void interval_array_rm(interval_array *a, interval *i)
 {
 	size_t idx = dynarray_find(&a->ar, i);
-	assert(idx != -1u);
+	assert(idx != -1);
 	dynarray_splice(&a->ar, idx, 1);
 }
 

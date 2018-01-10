@@ -65,6 +65,7 @@ try_cflag -Werror=int-conversion
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-missing-braces
 try_cflag -Wno-pointer-to-int-cast
+try_cflag -Wno-sign-compare
 
 try_cflag -g
 try_cflag -g LDFLAGS_CONFIGURE
