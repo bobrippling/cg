@@ -85,36 +85,48 @@ static bool possible(interval *interval)
 	assert(0 && "unreachable");
 }
 
-static void reduce_interval_from_constraints(interval *i, struct location *loc_constraint, /*temp*/val *a_val)
+static void reduce_interval_from_interval(interval *toreduce, interval *from)
 {
-	if((loc_constraint->constraint & CONSTRAINT_REG) == 0)
+	struct location *loc_constraint = from->loc;
+
+	if((loc_constraint->constraint & CONSTRAINT_REG) == 0){
+		if(REGALLOC_DEBUG){
+			fprintf(stderr, "%s nothing to reduce (%s not constrained to reg)\n",
+					val_str_rn(0, toreduce->val),
+					val_str_rn(1, from->val));
+		}
 		return;
+	}
 
 	switch(loc_constraint->where){
 		case NAME_NOWHERE:
 		case NAME_SPILT:
+			if(REGALLOC_DEBUG){
+				fprintf(stderr, "%s nothing to reduce (%s where %#x)\n",
+						val_str_rn(0, toreduce->val),
+						val_str_rn(1, from->val),
+						loc_constraint->where);
+			}
 			break;
 
 		case NAME_IN_REG_ANY:
-			i->regspace--;
+			toreduce->regspace--;
 
 			if(REGALLOC_DEBUG){
-				fprintf(stderr, "|  %s(), %s regspace--, because of %s\n",
-						__func__,
-						val_str_rn(0, i->val),
-						val_str_rn(1, a_val));
+				fprintf(stderr, "%s regspace--, because of %s\n",
+						val_str_rn(0, toreduce->val),
+						val_str_rn(1, from->val));
 			}
 			break;
 
 		case NAME_IN_REG:
-			dynarray_ent(&i->freeregs, loc_constraint->u.reg) = (void *)(intptr_t)false;
+			dynarray_ent(&toreduce->freeregs, loc_constraint->u.reg) = (void *)(intptr_t)false;
 
 			if(REGALLOC_DEBUG){
-				fprintf(stderr, "|  %s(), %s freeregs[%#x]=false, because of %s\n",
-						__func__,
-						val_str_rn(0, i->val),
+				fprintf(stderr, "%s freeregs[%#x]=false, because of %s\n",
+						val_str_rn(0, toreduce->val),
 						loc_constraint->u.reg,
-						val_str_rn(1, a_val));
+						val_str_rn(1, from->val));
 			}
 			break;
 	}
@@ -138,19 +150,17 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 		interval_array_iter(&active_intervals, jdx){
 			interval *a = interval_array_ent(&active_intervals, jdx);
 
-			reduce_interval_from_constraints(a, i->loc, i->val);
-			reduce_interval_from_constraints(i, a->loc, a->val);
+			reduce_interval_from_interval(a, i);
+			reduce_interval_from_interval(i, a);
 
 			if(!possible(a)){
-				fprintf(stderr, "can't constrain: %s has nowhere to go (loc constraint %#x)\n",
-						val_str(a->val), a->loc->constraint);
+				fprintf(stderr, "can't constrain: %s has nowhere to go\n", val_str(a->val));
 				impossible = true;
 			}
 		}
 
 		if(!possible(i)){
-			fprintf(stderr, "can't constrain: %s has nowhere to go (loc constraint %#x)\n",
-					val_str(i->val), i->loc->constraint);
+			fprintf(stderr, "can't constrain: %s has nowhere to go\n", val_str(i->val));
 			impossible = true;
 		}
 
@@ -165,7 +175,7 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			size_t regidx;
 			const char *sep = "";
 
-			fprintf(stderr, "^ %s: live={%u-%u} regspace=%u freeregs={",
+			fprintf(stderr, "%s: live={%u-%u} regspace=%u freeregs={",
 					val_str(i->val),
 					i->start,
 					i->end,
