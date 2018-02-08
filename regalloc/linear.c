@@ -20,7 +20,7 @@
 #include "intervals.h"
 #include "stack.h"
 
-#define REGALLOC_DEBUG 1
+#define REGALLOC_DEBUG 0
 
 struct regalloc_func_ctx
 {
