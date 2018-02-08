@@ -50,7 +50,7 @@ static void expire_old_intervals(
 		count--;
 
 		if(freeregs){
-			/*assert(j->loc->where == NAME_IN_REG); FIXME */
+			assert(j->loc->where == NAME_IN_REG);
 			dynarray_ent(freeregs, j->loc->u.reg) = (void *)(intptr_t)true;
 		}
 	}
@@ -203,7 +203,6 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
 			lsra_stackalloc(i->loc, function, val_type(i->val));
 		} else {
-			/*assert(location_is_reg(i->loc->where)); FIXME*/
 			i->loc->where = NAME_IN_REG;
 
 			i->loc->u.reg = free_regs_any(&merged_regs);
