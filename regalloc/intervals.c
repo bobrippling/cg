@@ -65,12 +65,19 @@ void intervals_create(
 		assert(start != -1 && end != -1);
 
 		interval = xmalloc(sizeof(*interval));
-		interval->start = start;
-		interval->end = end;
 		interval->val = v;
 		interval->loc = loc;
 		interval->regspace = 0;
 		dynarray_init(&interval->freeregs);
+
+		/* multiply by two - we can then add one to prevent overlaps for output
+		 * values, as opposed to input values
+		 *
+		 * .. how do we get whether it's an input or output? isel needs to store
+		 * this somewhere, probs on .location, near/in .constraint?
+		 */
+		interval->start = start;
+		interval->end = end;
 
 		dynarray_add(intervals, interval);
 	}

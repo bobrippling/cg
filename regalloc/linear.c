@@ -122,7 +122,12 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 		case NAME_IN_REG:
 			/* if both are abi regs, and overlap (which they must, if we're here), and
 			 * their registers collide, then we just trust whatever code generated
-			 * them and don't make as unused */
+			 * them and don't make as unused
+			 *
+			 * FIXME: this shouldn't be done here, instead we should not mark input-
+			 * and output-only values as overlapping when generating intervals.
+			 * This will then mean other values also get this benefit
+			 */
 			if(val_is_abi(toreduce->val)
 			&& val_is_abi(from->val)
 			&& toreduce->loc->where == NAME_IN_REG
