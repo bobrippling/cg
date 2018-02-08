@@ -435,7 +435,6 @@ static void insert_state_isns(
 
 static val *stret_ptr_stash(
 		type *retty,
-		block *entry,
 		const struct regset *regs,
 		uniq_type_list *utl,
 		struct regpass_state *const state)
@@ -487,7 +486,7 @@ static void convert_incoming_args(
 		if(retcls.inmem){
 			assert(type_is_struct(retty));
 			/* store stret pointer for return later */
-			*stret_stash_out = stret_ptr_stash(retty, entry, regs, utl, &state);
+			*stret_stash_out = stret_ptr_stash(retty, regs, utl, &state);
 			state.int_idx++;
 		}
 	}
