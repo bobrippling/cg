@@ -20,7 +20,7 @@
 #include "intervals.h"
 #include "stack.h"
 
-#define REGALLOC_DEBUG 0
+#define REGALLOC_DEBUG 1
 
 struct regalloc_func_ctx
 {
@@ -149,6 +149,9 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 
 		interval_array_iter(&active_intervals, jdx){
 			interval *a = interval_array_ent(&active_intervals, jdx);
+
+			if(a == i)
+				continue;
 
 			reduce_interval_from_interval(a, i);
 			reduce_interval_from_interval(i, a);
