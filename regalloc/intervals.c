@@ -42,15 +42,11 @@ void intervals_create(
 
 		if(!v)
 			break;
-		if(!lt){
-			fprintf(stderr, "no lt: %s\n", val_str(v));
-			continue;
-		}
+		assert(lt);
+
 		loc = val_location(v);
-		if(!loc){
-			fprintf(stderr, "no loc: %s\n", val_str(v));
-			continue;
-		}
+		assert(loc);
+
 		if(v->live_across_blocks){
 			lsra_stackalloc(loc, fn, val_type(v));
 			continue;
