@@ -709,6 +709,23 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$g = i4(...){ret i4 3}"
+			"$f = i4(i4 $x){"
+			"	jmp $blk"
+			"$blk:"
+			"	$g_ = call $g(i4 1)" /* ensure clobber of arg register */
+			"	$s = add $x, $g_" /* $x should be spilt */
+			"	ret $s"
+			"}"
+			"$entry = i4(){"
+			"  $x = call $f(i4 7)"
+			"  ret $x"
+			"}",
+			10,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
@@ -722,11 +739,6 @@ int main(int argc, const char *argv[])
 			&target);
 
 	TEST(ir_emit,
-			"$f = i4(i4 $a, i4 $b){ ret $b }",
-			"mov %esi, %eax",
-			&target);
-
-	TEST(ir_emit,
 			"$vf = void()"
 			"$f = i4(){"
 			"  $x = call $vf()"
@@ -734,18 +746,6 @@ int main(int argc, const char *argv[])
 			"}",
 			"mov $0, %eax",
 			&target);
-
-	TEST(ir_emit,
-			"$g = i4(...)"
-			"$f = i4(i4 $x){"
-			"	jmp $blk"
-			"$blk:"
-			"	$g_ = call $g()"
-			"	$s = add $x, $g_" /* $x should be spilt */
-			"	ret $s"
-			"}",
-			"$s<reg 3> = add $reload.4<reg 0>, $g_<reg 2>",
-			&target_ir);
 
 	TEST(ir_emit,
 			"$gi = i2"
