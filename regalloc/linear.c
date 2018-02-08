@@ -68,11 +68,11 @@ static bool possible(interval *interval)
 			case NAME_IN_REG_ANY:
 				return interval->regspace > 0;
 			case NAME_IN_REG:
-				{
-					/* constraint is reg-specific */
-					regt reg = interval->loc->u.reg;
-					return dynarray_ent(&interval->freeregs, reg);
-				}
+			{
+				/* constraint is reg-specific */
+				regt reg = interval->loc->u.reg;
+				return dynarray_ent(&interval->freeregs, reg);
+			}
 			case NAME_NOWHERE:
 			case NAME_SPILT:
 				return true;
