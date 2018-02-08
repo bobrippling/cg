@@ -120,6 +120,23 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 			break;
 
 		case NAME_IN_REG:
+			/* if both are abi regs, and overlap (which they must, if we're here), and
+			 * their registers collide, then we just trust whatever code generated
+			 * them and don't make as unused */
+			if(val_is_abi(toreduce->val)
+			&& val_is_abi(from->val)
+			&& toreduce->loc->where == NAME_IN_REG
+			&& toreduce->loc->u.reg == from->loc->u.reg)
+			{
+				if(REGALLOC_DEBUG){
+					fprintf(stderr, "%s freeregs[%#x] would be false because of %s, but both are abi\n",
+							val_str_rn(0, toreduce->val),
+							loc_constraint->u.reg,
+							val_str_rn(1, from->val));
+				}
+				break;
+			}
+
 			dynarray_ent(&toreduce->freeregs, loc_constraint->u.reg) = (void *)(intptr_t)false;
 
 			if(REGALLOC_DEBUG){

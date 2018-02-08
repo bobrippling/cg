@@ -127,6 +127,11 @@ bool val_is_reg_specific(val *v, regt reg)
 	return val_is_reg(v) && val_location(v)->u.reg == reg;
 }
 
+bool val_is_abi(val *v)
+{
+	return v->kind == ABI_TEMP;
+}
+
 bool val_on_stack(val *v)
 {
 	struct location *loc = val_location(v);
