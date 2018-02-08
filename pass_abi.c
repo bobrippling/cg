@@ -154,7 +154,6 @@ static void convert_incoming_arg_stack(
 	val *stack;
 	isn *loadstore;
 	int stackoff;
-	struct location *loc;
 
 	state->stackoff += type_size(argty); /* FIXME: align */
 
@@ -163,9 +162,6 @@ static void convert_incoming_arg_stack(
 			: /* TODO: bottomstack? */state->stackoff;
 
 	stack = val_new_stack(stackoff, type_get_ptr(utl, argty));
-	loc = val_location(stack);
-	assert(loc);
-	loc->constraint = CONSTRAINT_MEM;
 
 	loadstore = (direction == OVERLAY_FROM_REGS ? isn_load : isn_store)(argval, stack);
 
@@ -208,14 +204,10 @@ static void create_arg_reg_overlay_isns(
 			val *abiv;
 			isn *copy;
 			const regt regtouse = regset_nth(regs, *reg_index, is_fp);
-			struct location *loc;
 
 			abiv = val_new_reg(
 					regtouse,
 					argty); /* argty is acceptable here */
-			loc = val_location(abiv); assert(loc);
-			loc->constraint = CONSTRAINT_REG;
-
 
 			copy = isn_copy(
 					overlay_direction == OVERLAY_FROM_REGS ? argval : abiv,
@@ -262,7 +254,6 @@ static void create_arg_reg_overlay_isns(
 		isn *ptradd_isn;
 		val *abiv, *ptradd, *temporary, *ptrcast2;
 		const regt regtouse = regset_nth(regs, *reg_index, is_fp);
-		struct location *loc;
 
 		if(add_clobber)
 			isn_add_reg_clobber(insertion->at, regtouse);
@@ -273,8 +264,6 @@ static void create_arg_reg_overlay_isns(
 					bytes_to_copy,
 					is_fp));
 		abiv = val_new_reg(regtouse, regty);
-		loc = val_location(abiv); assert(loc);
-		loc->constraint = CONSTRAINT_REG;
 
 		temporary = val_new_localf(
 				regty, false,
@@ -456,14 +445,11 @@ static val *stret_ptr_stash(
 	val *alloca_val;
 	val *abiv;
 	type *stptr_ty = type_get_ptr(utl, retty);
-	struct location *loc;
 
 	alloca_val = val_new_localf(type_get_ptr(utl, stptr_ty), true, ".stret");
 	save_alloca = isn_alloca(alloca_val);
 
 	abiv = val_new_reg(regset_nth(regs, 0, 0), stptr_ty);
-	loc = val_location(abiv); assert(loc);
-	loc->constraint = CONSTRAINT_REG;
 	save_store = isn_store(abiv, alloca_val);
 
 	ISN_APPEND_OR_SET(state->abi_copies, save_alloca);
@@ -701,10 +687,6 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 			val *eax = val_new_reg(regset_nth(&target->abi.ret_regs, 0, 0), val_type(stret_tmp));
 			/* need to reload, as we're in a different block after the memcpy is expanded */
 			isn *ret_stash = isn_load(eax, stret_stash);
-			struct location *loc;
-
-			loc = val_location(eax); assert(loc);
-			loc->constraint = CONSTRAINT_REG;
 
 			isn_insert_before(inst, load);
 			isn_insert_after(load, store);
@@ -745,13 +727,10 @@ static isn *convert_return_isn(isn *inst, struct convert_ret_ctx *ctx)
 	}else{
 		val *abiv;
 		isn *movret;
-		struct location *loc;
 
 		assert(type_is_int(retty) || type_deref(retty));
 
 		abiv = val_new_reg(regset_nth(&target->abi.ret_regs, 0, 0), retty);
-		loc = val_location(abiv); assert(loc);
-		loc->constraint = CONSTRAINT_REG;
 		movret = isn_copy(abiv, retval);
 
 		isn_insert_before(inst, movret);

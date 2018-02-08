@@ -626,6 +626,7 @@ val *val_new_reg(regt reg, type *ty)
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_IN_REG;
 	p->u.abi.u.reg = reg;
+	p->u.abi.constraint = CONSTRAINT_REG;
 	return p;
 }
 
@@ -634,6 +635,7 @@ val *val_new_stack(int stack_off, type *ty)
 	val *p = val_new(ABI_TEMP, ty);
 	p->u.abi.where = NAME_SPILT;
 	p->u.abi.u.off = stack_off;
+	p->u.abi.constraint = CONSTRAINT_MEM;
 	return p;
 }
 
