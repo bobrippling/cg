@@ -8,10 +8,13 @@
 
 #include "interval.h"
 #include "../isn.h"
+#include "../isn_replace.h"
+#include "../isn_struct.h"
 #include "../lifetime_struct.h"
 #include "../mem.h"
 #include "../type.h"
 #include "../val_struct.h"
+#include "../target.h"
 #include "stack.h"
 
 static int sort_interval_start(const void *va, const void *vb)
@@ -24,12 +27,28 @@ static int sort_interval_start(const void *va, const void *vb)
 	return 0;
 }
 
+static bool val_is_just_output_on_isn(val *v, isn *i, const struct target *target)
+{
+	/* Do we need to act as if `v` is a "+" (inout) operand?
+	 * Since some backends might use two-operand instructions, we can't do the following:
+	 * $a<reg 0> = add $a<reg 0>, $b<reg 1>
+	 *
+	 * since this may be emitted as
+	 * mov %reg1, %reg0
+	 * add %reg0, %reg0
+	 */
+	if(i->type == ISN_OP && target->arch.op_isn_is_destructive)
+		return false;
+
+	return isn_defines_val(i, v);
+}
 
 void intervals_create(
 		dynarray *intervals,
 		dynmap *lf_map,
 		isn *isn_first,
-		struct function *fn)
+		struct function *fn,
+		const struct target *target)
 {
 	size_t i;
 	for(i = 0;; i++){
@@ -71,13 +90,15 @@ void intervals_create(
 		dynarray_init(&interval->freeregs);
 
 		/* multiply by two - we can then add one to prevent overlaps for output
-		 * values, as opposed to input values
-		 *
-		 * .. how do we get whether it's an input or output? isel needs to store
-		 * this somewhere, probs on .location, near/in .constraint?
-		 */
-		interval->start = start;
-		interval->end = end;
+		 * values, as opposed to input values */
+		interval->start = start * 2;
+		interval->end = end * 2;
+
+		/* if used as an output on the first or last isn, our life starts/ends post-isn */
+		if(val_is_just_output_on_isn(v, lt->start, target))
+			interval->start++;
+		if(val_is_just_output_on_isn(v, lt->end, target))
+			interval->end++;
 
 		dynarray_add(intervals, interval);
 	}

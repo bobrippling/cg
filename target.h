@@ -29,6 +29,8 @@ struct target
 			isel_func *custom_isel;
 		} *instructions;
 
+		bool op_isn_is_destructive; /* i.e. two-operand operators */
+
 		/* pic, pie, etc */
 	} arch;
 

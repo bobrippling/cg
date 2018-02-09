@@ -20,6 +20,7 @@
 #include "intervals.h"
 #include "stack.h"
 
+/* to get useful debugging info, sort what this emits */
 #define REGALLOC_DEBUG 0
 
 struct regalloc_func_ctx
@@ -120,13 +121,19 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 			break;
 
 		case NAME_IN_REG:
-			/* if both are abi regs, and overlap (which they must, if we're here), and
+			/* If both are abi regs, and overlap (which they must, if we're here), and
 			 * their registers collide, then we just trust whatever code generated
-			 * them and don't make as unused
+			 * them and don't mark as unused/fail regalloc.
 			 *
-			 * FIXME: this shouldn't be done here, instead we should not mark input-
-			 * and output-only values as overlapping when generating intervals.
-			 * This will then mean other values also get this benefit
+			 * In the general case, this is avoided by interval allocation ensuring
+			 * that input and output values to an instruction don't overlap, meaning
+			 * they can share the same register and we won't end up here.
+			 *
+			 * However in some cases such as x86's idiv being destructive, interval
+			 * allocation can't un-overlap the input and output values, meaning
+			 * regalloc thinks they must be assigned different registers.
+			 * But then x86's idiv requires %eax on input and output, leading to a contradiction.
+			 * This is handled explicitly here and cancelled.
 			 */
 			if(val_is_abi(toreduce->val)
 			&& val_is_abi(from->val)
@@ -134,7 +141,7 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 			&& toreduce->loc->u.reg == from->loc->u.reg)
 			{
 				if(REGALLOC_DEBUG){
-					fprintf(stderr, "%s freeregs[%#x] would be false because of %s, but both are abi\n",
+					fprintf(stderr, "%s freeregs[%#x] would be false because of %s, but both are abi/arch regs\n",
 							val_str_rn(0, toreduce->val),
 							loc_constraint->u.reg,
 							val_str_rn(1, from->val));
@@ -179,13 +186,13 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			reduce_interval_from_interval(i, a);
 
 			if(!possible(a)){
-				fprintf(stderr, "can't constrain: %s has nowhere to go\n", val_str(a->val));
+				fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(a->val));
 				impossible = true;
 			}
 		}
 
 		if(!possible(i)){
-			fprintf(stderr, "can't constrain: %s has nowhere to go\n", val_str(i->val));
+			fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(i->val));
 			impossible = true;
 		}
 
@@ -270,7 +277,7 @@ static void regalloc_block(block *b, void *vctx)
 	struct regalloc_func_ctx *ctx = vctx;
 	dynarray intervals = DYNARRAY_INIT;
 
-	intervals_create(&intervals, block_lifetime_map(b), block_first_isn(b), ctx->function);
+	intervals_create(&intervals, block_lifetime_map(b), block_first_isn(b), ctx->function, ctx->target);
 
 	lsra_constrained(&intervals, ctx->target, ctx->function);
 
