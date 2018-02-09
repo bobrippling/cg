@@ -20,6 +20,7 @@
 #include "isn.h"
 #include "isn_struct.h"
 #include "type.h"
+#include "target.h"
 
 #include "x86_internal.h"
 #include "x86_isns.h"
@@ -447,9 +448,12 @@ void x86_emit_call(
 #endif
 
 	if(fn->kind == GLOBAL){
+		const struct target *target = unit_target_info(octx->unit);
+
 		fprintf(octx->fout,
-				"\tcall %s\n",
-				global_name_mangled(fn->u.global, unit_target_info(octx->unit)));
+				"\tcall %s%s\n",
+				global_name_mangled(fn->u.global, target),
+				target->sys.pic.active && target->sys.pic.call_requires_plt ? "@PLT" : "");
 	}else{
 		emit_isn_operand operand;
 

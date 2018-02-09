@@ -96,7 +96,11 @@ static const struct
 			".weak",
 			".weak",
 			false, /* align_is_pow2 */
-			false  /* leading_underscore */
+			false, /* leading_underscore */
+			{ /* pic */
+				false, /* active */
+				true /* call_requires_plt */
+			}
 		}
 	},
 	{
@@ -107,7 +111,11 @@ static const struct
 			".weak_reference",
 			".weak_definition",
 			true, /* align_is_pow2 */
-			true  /* leading_underscore */
+			true, /* leading_underscore */
+			{ /* pic */
+				true, /* active */
+				false /* call_requires_plt */
+			}
 		}
 	},
 };

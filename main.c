@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include "die.h"
+#include "tristate.h"
 #include "str.h"
 #include "dynarray.h"
 
@@ -59,6 +60,11 @@ struct passes_and_target
 	dynarray *passes;
 	struct target *target;
 	bool show_intermediates;
+};
+
+struct parsed_options
+{
+	tristate pic;
 };
 
 static unit *read_and_parse(
@@ -150,6 +156,12 @@ static void run_passes(function *fn, unit *unit, void *vctx)
 	}
 }
 
+static void add_opts(struct target *target, const struct parsed_options *opts)
+{
+	if(opts->pic != TRISTATE_UNSET)
+		target->sys.pic.active = opts->pic == TRISTATE_TRUE;
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *fout;
@@ -163,6 +175,7 @@ int main(int argc, char *argv[])
 	struct target target = { 0 };
 	const char *emit_arg = NULL;
 	struct passes_and_target pat = { 0 };
+	struct parsed_options opts = { TRISTATE_UNSET };
 
 	argv0 = argv[0];
 
@@ -193,6 +206,19 @@ int main(int argc, char *argv[])
 					usage(*argv);
 				}
 				output = argv[i];
+			}
+
+		}else if(!strncmp(argv[i], "-fpic=", 6)){
+			const char *arg = &argv[i][6];
+			if(!strcmp(arg, "default")){
+				opts.pic = TRISTATE_UNSET;
+			}else if(!strcmp(arg, "false")){
+				opts.pic = TRISTATE_FALSE;
+			}else if(!strcmp(arg, "true")){
+				opts.pic = TRISTATE_TRUE;
+			}else{
+				fprintf(stderr, "-fpic=... takes \"true\", \"false\" or \"default\"\n");
+				usage(*argv);
 			}
 
 		}else if(!strcmp(argv[i], "--dump-tokens")){
@@ -244,6 +270,7 @@ int main(int argc, char *argv[])
 		target_parse(emit_arg, &target);
 	else
 		target_default(&target);
+	add_opts(&target, &opts);
 
 	unit = read_and_parse(fname, dump_tok, &target, &parse_err);
 	if(dump_tok){
