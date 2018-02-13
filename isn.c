@@ -567,6 +567,11 @@ isn *isn_ret(val *r)
 	return isn;
 }
 
+isn *isn_phi(val *res, dynarray *ents)
+{
+	todo;
+}
+
 isn *isn_call(val *into, val *fn, dynarray *args)
 {
 	isn *isn;

@@ -15,6 +15,7 @@
 #include "isn.h"
 #include "type.h"
 #include "variable_struct.h"
+#include "phi.h"
 
 typedef struct {
 	tokeniser *tok;
@@ -846,6 +847,39 @@ static void parse_ident(parse *p, char *spel)
 				block_add_isn(p->entry, isn_ptrcast(input, vres));
 			else
 				assert(0 && "unreachable");
+			break;
+		}
+
+		case tok_phi:
+		{
+			val *res;
+			dynarray phi_ents = DYNARRAY_INIT;
+
+			for(;;){
+				enum token cur = token_peek(p->tok);
+				struct phi *entry;
+
+				if(cur != token_lsquare)
+					break;
+
+				entry = xmalloc(sizeof *entry);
+
+				eat(p, "phi label", tok_ident);
+				entry->lbl = token_last_ident(p->tok);
+
+				entry->v = parse_val(p);
+
+				eat(p, "phi block end", tok_rsquare);
+
+				dynarray_add(&phi_ents, entry);
+
+				cur = token_peek(p->tok);
+				if(cur != token_comma)
+					break;
+			}
+
+			res = uniq_val(p, spel, deref_ty, VAL_CREATE);
+			block_add_isn(p->entry, isn_phi(res, &phi_ents));
 			break;
 		}
 	}

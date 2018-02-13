@@ -1,0 +1,28 @@
+#$f = i4(i4 $a)
+#{
+#	$cond = ne $a, i4 0
+#	br $cond, $t, $f
+#
+#$t:
+#	$r = load i4* 0
+#	jmp $fin
+#
+#$f:
+#	#$r = copy i4 3
+#	jmp $fin
+#
+#$fin:
+#	ret $r
+#}
+
+$g = i4(i4 $a, i4 $b)
+{
+$0:
+	$cond = ne i4 0, $a
+	br $cond, $t, $f
+$t:
+	$x = ne i4 0, $b
+
+	$0 = phi [$0, $cond], [$t, $x]
+	ret $0
+}

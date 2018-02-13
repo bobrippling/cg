@@ -43,6 +43,8 @@ isn *isn_label(struct val *lblval);
 
 isn *isn_ret(struct val *);
 
+isn *isn_phi(struct val *, dynarray *);
+
 isn *isn_call(struct val *into, struct val *fn, dynarray *args /*not consumed*/);
 
 struct string;

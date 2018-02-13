@@ -32,6 +32,7 @@
 	KW(store)           \
 	KW(alloca)          \
 	KW(elem)            \
+	KW(phi)             \
 	KW(ptradd)          \
 	KW(ptrsub)          \
 	KW(ptr2int)         \
