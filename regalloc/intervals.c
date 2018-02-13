@@ -42,10 +42,6 @@ void intervals_create(
 
 		if(!v)
 			break;
-		if(v->live_across_blocks){
-			lsra_stackalloc(loc, fn, val_type(v));
-			continue;
-		}
 		if(!lt){
 			fprintf(stderr, "no lt: %s\n", val_str(v));
 			continue;
@@ -53,6 +49,10 @@ void intervals_create(
 		loc = val_location(v);
 		if(!loc){
 			fprintf(stderr, "no loc: %s\n", val_str(v));
+			continue;
+		}
+		if(v->live_across_blocks){
+			lsra_stackalloc(loc, fn, val_type(v));
 			continue;
 		}
 		if(val_is_mem(v)){

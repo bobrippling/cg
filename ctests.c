@@ -41,8 +41,9 @@ static unsigned failed, passed;
 
 static void report(int lno, const char *errmsg)
 {
+	fprintf(stderr, "%s:%d: %s\n", __FILE__, lno, errmsg ? errmsg : "pass");
+
 	if(errmsg){
-		fprintf(stderr, "%s:%d: %s\n", __FILE__, lno, errmsg);
 		failed++;
 	}else{
 		passed++;

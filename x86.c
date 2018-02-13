@@ -1088,10 +1088,23 @@ static void x86_jmp_comp(x86_octx *octx, val *target)
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 {
-	emit_isn_binary(&x86_isn_test, octx,
-			cond, false,
-			cond, false,
-			NULL);
+	if(val_is_mem(cond)){
+		val zero;
+
+		val_temporary_init(&zero, val_type(cond));
+		zero.kind = LITERAL;
+		zero.u.i = 0;
+
+		emit_isn_binary(&x86_isn_cmp, octx,
+				&zero, false,
+				cond, false,
+				NULL);
+	}else{
+		emit_isn_binary(&x86_isn_test, octx,
+				cond, false,
+				cond, false,
+				NULL);
+	}
 
 	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
 

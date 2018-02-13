@@ -20,7 +20,7 @@
 #include "intervals.h"
 #include "stack.h"
 
-#define REGALLOC_DEBUG 1
+#define REGALLOC_DEBUG 0
 
 struct regalloc_func_ctx
 {
@@ -58,65 +58,63 @@ static void expire_old_intervals(
 
 static bool possible(interval *interval)
 {
-	switch(interval->loc->constraint){
-		case CONSTRAINT_NONE:
-		case CONSTRAINT_MEM:
-			return true;
-		case CONSTRAINT_REG:
-			switch(interval->loc->where){
-				case NAME_IN_REG_ANY:
-					return interval->regspace > 0;
-				case NAME_IN_REG:
+	enum location_constraint req = interval->loc->constraint;
+
+	if(req & CONSTRAINT_MEM)
+		return true;
+
+	if(req & CONSTRAINT_REG){
+		switch(interval->loc->where){
+			case NAME_IN_REG_ANY:
+				return interval->regspace > 0;
+			case NAME_IN_REG:
 				{
 					/* constraint is reg-specific */
 					regt reg = interval->loc->u.reg;
 					return dynarray_ent(&interval->freeregs, reg);
 				}
-				case NAME_NOWHERE:
-				case NAME_SPILT:
-					return true;
-			}
-		case CONSTRAINT_CONST:
-			assert(0 && "unreachable");
+			case NAME_NOWHERE:
+			case NAME_SPILT:
+				return true;
+		}
 	}
+
+	if(req == CONSTRAINT_NONE)
+		return true;
+
+	assert(0 && "unreachable");
 }
 
 static void reduce_interval_from_constraints(interval *i, struct location *loc_constraint, /*temp*/val *a_val)
 {
-	switch(loc_constraint->constraint){
-		case CONSTRAINT_CONST:
-			assert(0 && "unreachable");
-		case CONSTRAINT_NONE:
-		case CONSTRAINT_MEM:
+	if((loc_constraint->constraint & CONSTRAINT_REG) == 0)
+		return;
+
+	switch(loc_constraint->where){
+		case NAME_NOWHERE:
+		case NAME_SPILT:
 			break;
-		case CONSTRAINT_REG:
-			switch(loc_constraint->where){
-				case NAME_NOWHERE:
-				case NAME_SPILT:
-					break;
 
-				case NAME_IN_REG_ANY:
-					i->regspace--;
+		case NAME_IN_REG_ANY:
+			i->regspace--;
 
-					if(REGALLOC_DEBUG){
-						fprintf(stderr, "|  %s(), %s regspace--, because of %s\n",
-								__func__,
-								val_str_rn(0, i->val),
-								val_str_rn(1, a_val));
-					}
-					break;
+			if(REGALLOC_DEBUG){
+				fprintf(stderr, "|  %s(), %s regspace--, because of %s\n",
+						__func__,
+						val_str_rn(0, i->val),
+						val_str_rn(1, a_val));
+			}
+			break;
 
-				case NAME_IN_REG:
-					dynarray_ent(&i->freeregs, loc_constraint->u.reg) = (void *)(intptr_t)false;
+		case NAME_IN_REG:
+			dynarray_ent(&i->freeregs, loc_constraint->u.reg) = (void *)(intptr_t)false;
 
-					if(REGALLOC_DEBUG){
-						fprintf(stderr, "|  %s(), %s freeregs[%#x]=false, because of %s\n",
-								__func__,
-								val_str_rn(0, i->val),
-								loc_constraint->u.reg,
-								val_str_rn(1, a_val));
-					}
-					break;
+			if(REGALLOC_DEBUG){
+				fprintf(stderr, "|  %s(), %s freeregs[%#x]=false, because of %s\n",
+						__func__,
+						val_str_rn(0, i->val),
+						loc_constraint->u.reg,
+						val_str_rn(1, a_val));
 			}
 			break;
 	}
@@ -126,6 +124,7 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 {
 	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
 	size_t idx;
+	bool impossible = false;
 
 	dynarray_iter(intervals, idx){
 		interval *i = dynarray_ent(intervals, idx);
@@ -143,12 +142,16 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			reduce_interval_from_constraints(i, a->loc, a->val);
 
 			if(!possible(a)){
-				assert(0 && "impossible to satisfy regalloc constraints2");
+				fprintf(stderr, "can't constrain: %s has nowhere to go (loc constraint %#x)\n",
+						val_str(a->val), a->loc->constraint);
+				impossible = true;
 			}
 		}
 
 		if(!possible(i)){
-			assert(0 && "impossible to satisfy regalloc constraints");
+			fprintf(stderr, "can't constrain: %s has nowhere to go (loc constraint %#x)\n",
+					val_str(i->val), i->loc->constraint);
+			impossible = true;
 		}
 
 		interval_array_add(&active_intervals, i);
@@ -177,6 +180,8 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			fprintf(stderr, "} / %zu\n", regidx);
 		}
 	}
+
+	assert(!impossible && "impossible to satisfy regalloc constraints");
 }
 
 static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *function)

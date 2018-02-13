@@ -87,11 +87,6 @@ static void populate_constraints(
 					req_ret->reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
 					req_ret->reg[1] = regt_make_invalid();
 					req_ret->val = isn->u.op.res;
-
-					fprintf(stderr, "div isel, l=%#x, r=%#x, out=%#x\n",
-							req_lhs->req,
-							req_rhs->req,
-							req_ret->req);
 					break;
 				}
 
@@ -350,7 +345,6 @@ static void isel_pad_cisc_isn(isn *i)
 			{
 				type *const opty = val_type(i->u.op.lhs);
 				unsigned const optysz = type_size(opty);
-				val *edx;
 				const regt reg_edx = regt_make(REG_EDX, 0);
 
 				if(optysz < 4)
@@ -361,7 +355,6 @@ static void isel_pad_cisc_isn(isn *i)
 				 * or a cqto - rdx:rax
 				 * or mov $0, %[er]dx (if unsigned)
 				 */
-				edx = val_new_reg(reg_edx, opty);
 
 				if(is_signed){
 					isn *edx_ext;
@@ -377,6 +370,7 @@ static void isel_pad_cisc_isn(isn *i)
 					isn_add_reg_clobber(edx_ext, reg_edx);
 					isn_insert_before(i, edx_ext);
 				}else{
+					val *edx = val_new_reg(reg_edx, opty);
 					isn *use_start, *use_end;
 					isn *edx_set = isn_copy(edx, val_new_i(0, opty));
 
@@ -419,7 +413,7 @@ static void isel_reserve_cisc(function *func, uniq_type_list *utl, function *fn)
 	function_onblocks(func, isel_reserve_cisc_block, &ctx);
 }
 
-static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
+static void isel_create_ptradd_isn(isn *i, type *steptype, val *rhs)
 {
 	const unsigned step = type_size(steptype);
 	type *rhs_ty = val_type(rhs);
@@ -439,7 +433,7 @@ static void isel_create_ptradd_isn(isn *i, unit *unit, type *steptype, val *rhs)
 	isn_replace_val_with_val(i, rhs, tmp, REPLACE_INPUTS);
 }
 
-static void isel_create_ptrsub_isn(isn *i, unit *unit)
+static void isel_create_ptrsub_isn(isn *i)
 {
 	val *lhs = i->u.ptraddsub.lhs;
 	val *out = i->u.ptraddsub.out;
@@ -461,7 +455,7 @@ static void isel_create_ptrsub_isn(isn *i, unit *unit)
 	isn_insert_after(i, div);
 }
 
-static void isel_create_ptrmath_isn(isn *i, unit *unit)
+static void isel_create_ptrmath_isn(isn *i)
 {
 	switch(i->type){
 		default:
@@ -469,12 +463,11 @@ static void isel_create_ptrmath_isn(isn *i, unit *unit)
 		case ISN_PTRADD:
 			isel_create_ptradd_isn(
 					i,
-					unit,
 					type_deref(val_type(i->u.ptraddsub.lhs)),
 					i->u.ptraddsub.rhs);
 			break;
 		case ISN_PTRSUB:
-			isel_create_ptrsub_isn(i, unit);
+			isel_create_ptrsub_isn(i);
 			break;
 		case ISN_ELEM:
 		{
@@ -483,7 +476,6 @@ static void isel_create_ptrmath_isn(isn *i, unit *unit)
 			if(type_array_element(ty)){
 				isel_create_ptradd_isn(
 						i,
-						unit,
 						type_deref(val_type(i->u.elem.res)),
 						i->u.elem.index);
 			}else{
@@ -497,18 +489,17 @@ static void isel_create_ptrmath_isn(isn *i, unit *unit)
 static void isel_create_ptrmath_blk(block *block, void *vctx)
 {
 	isn *i;
-	unit *unit = vctx;
 
 	(void)vctx;
 
 	for(i = block_first_isn(block); i; i = i->next){
-		isel_create_ptrmath_isn(i, unit);
+		isel_create_ptrmath_isn(i);
 	}
 }
 
-static void isel_create_ptrmath(function *fn, unit *unit)
+static void isel_create_ptrmath(function *fn)
 {
-	function_onblocks(fn, isel_create_ptrmath_blk, unit);
+	function_onblocks(fn, isel_create_ptrmath_blk, NULL);
 }
 
 static bool operand_type_convertible(
@@ -704,7 +695,6 @@ static void gen_constraint_isns_for_op_category(
 
 static void isel_generic(
 		isn *fi,
-		const struct target *target,
 		const struct backend_isn *bi,
 		uniq_type_list *utl,
 		function *fn)
@@ -796,7 +786,7 @@ static void isel_constrain_isn(
 	if(!bi)
 		return;
 
-	isel_generic(fi, target, bi, unit_uniqtypes(unit), fn);
+	isel_generic(fi, bi, unit_uniqtypes(unit), fn);
 }
 
 static void isel_constrain_isns_block(block *block, void *vctx)
@@ -846,7 +836,7 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 		return;
 	}
 
-	isel_create_ptrmath(fn, unit);
+	isel_create_ptrmath(fn);
 	isel_reserve_cisc(fn, unit_uniqtypes(unit), fn);
 	isel_constrain_isns(fn, target, unit);
 }
