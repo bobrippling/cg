@@ -514,12 +514,12 @@ int main(int argc, const char *argv[])
 	TEST(ir_ret,
 			"type $tstruct = {i1,i2,i2,i8}"
 			"$f = i4($tstruct* $a, [i4 x 3]* $b){"
-			"	$a_p = elem $a, i8 2"
-			"	$a_x = load $a_p"
-			"	$a_z = zext i4, $a_x"
-			"	$b_p = elem $b, i8 1"
-			"	$b_x = load $b_p"
-			" $c = xor $a_z, $b_x"
+			"  $a_p = elem $a, i8 2"
+			"  $a_x = load $a_p"
+			"  $a_z = zext i4, $a_x"
+			"  $b_p = elem $b, i8 1"
+			"  $b_x = load $b_p"
+			"  $c = xor $a_z, $b_x"
 			"	ret $c"
 			"}",
 			3 ^ 6,
