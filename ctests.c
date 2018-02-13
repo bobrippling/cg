@@ -465,6 +465,8 @@ int main(int argc, const char *argv[])
 	target_parse("ir-linux", &target_ir);
 	target_parse("x86_64-linux", &target_nomangle);
 
+	target.sys.pic.active = true;
+
 	TEST(ir_ret,
 			"$is_5 = i4(i4 $x) internal {"
 			"  $b = eq $x, i4 5"
