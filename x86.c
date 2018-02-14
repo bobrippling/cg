@@ -747,7 +747,7 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
-	bool deref_lhs, deref_rhs;
+	bool deref_lhs, deref_rhs, deref_res;
 	struct backend_isn opisn;
 
 	if(op == op_mul && /* XXX: disabled */false){
@@ -810,6 +810,7 @@ static void x86_op(
 
 	deref_lhs = val_on_stack(lhs);
 	deref_rhs = val_on_stack(rhs);
+	deref_res = val_on_stack(res);
 
 	/* to match isel's selections (or more specifically, how we define backend
 	 * instructions in x86_isns.c as l=INPUT r=INPUT|OUTPUT), we must match the
@@ -820,7 +821,7 @@ static void x86_op(
 	 * changed corresponding isn definitions.
 	 */
 	x86_mov_deref(lhs, res, octx, deref_lhs, false);
-	emit_isn_binary(&opisn, octx, rhs, deref_rhs, res, deref_rhs, NULL);
+	emit_isn_binary(&opisn, octx, rhs, deref_rhs, res, deref_res, NULL);
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
