@@ -111,7 +111,8 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 			break;
 
 		case NAME_IN_REG_ANY:
-			toreduce->regspace--;
+			if(toreduce->regspace > 0)
+				toreduce->regspace--;
 
 			if(REGALLOC_DEBUG){
 				fprintf(stderr, "%s regspace--, because of %s\n",
