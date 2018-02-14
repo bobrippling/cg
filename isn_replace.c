@@ -262,8 +262,7 @@ static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
 	}
 }
 
-void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *any_isn, function *fn)
+void isn_replace_uses_with_load_store(struct val *old, struct val *spill, function *fn)
 {
 	struct replace_block_ctx ctx;
 
