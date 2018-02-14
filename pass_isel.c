@@ -706,7 +706,7 @@ static void isel_generic(
 	unsigned input_index;
 
 	if(ISEL_DEBUG)
-		fprintf(stderr, "isel \"%s\"\n", bi->mnemonic);
+		fprintf(stderr, "isel %s \"%s\"\n", isn_type_to_str(fi->type), bi->mnemonic);
 
 	isn_vals_get(fi, inputs, &output);
 
