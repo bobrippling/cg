@@ -54,8 +54,11 @@ void block_free(block *b)
 
 	dynarray_reset(&b->preds);
 
-	for(i = 0; (lt = dynmap_value(struct lifetime *, b->val_lifetimes, i)); i++)
+	for(i = 0; (lt = dynmap_value(struct lifetime *, b->val_lifetimes, i)); i++){
+		val *v = dynmap_key(val *, b->val_lifetimes, i);
+		val_release(v);
 		free(lt);
+	}
 
 	dynmap_free(b->val_lifetimes);
 
