@@ -1056,13 +1056,11 @@ static void x86_cmp(
 	val *zero;
 	emit_isn_operand set_operand;
 
-	x86_comment(octx, "PRE-BINARY CMP");
 	emit_isn_binary(&x86_isn_cmp, octx,
 			/* x86 cmp operands are reversed */
 			rhs, false,
 			lhs, false,
 			NULL);
-	x86_comment(octx, "POST-BINARY CMP");
 
 	zero = val_retain(val_new_i(0, res->ty));
 
