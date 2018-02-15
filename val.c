@@ -80,8 +80,11 @@ bool val_is_mem(val *v)
 		case UNDEF:
 			return false;
 
-		case LABEL:
 		case LITERAL:
+			/* could be mem, e.g. i4* */
+			return !!type_deref(val_type(v));
+
+		case LABEL:
 		case ARGUMENT:
 		case FROM_ISN:
 		case BACKEND_TEMP:
