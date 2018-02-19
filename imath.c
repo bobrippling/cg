@@ -18,11 +18,17 @@ unsigned log2i(unsigned u)
 
 unsigned gap_for_alignment(unsigned current, unsigned align)
 {
+	unsigned bitsover;
+
 	if(current == 0)
 		return 0;
 
 	if(current < align)
 		return align - current;
-	else
-		return current % align;
+
+	bitsover = current % align;
+	if(bitsover == 0)
+		return 0;
+
+	return align - bitsover;
 }

@@ -10,6 +10,7 @@
 #include "reg.h"
 #include "regset.h"
 #include "regset_marks.h"
+#include "imath.h"
 
 static unsigned failed, passed;
 
@@ -201,6 +202,46 @@ static void test_dynarray(void)
 	dynarray_sort(&d, int_cmp);
 }
 
+static void test_align(void)
+{
+	test(gap_for_alignment(0, 1) == 0);
+	test(gap_for_alignment(0, 2) == 0);
+	test(gap_for_alignment(0, 4) == 0);
+	test(gap_for_alignment(0, 8) == 0);
+
+	test(gap_for_alignment(1,  1) == 0);
+	test(gap_for_alignment(2,  1) == 0);
+	test(gap_for_alignment(3,  1) == 0);
+	test(gap_for_alignment(4,  1) == 0);
+	test(gap_for_alignment(8,  1) == 0);
+	test(gap_for_alignment(9,  1) == 0);
+	test(gap_for_alignment(13, 1) == 0);
+
+	test(gap_for_alignment(1,  2) == 1);
+	test(gap_for_alignment(2,  2) == 0);
+	test(gap_for_alignment(3,  2) == 1);
+	test(gap_for_alignment(4,  2) == 0);
+	test(gap_for_alignment(8,  2) == 0);
+	test(gap_for_alignment(9,  2) == 1);
+	test(gap_for_alignment(13, 2) == 1);
+
+	test(gap_for_alignment(1,  4) == 3);
+	test(gap_for_alignment(2,  4) == 2);
+	test(gap_for_alignment(3,  4) == 1);
+	test(gap_for_alignment(4,  4) == 0);
+	test(gap_for_alignment(8,  4) == 0);
+	test(gap_for_alignment(9,  4) == 3);
+	test(gap_for_alignment(13, 4) == 3);
+
+	test(gap_for_alignment(1,  8) == 7);
+	test(gap_for_alignment(2,  8) == 6);
+	test(gap_for_alignment(3,  8) == 5);
+	test(gap_for_alignment(4,  8) == 4);
+	test(gap_for_alignment(8,  8) == 0);
+	test(gap_for_alignment(9,  8) == 7);
+	test(gap_for_alignment(13, 8) == 3);
+}
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 1){
@@ -214,6 +255,7 @@ int main(int argc, const char *argv[])
 	test_regset();
 	test_regset_mark();
 	test_dynarray();
+	test_align();
 
 	printf("passed: %d, failed: %d\n", passed, failed);
 
