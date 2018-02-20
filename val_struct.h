@@ -44,7 +44,8 @@ struct val
 	enum val_flags
 	{
 		ABI = 1 << 0,
-		ARG = 1 << 1
+		ARG = 1 << 1,
+		SPILL = 1 << 2
 	} flags;
 };
 

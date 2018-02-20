@@ -10,6 +10,7 @@
 #include "isn_struct.h"
 #include "val.h"
 #include "val_internal.h"
+#include "val_struct.h"
 #include "type.h"
 #include "lifetime_struct.h"
 #include "location.h"
@@ -163,6 +164,8 @@ static void isn_replace_input_with_load(
 			block_lifetime_map(ctx->block),
 			val_retain(tmp), lt);
 
+	tmp->flags |= SPILL;
+
 	/* update the out param, which will end up replacing the value in at_isn */
 	*input = tmp;
 }
@@ -189,6 +192,8 @@ static void isn_replace_output_with_store(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
 			val_retain(tmp), lt);
+
+	tmp->flags |= SPILL;
 
 	/* update the out param, which will end up replacing the value in at_isn */
 	*output = tmp;
