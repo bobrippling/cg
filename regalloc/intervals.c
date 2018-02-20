@@ -84,7 +84,7 @@ void intervals_create(
 		assert(start != -1 && end != -1);
 
 		interval = xmalloc(sizeof(*interval));
-		interval->val = v;
+		interval->val = val_retain(v);
 		interval->loc = loc;
 		interval->regspace = 0;
 		dynarray_init(&interval->freeregs);
@@ -106,14 +106,18 @@ void intervals_create(
 	dynarray_sort(intervals, sort_interval_start);
 }
 
+void interval_delete(interval *iv)
+{
+	val_release(iv->val);
+	dynarray_reset(&iv->freeregs);
+	free(iv);
+}
+
 void intervals_delete(dynarray *intervals)
 {
 	size_t i;
 	dynarray_iter(intervals, i){
-		interval *iv = dynarray_ent(intervals, i);
-
-		dynarray_reset(&iv->freeregs);
-		free(iv);
+		interval_delete(dynarray_ent(intervals, i));
 	}
 	dynarray_reset(intervals);
 }
