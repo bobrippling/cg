@@ -161,7 +161,7 @@ static void isn_replace_input_with_load(
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
-			tmp, lt);
+			val_retain(tmp), lt);
 
 	/* update the out param, which will end up replacing the value in at_isn */
 	*input = tmp;
@@ -188,7 +188,7 @@ static void isn_replace_output_with_store(
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
-			tmp, lt);
+			val_retain(tmp), lt);
 
 	/* update the out param, which will end up replacing the value in at_isn */
 	*output = tmp;
