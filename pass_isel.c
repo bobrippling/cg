@@ -143,11 +143,12 @@ static void constrain_to_reg_any(
 {
 	struct location *loc = val_location(v);
 
+	if(loc && location_is_reg(loc->where))
+		return;
+
 	if(!loc || !val_can_move(v)){
 		val *reg = copy_val_to_reg(v, isn_to_constrain);
 		loc = val_location(reg);
-	}else if(location_is_reg(loc->where)){
-		return;
 	}else{
 		assert(loc->where == NAME_NOWHERE);
 	}
@@ -257,8 +258,8 @@ static void constrain_to_mem(val *v, isn *isn_to_constrain, bool postisn, uniq_t
 
 	isn_replace_val_with_val(isn_to_constrain, v, mem, REPLACE_INPUTS | REPLACE_OUTPUTS);
 
-	assert(loc);
-	loc->constraint = CONSTRAINT_MEM;
+	if(loc)
+		loc->constraint = CONSTRAINT_MEM;
 }
 
 static void gen_constraint_isns(
@@ -739,8 +740,6 @@ static void isel_generic(
 	if(ISEL_DEBUG)
 		fprintf(stderr, "  %d conversions required\n", conversions_required);
 
-	if(conversions_required == 0)
-		return;
 	assert(bestmatch && "cannot satisfy/isel instruction");
 
 	input_index = 0;
