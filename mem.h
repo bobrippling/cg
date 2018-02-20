@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdarg.h>
 
+#include "macros.h"
+
 void *xmalloc(size_t);
 void *xcalloc(size_t n, size_t sz);
 void *xrealloc(void *, size_t);
@@ -11,6 +13,7 @@ char *xstrdup(const char *);
 char *xsprintf(const char *fmt, ...);
 char *xvsprintf(const char *fmt, va_list);
 
+attr_printf(3, 4)
 int xsnprintf(char *buf, size_t len, const char *fmt, ...);
 
 #endif
