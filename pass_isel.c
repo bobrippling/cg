@@ -146,7 +146,7 @@ static void constrain_to_reg_any(
 	if(loc && location_is_reg(loc->where))
 		return;
 
-	if(!loc || !val_can_move(v)){
+	if(!loc || !val_can_be_assigned_reg(v)){
 		val *reg = copy_val_to_reg(v, isn_to_constrain);
 		loc = val_location(reg);
 	}else{

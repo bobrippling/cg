@@ -141,7 +141,7 @@ bool val_on_stack(val *v)
 	return loc && loc->where == NAME_SPILT;
 }
 
-bool val_can_move(val *v)
+bool val_can_be_assigned_reg(val *v)
 {
 	switch(v->kind){
 		case LITERAL:
