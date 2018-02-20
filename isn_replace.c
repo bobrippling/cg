@@ -213,6 +213,9 @@ static void replace_args_with_load_store(
 
 		if(arg == old){
 			isn_replace_input_with_load(isn, old, spill, &arg, ctx);
+
+			assert(dynarray_ent(args, i) != arg);
+
 			val_release(dynarray_ent(args, i));
 			dynarray_ent(args, i) = val_retain(arg);
 		}
@@ -285,6 +288,7 @@ static void isn_replace_val_with_val_call(isn *isn, val *old, val *new)
 		val *arg = dynarray_ent(args, i);
 
 		if(arg == old){
+			assert(arg != new);
 			dynarray_ent(args, i) = val_retain(new);
 			val_release(old);
 		}
