@@ -19,6 +19,12 @@ enum replace_mode
 
 void isn_replace_uses_with_load_store(struct val *old, struct val *spill, struct function *);
 
+void isn_replace_uses_with_load_store_isn(
+		struct isn *current_isn,
+		struct val *old,
+		struct val *spill,
+		struct block *);
+
 void isn_replace_val_with_val(
 		struct isn *,
 		struct val *old,
