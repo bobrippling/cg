@@ -147,14 +147,14 @@ bool val_can_be_assigned_reg(val *v)
 		case LITERAL:
 		case GLOBAL:
 		case LABEL:
-		case ARGUMENT:
 		case ALLOCA:
-		case UNDEF:
 			return false;
 
 		case BACKEND_TEMP:
 			assert(0 && "BACKEND_TEMP unreachable at this stage");
 
+		case UNDEF:
+		case ARGUMENT:
 		case FROM_ISN:
 		case ABI_TEMP:
 			return true;
