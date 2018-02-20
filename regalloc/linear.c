@@ -6,27 +6,35 @@
 #include "../dynmap.h"
 
 #include "../val.h"
+#include "../val_internal.h"
+#include "../val_struct.h"
 #include "../function.h"
 #include "../pass_regalloc.h"
 
 #include "interval.h"
 #include "interval_array.h"
 #include "../isn.h"
+#include "../isn_struct.h"
 #include "../lifetime.h"
 #include "../lifetime_struct.h"
 #include "../mem.h"
 #include "../target.h"
+#include "../isn_replace.h"
+#include "../type.h"
+#include "../spill.h"
+#include "../stack.h"
 #include "free_regs.h"
 #include "intervals.h"
-#include "stack.h"
 
 /* to get useful debugging info, sort what this emits */
 #define REGALLOC_DEBUG 0
+#define SPILL_DEBUG 0
 
 struct regalloc_func_ctx
 {
 	const struct target *target;
 	function *function;
+	uniq_type_list *utl;
 };
 
 attr_nonnull((1, 2))
@@ -162,11 +170,61 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 	}
 }
 
-static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
+static interval *interval_to_spill(struct interval_array *intervals, dynarray *spiltvals)
 {
-	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
 	size_t idx;
-	bool impossible = false;
+	interval_array_iter(intervals, idx){
+		interval *iv = interval_array_ent(intervals, idx);
+
+		if((iv->val->flags & SPILL) == 0
+		&& dynarray_find(spiltvals, iv->val) == -1)
+		{
+			dynarray_add(spiltvals, val_retain(iv->val));
+			return iv;
+		}
+	}
+	assert(0 && "all spilt?");
+}
+
+static void spill_in_interval(
+		interval *inside,
+		struct interval_array *active_intervals,
+		dynarray *intervals,
+		function *fn,
+		block *block,
+		uniq_type_list *utl,
+		dynarray *spiltvals)
+{
+	struct lifetime *spilt_lt;
+	interval *tospill = interval_to_spill(active_intervals, spiltvals);
+	isn *at = tospill->start_isn;
+
+	if(SPILL_DEBUG){
+		fprintf(stderr, "%s: spilling at %s\n", val_str(tospill->val), isn_type_to_str(at->type));
+		size_t i;
+		dynarray_iter(spiltvals, i){
+			val *v = dynarray_ent(spiltvals, i);
+			fprintf(stderr, "  spiltvals[%zu] = %s\n", i, val_str(v));
+		}
+	}
+
+	spill(tospill->val, at, utl, fn, block);
+
+	/* update block lifetime map */
+	spilt_lt = dynmap_rm(val *, struct lifetime *, block_lifetime_map(block), tospill->val);
+	free(spilt_lt);
+}
+
+static bool lsra_space_calc(
+		dynarray *intervals,
+		dynarray *freeregs,
+		function *fn,
+		block *block,
+		uniq_type_list *utl,
+		dynarray *spiltvals)
+{
+	struct interval_array active_intervals = DYNARRAY_INIT;
+	size_t idx;
 
 	dynarray_iter(intervals, idx){
 		interval *i = dynarray_ent(intervals, idx);
@@ -187,14 +245,14 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			reduce_interval_from_interval(i, a);
 
 			if(!possible(a)){
-				fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(a->val));
-				impossible = true;
+				spill_in_interval(a, &active_intervals, intervals, fn, block, utl, spiltvals);
+				goto restart;
 			}
 		}
 
 		if(!possible(i)){
-			fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(i->val));
-			impossible = true;
+			spill_in_interval(i, &active_intervals, intervals, fn, block, utl, spiltvals);
+			goto restart;
 		}
 
 		interval_array_add(&active_intervals, i);
@@ -207,6 +265,7 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			interval *i = dynarray_ent(intervals, idx);
 			size_t regidx;
 			const char *sep = "";
+			struct location *loc = val_location(i->val);
 
 			fprintf(stderr, "%s: live={%u-%u} regspace=%u freeregs={",
 					val_str(i->val),
@@ -220,11 +279,14 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 					sep = ", ";
 				}
 			}
-			fprintf(stderr, "} / %zu\n", regidx);
+			fprintf(stderr, "} / %zu, constraint %#x\n", regidx, loc->constraint);
 		}
 	}
 
-	assert(!impossible && "impossible to satisfy regalloc constraints");
+	return true;
+restart:
+	interval_array_reset(&active_intervals);
+	return false;
 }
 
 static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *function)
@@ -244,7 +306,7 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 		free_regs_merge(&merged_regs, &i->freeregs, freeregs);
 
 		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-			lsra_stackalloc(i->loc, function, val_type(i->val));
+			stack_alloc(i->loc, function, val_type(i->val));
 		} else {
 			i->loc->where = NAME_IN_REG;
 
@@ -261,27 +323,41 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 	interval_array_reset(&active_intervals);
 }
 
-static void lsra_constrained(dynarray *intervals, const struct target *target, function *function)
+static void spiltvals_delete(dynarray *spiltvals)
 {
-	dynarray freeregs = DYNARRAY_INIT;
-
-	free_regs_create(&freeregs, target);
-
-	lsra_space_calc(intervals, &freeregs);
-	lsra_regalloc(intervals, &freeregs, function);
-
-	free_regs_delete(&freeregs);
+	size_t i;
+	dynarray_iter(spiltvals, i)
+		val_release(dynarray_ent(spiltvals, i));
+	dynarray_reset(spiltvals);
 }
 
 static void regalloc_block(block *b, void *vctx)
 {
 	struct regalloc_func_ctx *ctx = vctx;
 	dynarray intervals = DYNARRAY_INIT;
+	dynarray freeregs = DYNARRAY_INIT;
+	dynarray spiltvals = DYNARRAY_INIT;
+	dynmap *lifetime_map = block_lifetime_map(b);
 
-	intervals_create(&intervals, block_lifetime_map(b), block_first_isn(b), ctx->function, ctx->target);
+	for(;;){
+		bool ok;
 
-	lsra_constrained(&intervals, ctx->target, ctx->function);
+		intervals_create(&intervals, lifetime_map, block_first_isn(b), ctx->function, ctx->target);
+		free_regs_create(&freeregs, ctx->target);
 
+		ok = lsra_space_calc(&intervals, &freeregs, ctx->function, b, ctx->utl, &spiltvals);
+
+		if(ok)
+			break;
+
+		free_regs_delete(&freeregs);
+		intervals_delete(&intervals);
+	}
+
+	lsra_regalloc(&intervals, &freeregs, ctx->function);
+
+	spiltvals_delete(&spiltvals);
+	free_regs_delete(&freeregs);
 	intervals_delete(&intervals);
 }
 
@@ -290,8 +366,7 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 	struct regalloc_func_ctx ctx = { 0 };
 	ctx.target = target;
 	ctx.function = fn;
-
-	(void)unit;
+	ctx.utl = unit_uniqtypes(unit);
 
 	lifetime_fill_func(fn);
 

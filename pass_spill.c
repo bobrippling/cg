@@ -15,6 +15,7 @@
 #include "isn_struct.h"
 #include "target.h"
 #include "type.h"
+#include "spill.h"
 
 #include "pass_spill.h"
 #include "pass_regalloc.h"
@@ -48,48 +49,6 @@ static void spill_assign(val *spill, struct spill_ctx *ctx)
 static bool can_spill(val *v)
 {
 	return val_location(v)->where == NAME_NOWHERE;
-}
-
-static void spill(val *v, isn *use_isn, struct spill_ctx *ctx)
-{
-	type *const ty = val_type(v);
-	val *spill;
-	struct lifetime *spill_lt = xmalloc(sizeof *spill_lt);
-	struct lifetime *v_lt = dynmap_get(val *, struct lifetime *, block_lifetime_map(ctx->blk), v);
-	isn *alloca;
-	const char *name = val_frontend_name(v);
-
-	if(name){
-		spill = val_new_localf(
-				type_get_ptr(ctx->utl, ty),
-				true,
-				"spill.for.%s",
-				name);
-	}else{
-		spill = val_new_localf(
-				type_get_ptr(ctx->utl, ty),
-				true,
-				"spill.%d",
-				/*something unique:*/(int)v);
-	}
-
-	alloca = isn_alloca(spill);
-
-	spill_assign(spill, ctx);
-
-	memcpy(spill_lt, v_lt, sizeof(*spill_lt));
-	dynmap_set(val *, struct lifetime *, block_lifetime_map(ctx->blk), spill, spill_lt);
-
-	isn_insert_before(use_isn, alloca);
-
-	/* no reg overlap - we just setup the values, regalloc can deal with the rest */
-	if(!can_spill(v)){
-		fprintf(stderr, "val=%s location=%#x\n",
-				val_str(v), val_location(v)->where);
-	}
-	assert(can_spill(v) && "undoing previous spill/regalloc");
-
-	isn_replace_uses_with_load_store(v, spill, use_isn, ctx->fn);
 }
 
 static void isn_spill(val *v, isn *isn, void *vctx)
