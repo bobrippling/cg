@@ -86,13 +86,8 @@ static enum operand_category val_category(val *v, bool dereference)
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
 
-		case ABI_TEMP:
 		case UNDEF:
-			return OPERAND_REG;
-
-		case BACKEND_TEMP:
-		case ARGUMENT:
-		case FROM_ISN:
+		case LOCAL:
 			return OPERAND_REG;
 	}
 	assert(0);
@@ -110,10 +105,7 @@ static bool must_lea_val(val *v)
 
 		case UNDEF:
 		case LITERAL:
-		case ARGUMENT:
-		case FROM_ISN:
-		case BACKEND_TEMP:
-		case ABI_TEMP:
+		case LOCAL:
 			return false;
 	}
 }
@@ -208,20 +200,8 @@ static bool x86_can_infer_size(val *val)
 		case LABEL: return false;
 		case UNDEF: return false;
 
-		case ABI_TEMP:
-			loc = &val->u.abi;
-			break;
-
-		case ARGUMENT:
-			loc = &val->u.argument.loc;
-			break;
-
-		case FROM_ISN:
+		case LOCAL:
 			loc = &val->u.local.loc;
-			break;
-
-		case BACKEND_TEMP:
-			loc = &val->u.temp_loc;
 			break;
 	}
 
@@ -326,11 +306,8 @@ static const char *x86_val_str(
 			break;
 		}
 
-		case ARGUMENT: loc = &val->u.argument.loc; goto loc;
 		case ALLOCA: loc = &val->u.alloca.loc; goto loc;
-		case FROM_ISN: loc = &val->u.local.loc; goto loc;
-		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
-		case ABI_TEMP: loc = &val->u.abi; goto loc;
+		case LOCAL: loc = &val->u.local.loc; goto loc;
 loc:
 		{
 			return x86_name_str(
@@ -360,16 +337,16 @@ void x86_make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
 	val_temporary_init(stack_slot, ty);
 
-	stack_slot->u.temp_loc.where = NAME_SPILT;
-	stack_slot->u.temp_loc.u.off = off;
+	stack_slot->u.local.loc.where = NAME_SPILT;
+	stack_slot->u.local.loc.u.off = off;
 }
 
 void x86_make_reg(val *reg, int regidx, type *ty)
 {
 	val_temporary_init(reg, ty);
 
-	reg->u.temp_loc.where = NAME_IN_REG;
-	reg->u.temp_loc.u.reg = regidx; /* FIXME: regt indexing */
+	reg->u.local.loc.where = NAME_IN_REG;
+	reg->u.local.loc.u.reg = regidx; /* FIXME: regt indexing */
 }
 
 void x86_make_eax(val *out, type *ty)
@@ -848,22 +825,12 @@ static void emit_elem(isn *i, x86_octx *octx)
 			case LITERAL:
 				break;
 
-			case ARGUMENT:
-				loc = &lval->u.argument.loc;
-				goto loc;
 			case ALLOCA:
 				loc = &lval->u.alloca.loc;
 				goto loc;
-			case FROM_ISN:
+			case LOCAL:
 				loc = &lval->u.local.loc;
 				goto loc;
-			case BACKEND_TEMP:
-				loc = &lval->u.temp_loc;
-				goto loc;
-			case ABI_TEMP:
-				loc = &lval->u.abi;
-				goto loc;
-
 loc:
 				{
 					switch(loc->where){

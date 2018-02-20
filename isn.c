@@ -1129,11 +1129,8 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 		case GLOBAL:
 		case LABEL:
 			return;
-		case BACKEND_TEMP:
-		case ABI_TEMP:
 		case ALLOCA:
-		case ARGUMENT:
-		case FROM_ISN:
+		case LOCAL:
 			break;
 	}
 

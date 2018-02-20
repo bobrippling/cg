@@ -27,10 +27,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 	(void)isn;
 
 	switch(v->kind){
-		case ABI_TEMP:
-		case FROM_ISN:
-		case BACKEND_TEMP:
-		case ARGUMENT:
+		case LOCAL:
 			/* even though arguments technically exist
 			 * from the start, we count their lifetime
 			 * from their first use,

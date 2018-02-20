@@ -17,14 +17,11 @@ static void check_lea_result(val *v_result)
 		case UNDEF:
 		case LITERAL:
 		case GLOBAL:
-		case ARGUMENT:
 		case ALLOCA:
 		case LABEL:
-		case BACKEND_TEMP:
 			assert(0 && "invalid elem");
 
-		case FROM_ISN:
-		case ABI_TEMP:
+		case LOCAL:
 			break;
 	}
 

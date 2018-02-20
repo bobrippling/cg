@@ -85,10 +85,7 @@ bool val_is_mem(val *v)
 			return !!type_deref(val_type(v));
 
 		case LABEL:
-		case ARGUMENT:
-		case FROM_ISN:
-		case BACKEND_TEMP:
-		case ABI_TEMP:
+		case LOCAL:
 			break;
 	}
 
@@ -132,7 +129,7 @@ bool val_is_reg_specific(val *v, regt reg)
 
 bool val_is_abi(val *v)
 {
-	return v->kind == ABI_TEMP;
+	return !!(v->flags & ABI);
 }
 
 bool val_on_stack(val *v)
@@ -150,13 +147,8 @@ bool val_can_be_assigned_reg(val *v)
 		case ALLOCA:
 			return false;
 
-		case BACKEND_TEMP:
-			assert(0 && "BACKEND_TEMP unreachable at this stage");
-
 		case UNDEF:
-		case ARGUMENT:
-		case FROM_ISN:
-		case ABI_TEMP:
+		case LOCAL:
 			return true;
 	}
 }
@@ -187,24 +179,17 @@ unsigned val_hash(val *v)
 			break;
 		}
 
-		case ARGUMENT:
-			spel = v->u.argument.name;
+		case LOCAL:
+			spel = v->u.local.name;
+
+			if(v->flags & ABI){
+				/* safe to use here - set on init */
+				h ^= location_hash(&v->u.local.loc);
+			}
 			break;
 
 		case ALLOCA:
 			spel = v->u.alloca.name;
-			break;
-
-		case FROM_ISN:
-			spel = v->u.local.name;
-			break;
-
-		case BACKEND_TEMP:
-			break;
-
-		case ABI_TEMP:
-			/* safe to use here - set on init */
-			h ^= location_hash(&v->u.abi);
 			break;
 	}
 
@@ -220,11 +205,8 @@ const char *val_kind_to_str(enum val_kind k)
 		case LITERAL: return "LITERAL";
 		case GLOBAL: return "GLOBAL";
 		case LABEL: return "LABEL";
-		case ARGUMENT: return "ARGUMENT";
 		case ALLOCA: return "ALLOCA";
-		case FROM_ISN: return "FROM_ISN";
-		case BACKEND_TEMP: return "BACKEND_TEMP";
-		case ABI_TEMP: return "ABI_TEMP";
+		case LOCAL: return "LOCAL";
 		case UNDEF: return "UNDEF";
 	}
 
@@ -236,17 +218,8 @@ struct location *val_location(val *v)
 	switch(v->kind){
 		case ALLOCA:
 			return &v->u.alloca.loc;
-		case FROM_ISN:
+		case LOCAL:
 			return &v->u.local.loc;
-		case ARGUMENT:
-			return &v->u.argument.loc;
-
-		case BACKEND_TEMP:
-			return &v->u.temp_loc;
-
-		case ABI_TEMP:
-			return &v->u.abi;
-
 		case GLOBAL:
 		case LITERAL:
 		case LABEL:
@@ -271,11 +244,7 @@ enum operand_category val_operand_category(val *v, bool dereference)
 		case UNDEF:
 			return OPERAND_REG;
 
-		case ABI_TEMP:
-		case BACKEND_TEMP:
-		case ARGUMENT:
-		case FROM_ISN:
-		{
+		case LOCAL: {
 			struct location *loc = val_location(v);
 			switch(loc->where){
 				case NAME_NOWHERE:
@@ -407,20 +376,14 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 		case LABEL:
 			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.label.name);
 			break;
-		case ARGUMENT:
-			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.argument.name);
-			break;
-		case FROM_ISN:
-			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.local.name);
+		case LOCAL:
+			if(v->u.local.name)
+				xsnprintf(buf, VAL_STR_SZ, "$%s%s", v->u.local.name, v->flags & ABI ? "<abi>" : "");
+			else
+				xsnprintf(buf, VAL_STR_SZ, "$tmp.%p", v);
 			break;
 		case ALLOCA:
 			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.alloca.name);
-			break;
-		case BACKEND_TEMP:
-			xsnprintf(buf, VAL_STR_SZ, "<temp %p>", v);
-			break;
-		case ABI_TEMP:
-			xsnprintf(buf, VAL_STR_SZ, "<abi %p>", (void *)v);
 			break;
 		case UNDEF:
 			xsnprintf(buf, VAL_STR_SZ, "undef");
@@ -474,18 +437,11 @@ static void val_free(val *v)
 		case LABEL:
 			free(v->u.label.name);
 			break;
-		case ARGUMENT:
-			free(v->u.argument.name);
-			break;
-		case FROM_ISN:
+		case LOCAL:
 			free(v->u.local.name);
-			break;
-		case ABI_TEMP:
 			break;
 		case ALLOCA:
 			free(v->u.alloca.name);
-			break;
-		case BACKEND_TEMP:
 			break;
 		case UNDEF:
 			break;
@@ -555,10 +511,9 @@ val *val_new_undef(struct type *ty)
 
 val *val_new_argument(char *name, struct type *ty)
 {
-	val *p = val_new(ARGUMENT, ty);
-	p->u.argument.name = name;
-	location_init_reg(&p->u.argument.loc);
-	return p;
+	val *v = val_new_local(name, ty, false);
+	v->flags |= ARG;
+	return v;
 }
 
 val *val_new_global(struct uniq_type_list *us, struct global *glob)
@@ -570,7 +525,7 @@ val *val_new_global(struct uniq_type_list *us, struct global *glob)
 
 val *val_new_local(char *name, struct type *ty, bool alloca)
 {
-	val *p = val_new(alloca ? ALLOCA : FROM_ISN, ty);
+	val *p = val_new(alloca ? ALLOCA : LOCAL, ty);
 	p->u.local.name = name;
 	location_init_reg(&p->u.local.loc);
 
@@ -602,16 +557,13 @@ val *val_new_localf(struct type *ty, bool alloca, const char *fmt, ...)
 const char *val_frontend_name(val *v)
 {
 	switch(v->kind){
-		case FROM_ISN: return v->u.local.name;
+		case LOCAL: return v->u.local.name;
 		case ALLOCA: return v->u.alloca.name;
-		case ARGUMENT: return v->u.argument.name;
 		case UNDEF: return "undef";
 
 		case LITERAL:
 		case GLOBAL:
 		case LABEL:
-		case BACKEND_TEMP:
-		case ABI_TEMP:
 			break;
 	}
 	return NULL;
@@ -623,27 +575,29 @@ void val_temporary_init(val *vtmp, type *ty)
 
 	memset(vtmp, 0, sizeof *vtmp);
 
-	vtmp->kind = BACKEND_TEMP;
+	vtmp->kind = LOCAL;
 	vtmp->ty = ty;
 	vtmp->retains = 1;
-	location_init_reg(&vtmp->u.temp_loc);
+	location_init_reg(&vtmp->u.local.loc);
 }
 
 val *val_new_reg(regt reg, type *ty)
 {
-	val *p = val_new(ABI_TEMP, ty);
-	p->u.abi.where = NAME_IN_REG;
-	p->u.abi.u.reg = reg;
-	p->u.abi.constraint = CONSTRAINT_REG;
+	val *p = val_new(LOCAL, ty);
+	p->u.local.loc.where = NAME_IN_REG;
+	p->u.local.loc.u.reg = reg;
+	p->u.local.loc.constraint = CONSTRAINT_REG;
+	p->flags |= ABI;
 	return p;
 }
 
 val *val_new_stack(int stack_off, type *ty)
 {
-	val *p = val_new(ABI_TEMP, ty);
-	p->u.abi.where = NAME_SPILT;
-	p->u.abi.u.off = stack_off;
-	p->u.abi.constraint = CONSTRAINT_MEM;
+	val *p = val_new(LOCAL, ty);
+	p->u.local.loc.where = NAME_SPILT;
+	p->u.local.loc.u.off = stack_off;
+	p->u.local.loc.constraint = CONSTRAINT_MEM;
+	p->flags |= ABI;
 	return p;
 }
 
