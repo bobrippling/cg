@@ -987,33 +987,13 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
-	struct location *from_loc = val_location(from);
-	struct location *to_loc = val_location(to);
 
 	if(sz_from > sz_to){
 		/* trunc */
 		return x86_trunc(from, to, octx);
 	}
 
-	/* zext requires something in a reg */
-	if(from_loc && from_loc->where == NAME_IN_REG
-	&& to_loc   && to_loc->where == NAME_IN_REG)
-	{
-		x86_ext_reg(from, to, octx, sign, sz_from, sz_to);
-	}
-	else
-	{
-		val short_reg, long_reg;
-
-		x86_make_reg(&short_reg, SCRATCH_REG, val_type(from));
-		x86_make_reg(&long_reg,  SCRATCH_REG, val_type(to));
-
-		x86_mov(from, &short_reg, octx);
-
-		x86_ext_reg(&short_reg, &long_reg, octx, sign, sz_from, sz_to);
-
-		x86_mov(&long_reg, to, octx);
-	}
+	x86_ext_reg(from, to, octx, sign, sz_from, sz_to);
 }
 
 static void x86_cmp(

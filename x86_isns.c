@@ -138,7 +138,7 @@ const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_PTRSUB*/       { &op, NULL },
 	/*ISN_COPY*/         { &mov, NULL },
 	/*ISN_MEMCPY*/       { NULL, NULL },
-	/*ISN_EXT_TRUNC*/    { &movzx, NULL }, /* TODO */
+	/*ISN_EXT_TRUNC*/    { &movzx, NULL },
 	/*ISN_PTR2INT*/      { &mov, NULL },
 	/*ISN_INT2PTR*/      { &mov, NULL },
 	/*ISN_PTRCAST*/      { &mov, NULL },

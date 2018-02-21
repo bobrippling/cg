@@ -15,8 +15,6 @@ typedef struct x86_octx
 	bool scratch_reg_reserved;
 } x86_octx;
 
-#define SCRATCH_REG 0 /* eax - cannot be an argument register, or callee-save */
-
 /* ===--- value generation ---=== */
 void x86_make_stack_slot(struct val *stack_slot, unsigned off, struct type *ty);
 
