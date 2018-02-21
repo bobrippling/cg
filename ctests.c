@@ -514,6 +514,27 @@ int main(int argc, const char *argv[])
 			"int main() { A a = f(); return a.a == 1 && a.b == 2; }");
 
 	TEST(ir_ret,
+			"type $struct_mem = { i8, i8, i8 }"
+			"$f = $struct_mem(i8 $1, i8 $2, i8 $3)"
+			"{"
+			" $a = alloca $struct_mem"
+			""
+			" $p0 = elem $a, i8 0"
+			" store $p0, $1"
+			" $p1 = elem $a, i8 1"
+			" store $p1, $2"
+			" $p2 = elem $a, i8 2"
+			" store $p2, $3"
+			""
+			" ret $a"
+			"}",
+			1,
+			&target,
+			"typedef struct { long a, b, c; } A;"
+			"extern A f(long a, long b, long c);"
+			"int main() { A a = f(5, 9, 22); return a.a == 5 && a.b == 9 && a.c == 22; }");
+
+	TEST(ir_ret,
 			"type $tstruct = {i1,i2,i2,i8}"
 			"$f = i4($tstruct* $a, [i4 x 3]* $b){"
 			"  $a_p = elem $a, i8 2"
