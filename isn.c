@@ -1139,6 +1139,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 
 #define SHOW_LIFE 0
 #define SHOW_TYPE 0
+#define SHOW_CONSTRAINTS 0
 void isn_dump(isn *const head, block *blk, FILE *f)
 {
 	size_t idx = 0;
@@ -1156,7 +1157,7 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 		isn_dump1(i, f);
 	}
 
-	if(SHOW_LIFE || SHOW_TYPE){
+	if(SHOW_LIFE || SHOW_TYPE || SHOW_CONSTRAINTS){
 		dynmap *vals = dynmap_new(val *, 0, val_hash);
 
 		for(i = head; i; i = i->next)
@@ -1184,6 +1185,12 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 					fprintf(f, " no-ltime inter-block = %d",
 							v->live_across_blocks);
 				}
+			}
+
+			if(SHOW_CONSTRAINTS){
+				struct location *loc = val_location(v);
+				if(loc)
+					fprintf(f, " constraint %s", location_constraint_to_str(loc->constraint));
 			}
 
 			fputc('\n', f);
