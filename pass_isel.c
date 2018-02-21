@@ -304,8 +304,10 @@ static void gen_constraint_isns(
 	}
 
 	if(req->req & CONSTRAINT_MEM){
-		assert(!val_is_mem(v) && "should've been checked above");
-		constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
+		if(!val_can_be_assigned_mem(v)){
+			assert(!val_is_mem(v) && "should've been checked above");
+			constrain_to_mem(v, isn_to_constrain, postisn, utl, fn);
+		}
 		goto out;
 	}
 

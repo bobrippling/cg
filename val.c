@@ -153,6 +153,21 @@ bool val_can_be_assigned_reg(val *v)
 	}
 }
 
+bool val_can_be_assigned_mem(val *v)
+{
+	switch(v->kind){
+		case LITERAL:
+		case GLOBAL:
+		case LABEL:
+		case ALLOCA:
+			return false;
+
+		case UNDEF:
+		case LOCAL:
+			return true;
+	}
+}
+
 unsigned val_hash(val *v)
 {
 	unsigned h = v->kind;
