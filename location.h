@@ -37,6 +37,7 @@ struct location
 
 unsigned location_hash(struct location const *);
 bool location_eq(struct location const *, struct location const *);
+const char *location_constraint_to_str(enum location_constraint);
 
 #define location_is_reg(l) ((l) == NAME_IN_REG || (l) == NAME_IN_REG_ANY)
 #define location_fully_allocated(l) ((l)->where == NAME_IN_REG || (l)->where == NAME_SPILT)
