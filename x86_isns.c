@@ -5,18 +5,7 @@
 #include "x86.h"
 #include "x86_isel.h"
 
-#define op x86_isn_add
-#define call x86_isn_call
-#define cmp x86_isn_cmp
-#define imul3 x86_isn_imul
-#define lea x86_isn_lea
-#define mov x86_isn_mov
-#define movzx x86_isn_movzx
-#define set x86_isn_set
-#define test x86_isn_test
-#define static
-
-static const struct backend_isn mov = {
+const struct backend_isn x86_isn_mov = {
 	"mov",
 	{
 		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_REG },
@@ -30,7 +19,7 @@ static const struct backend_isn mov = {
 	true
 };
 
-static const struct backend_isn lea = {
+const struct backend_isn x86_isn_lea = {
 	"lea",
 	{
 		{
@@ -41,7 +30,7 @@ static const struct backend_isn lea = {
 	false
 };
 
-static const struct backend_isn movzx = {
+const struct backend_isn x86_isn_movzx = {
 	"mov", /* movzx */
 	{
 		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_REG },
@@ -51,7 +40,7 @@ static const struct backend_isn movzx = {
 	false
 };
 
-static const struct backend_isn op = {
+const struct backend_isn x86_isn_add = {
 	"add",
 	{
 		{ OPERAND_OUTPUT | OPERAND_INPUT | OPERAND_REG,               OPERAND_INPUT | OPERAND_REG          },
@@ -65,7 +54,7 @@ static const struct backend_isn op = {
 	true
 };
 
-static const struct backend_isn imul3 = {
+const struct backend_isn x86_isn_imul = {
 	"imul",
 	{
 		/* imul{bwl} imm[16|32], r/m[16|32], reg[16|32] */
@@ -75,7 +64,7 @@ static const struct backend_isn imul3 = {
 	true
 };
 
-static const struct backend_isn cmp = {
+const struct backend_isn x86_isn_cmp = {
 	"cmp",
 	{
 		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_IMPLICIT },
@@ -87,7 +76,7 @@ static const struct backend_isn cmp = {
 	true
 };
 
-static const struct backend_isn test = {
+const struct backend_isn x86_isn_test = {
 	"test",
 	{
 		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_INPUT | OPERAND_REG },
@@ -99,7 +88,7 @@ static const struct backend_isn test = {
 	true
 };
 
-static const struct backend_isn call = {
+const struct backend_isn x86_isn_call = {
 	"call",
 	{
 		{ OPERAND_INPUT | OPERAND_REG,          OPERAND_OUTPUT | OPERAND_IMPLICIT },
@@ -109,7 +98,7 @@ static const struct backend_isn call = {
 	false
 };
 
-static const struct backend_isn set = {
+const struct backend_isn x86_isn_set = {
 	"set",
 	{
 		{ OPERAND_OUTPUT | OPERAND_REG },
@@ -118,7 +107,7 @@ static const struct backend_isn set = {
 	false
 };
 
-static const struct backend_isn jmp = {
+const struct backend_isn x86_isn_jmp = {
 	"jmp",
 	{
 		{ OPERAND_INPUT | OPERAND_REG },
@@ -128,26 +117,26 @@ static const struct backend_isn jmp = {
 };
 
 const struct target_arch_isn backend_isns_x64[] = {
-	/*ISN_LOAD*/         { &mov, NULL },
-	/*ISN_STORE*/        { &mov, NULL },
+	/*ISN_LOAD*/         { &x86_isn_mov, NULL },
+	/*ISN_STORE*/        { &x86_isn_mov, NULL },
 	/*ISN_ALLOCA*/       { NULL, NULL },
-	/*ISN_OP*/           { &op, &x86_isel_op },
-	/*ISN_CMP*/          { &cmp, NULL },
-	/*ISN_ELEM*/         { &lea, &x86_isel_lea },
-	/*ISN_PTRADD*/       { &op, NULL },
-	/*ISN_PTRSUB*/       { &op, NULL },
-	/*ISN_COPY*/         { &mov, NULL },
+	/*ISN_OP*/           { &x86_isn_add, &x86_isel_op },
+	/*ISN_CMP*/          { &x86_isn_cmp, NULL },
+	/*ISN_ELEM*/         { &x86_isn_lea, &x86_isel_lea },
+	/*ISN_PTRADD*/       { &x86_isn_add, NULL },
+	/*ISN_PTRSUB*/       { &x86_isn_add, NULL },
+	/*ISN_COPY*/         { &x86_isn_mov, NULL },
 	/*ISN_MEMCPY*/       { NULL, NULL },
-	/*ISN_EXT_TRUNC*/    { &movzx, NULL },
-	/*ISN_PTR2INT*/      { &mov, NULL },
-	/*ISN_INT2PTR*/      { &mov, NULL },
-	/*ISN_PTRCAST*/      { &mov, NULL },
+	/*ISN_EXT_TRUNC*/    { &x86_isn_movzx, NULL },
+	/*ISN_PTR2INT*/      { &x86_isn_mov, NULL },
+	/*ISN_INT2PTR*/      { &x86_isn_mov, NULL },
+	/*ISN_PTRCAST*/      { &x86_isn_mov, NULL },
 	/*ISN_BR*/           { NULL, NULL },
 	/*ISN_JMP*/          { NULL, NULL },
-	/*ISN_JMP_COMPUTED*/ { &jmp, NULL },
+	/*ISN_JMP_COMPUTED*/ { &x86_isn_jmp, NULL },
 	/*ISN_LABEL*/        { NULL, NULL },
 	/*ISN_RET*/          { NULL, NULL },
-	/*ISN_CALL*/         { &call, NULL },
+	/*ISN_CALL*/         { &x86_isn_call, NULL },
 	/*ISN_ASM*/          { NULL, NULL },
 	/*ISN_IMPLICIT_USE_START*/ { NULL, NULL },
 	/*ISN_IMPLICIT_USE_END*/ { NULL, NULL },
