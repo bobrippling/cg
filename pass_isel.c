@@ -20,7 +20,7 @@
 #include "builtins.h"
 #include "location.h"
 
-#define ISEL_DEBUG 0
+#define ISEL_DEBUG 1
 
 /* FIXME: this is all x86(_64) specific */
 enum {
@@ -715,11 +715,15 @@ static void isel_generic(
 
 	bestmatch = find_isn_bestmatch(bi, fi, inputs, output, &conversions_required);
 
-	if(bestmatch && ISEL_DEBUG){
+	if(ISEL_DEBUG){
 		fprintf(stderr, "  bestmatch:\n");
-		for(i = 0; bestmatch->category[i]; i++)
-			fprintf(stderr, "    categories[%d] = %s\n",
-					i, operand_category_to_str(bestmatch->category[i]));
+		if(bestmatch){
+			for(i = 0; bestmatch->category[i]; i++)
+				fprintf(stderr, "    categories[%d] = %s\n",
+						i, operand_category_to_str(bestmatch->category[i]));
+		}else{
+			fprintf(stderr, "    no bestmatch!\n");
+		}
 
 		fprintf(stderr, "  for:\n");
 
