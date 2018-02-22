@@ -49,9 +49,16 @@ static void check_lea_result(val *v_result)
 
 bool x86_isel_lea(isn *i, const struct target *target)
 {
+	struct location *loc = val_location(i->u.elem.res);
+
 	assert(i->type == ISN_ELEM);
 
 	check_lea_result(i->u.elem.res);
+
+	assert(loc->where == NAME_NOWHERE || loc->where == NAME_IN_REG || loc->where == NAME_IN_REG_ANY);
+	assert(loc->constraint == CONSTRAINT_NONE);
+	loc->where = NAME_IN_REG_ANY;
+	loc->constraint = CONSTRAINT_REG;
 
 	return true;
 }
