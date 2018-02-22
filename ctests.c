@@ -749,6 +749,37 @@ int main(int argc, const char *argv[])
 			&target,
 			NULL);
 
+	TEST(ir_ret,
+			"$mem1 = i4 internal 1"
+			"$mem2 = i4 internal 2"
+			"$mem3 = i4 internal 3"
+			""
+			"$f = i4(i1 $arg) internal {"
+			"	$a = load $mem1"
+			"	$b = load $mem2"
+			"	$c = load $mem1"
+			"	$d = load $mem1"
+			"	$e = load $mem3"
+			""
+			"	$z = zext i4, $arg"
+			"	$inc = add i1 1, $arg"
+			"	$z2 = zext i4, $inc"
+			""
+			"	$t0 = add $a, $b"
+			"	$t1 = add $t0, $c"
+			"	$t2 = add $t1, $d"
+			"	$t3 = add $t2, $e"
+			""
+			"	ret $z"
+			"}"
+			"$entry = i4(){"
+			" $z = call $f(i1 33)"
+			" ret $z"
+			"}",
+			33,
+			&target,
+			NULL);
+
 	TEST(ir_emit,
 			"$f = i4(i4 $a){"
 			"  ret i4 3"
