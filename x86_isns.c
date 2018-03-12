@@ -120,7 +120,7 @@ const struct target_arch_isn backend_isns_x64[] = {
 	/*ISN_ALLOCA*/       { NULL, NULL },
 	/*ISN_OP*/           { &x86_isn_add, &x86_isel_op },
 	/*ISN_CMP*/          { &x86_isn_cmp, NULL },
-	/*ISN_ELEM*/         { &x86_isn_lea, NULL/*&x86_isel_lea*/ },
+	/*ISN_ELEM*/         { &x86_isn_lea, &x86_isel_lea },
 	/*ISN_PTRADD*/       { &x86_isn_add, NULL },
 	/*ISN_PTRSUB*/       { &x86_isn_add, NULL },
 	/*ISN_COPY*/         { &x86_isn_mov, NULL },

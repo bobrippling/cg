@@ -27,8 +27,8 @@
 #include "intervals.h"
 
 /* to get useful debugging info, sort what this emits */
-#define REGALLOC_DEBUG 0
-#define SPILL_DEBUG 0
+#define REGALLOC_DEBUG 1
+#define SPILL_DEBUG 1
 
 struct regalloc_func_ctx
 {
@@ -308,7 +308,11 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 		free_regs_merge(&merged_regs, &i->freeregs, freeregs);
 
 		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-			stack_alloc(i->loc, function, val_type(i->val));
+			if(i->loc->constraint & CONSTRAINT_REG){
+				
+			}else{
+				stack_alloc(i->loc, function, val_type(i->val));
+			}
 		} else {
 			i->loc->where = NAME_IN_REG;
 

@@ -6,6 +6,7 @@
 #include "val.h"
 #include "val_struct.h"
 #include "backend_isn.h"
+#include "type.h"
 
 #include "x86_isel.h"
 
@@ -60,7 +61,9 @@ bool x86_isel_lea(isn *i, const struct target *target)
 	loc->where = NAME_IN_REG_ANY;
 	loc->constraint = CONSTRAINT_REG;
 
-	return true;
+	/* if it's a struct, we've done everything we need to
+	 * arrays may be more flexible, and we can apply isel based on the backend_isn */
+	return type_is_struct(type_deref(val_type(i->u.elem.lval)));
 }
 
 bool x86_isel_op(isn *i, const struct target *target)

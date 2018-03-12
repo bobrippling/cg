@@ -786,6 +786,8 @@ static void isel_constrain_isn(
 	if(fi->type == ISN_MEMCPY)
 		return;
 
+	if(fi->type == ISN_ELEM)
+		fprintf(stderr, "\x1b[31mHI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\x1b[0;0m\n");
 	if(arch_isn->custom_isel && arch_isn->custom_isel(fi, target))
 		return;
 	bi = arch_isn->backend_isn;
