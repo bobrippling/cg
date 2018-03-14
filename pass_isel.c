@@ -776,10 +776,8 @@ static void isel_constrain_isn(
 
 	if(isn_is_noop(fi))
 		return;
-	if(fi->type == ISN_MEMCPY){
-		builtin_expand_memcpy(fi, block, fn, unit);
+	if(fi->type == ISN_MEMCPY)
 		return;
-	}
 
 	if(arch_isn->custom_isel && arch_isn->custom_isel(fi, target))
 		return;
