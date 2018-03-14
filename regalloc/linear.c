@@ -217,12 +217,17 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regall
 	isn *isn_iter;
 
 	for(isn_iter = block_first_isn(ctx->block); isn_iter; isn_iter = isn_next(isn_iter)){
-		if(isn_iter == next_interval->start_isn){
+		if(next_interval && isn_iter == next_interval->start_isn){
 			dynarray merged_regs;
+			interval *i = next_interval;
 
 			idx++;
-			assert(idx < dynarray_count(intervals));
-			next_interval = dynarray_ent(intervals, idx);
+			if(idx == dynarray_count(intervals)){
+				next_interval = NULL;
+			}else{
+				assert(idx < dynarray_count(intervals));
+				next_interval = dynarray_ent(intervals, idx);
+			}
 
 			expire_old_intervals(i, &active_intervals, freeregs);
 
