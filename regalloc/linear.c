@@ -35,6 +35,7 @@ struct regalloc_func_ctx
 	const struct target *target;
 	function *function;
 	uniq_type_list *utl;
+	block *block;
 };
 
 attr_nonnull((1, 2))
@@ -291,7 +292,7 @@ restart:
 	return false;
 }
 
-static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *function)
+static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regalloc_func_ctx *ctx)
 {
 	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
 	size_t idx;
@@ -309,10 +310,10 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 
 		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
 			if(i->loc->constraint & CONSTRAINT_REG || i->loc->where == NAME_IN_REG_ANY){
-				assert(0 && "already constrained to reg");
+				spill(i->val, i->start_isn, ctx->utl, ctx->function, ctx->block);
+				/* need to retry */
 			}else{
-				fprintf(stderr, "\x1b[31mSTACK ALLOC %s\n\x1b[0m", val_str(i->val));
-				stack_alloc(i->loc, function, val_type(i->val));
+				stack_alloc(i->loc, ctx->function, val_type(i->val));
 			}
 		} else {
 			i->loc->where = NAME_IN_REG;
@@ -346,6 +347,8 @@ static void regalloc_block(block *b, void *vctx)
 	dynarray spiltvals = DYNARRAY_INIT;
 	dynmap *lifetime_map = block_lifetime_map(b);
 
+	ctx->block = b;
+
 	for(;;){
 		bool ok;
 
@@ -361,11 +364,13 @@ static void regalloc_block(block *b, void *vctx)
 		intervals_delete(&intervals);
 	}
 
-	lsra_regalloc(&intervals, &freeregs, ctx->function);
+	lsra_regalloc(&intervals, &freeregs, ctx);
 
 	spiltvals_delete(&spiltvals);
 	free_regs_delete(&freeregs);
 	intervals_delete(&intervals);
+
+	ctx->block = NULL;
 }
 
 void pass_regalloc(function *fn, struct unit *unit, const struct target *target)

@@ -37,4 +37,3 @@ void spill(val *v, isn *before_isn, uniq_type_list *utl, struct function *fn, bl
 
 	isn_replace_uses_with_load_store_isn(before_isn, v, spill, blk);
 }
-
