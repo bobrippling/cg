@@ -66,35 +66,6 @@ static void expire_old_intervals(
 	}
 }
 
-static bool possible(interval *interval)
-{
-	enum location_constraint req = interval->loc->constraint;
-
-	if(req & CONSTRAINT_MEM)
-		return true;
-
-	if(req & CONSTRAINT_REG){
-		switch(interval->loc->where){
-			case NAME_IN_REG_ANY:
-				return interval->regspace > 0;
-			case NAME_IN_REG:
-			{
-				/* constraint is reg-specific */
-				regt reg = interval->loc->u.reg;
-				return dynarray_ent(&interval->freeregs, reg);
-			}
-			case NAME_NOWHERE:
-			case NAME_SPILT:
-				return true;
-		}
-	}
-
-	if(req == CONSTRAINT_NONE)
-		return true;
-
-	assert(0 && "unreachable");
-}
-
 static void reduce_interval_from_interval(interval *toreduce, interval *from)
 {
 	struct location *loc_constraint = from->loc;
@@ -171,58 +142,12 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 	}
 }
 
-static interval *interval_to_spill(struct interval_array *intervals, dynarray *spiltvals)
-{
-	size_t idx;
-	interval_array_iter(intervals, idx){
-		interval *iv = interval_array_ent(intervals, idx);
-
-		if((iv->val->flags & SPILL) == 0
-		&& dynarray_find(spiltvals, iv->val) == -1)
-		{
-			dynarray_add(spiltvals, val_retain(iv->val));
-			return iv;
-		}
-	}
-	assert(0 && "all spilt?");
-}
-
-static void spill_in_interval(
-		interval *inside,
-		struct interval_array *active_intervals,
-		dynarray *intervals,
-		function *fn,
-		block *block,
-		uniq_type_list *utl,
-		dynarray *spiltvals)
-{
-	struct lifetime *spilt_lt;
-	interval *tospill = interval_to_spill(active_intervals, spiltvals);
-	isn *at = tospill->start_isn;
-
-	if(SPILL_DEBUG){
-		fprintf(stderr, "%s: spilling at %s\n", val_str(tospill->val), isn_type_to_str(at->type));
-		size_t i;
-		dynarray_iter(spiltvals, i){
-			val *v = dynarray_ent(spiltvals, i);
-			fprintf(stderr, "  spiltvals[%zu] = %s\n", i, val_str(v));
-		}
-	}
-
-	spill(tospill->val, at, utl, fn, block);
-
-	/* update block lifetime map */
-	spilt_lt = dynmap_rm(val *, struct lifetime *, block_lifetime_map(block), tospill->val);
-	free(spilt_lt);
-}
-
-static bool lsra_space_calc(
+static void lsra_space_calc(
 		dynarray *intervals,
 		dynarray *freeregs,
 		function *fn,
 		block *block,
-		uniq_type_list *utl,
-		dynarray *spiltvals)
+		uniq_type_list *utl)
 {
 	struct interval_array active_intervals = DYNARRAY_INIT;
 	size_t idx;
@@ -245,16 +170,13 @@ static bool lsra_space_calc(
 			reduce_interval_from_interval(a, i);
 			reduce_interval_from_interval(i, a);
 
-			if(!possible(a)){
-				spill_in_interval(a, &active_intervals, intervals, fn, block, utl, spiltvals);
-				goto restart;
-			}
+			/* It may be impossible to have `a` in its desired location here.
+			 * Doesn't matter - our allocation will notice and correctly perform
+			 * spills later on
+			 */
 		}
 
-		if(!possible(i)){
-			spill_in_interval(i, &active_intervals, intervals, fn, block, utl, spiltvals);
-			goto restart;
-		}
+		/* same here, for `i` */
 
 		interval_array_add(&active_intervals, i);
 	}
@@ -285,58 +207,65 @@ static bool lsra_space_calc(
 			fprintf(stderr, "} / %zu, constraint %#x\n", regidx, loc->constraint);
 		}
 	}
-
-	return true;
-restart:
-	interval_array_reset(&active_intervals);
-	return false;
 }
 
 static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regalloc_func_ctx *ctx)
 {
 	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
-	size_t idx;
+	size_t idx = 0;
+	interval *next_interval = dynarray_ent(intervals, idx);
+	isn *isn_iter;
 
-	dynarray_iter(intervals, idx){
-		interval *i = dynarray_ent(intervals, idx);
-		dynarray merged_regs = DYNARRAY_INIT;
+	for(isn_iter = block_first_isn(ctx->block); isn_iter;){
+		if(next_interval && isn_iter == next_interval->start_isn){
+			dynarray merged_regs;
+			interval *i = next_interval;
 
-		expire_old_intervals(i, &active_intervals, freeregs);
-
-		if(location_fully_allocated(i->loc))
-			continue;
-
-		free_regs_merge(&merged_regs, &i->freeregs, freeregs);
-
-		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-			if(i->loc->constraint & CONSTRAINT_REG || i->loc->where == NAME_IN_REG_ANY){
-				spill(i->val, i->start_isn, ctx->utl, ctx->function, ctx->block);
-				/* need to retry */
+			idx++;
+			if(idx == dynarray_count(intervals)){
+				next_interval = NULL;
 			}else{
-				stack_alloc(i->loc, ctx->function, val_type(i->val));
+				assert(idx < dynarray_count(intervals));
+				next_interval = dynarray_ent(intervals, idx);
 			}
-		} else {
-			i->loc->where = NAME_IN_REG;
 
-			i->loc->u.reg = free_regs_any(&merged_regs);
-			assert(i->loc->u.reg != -1);
+			expire_old_intervals(i, &active_intervals, freeregs);
 
-			dynarray_ent(freeregs, i->loc->u.reg) = (void *)(intptr_t)false;
-			interval_array_add(&active_intervals, i);
+			if(location_fully_allocated(i->loc))
+				continue;
+
+			free_regs_merge(&merged_regs, &i->freeregs, freeregs);
+
+			if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
+				if(i->loc->constraint & CONSTRAINT_REG || i->loc->where == NAME_IN_REG_ANY){
+					/* This is the tough part - the instruction requires a register, but we have none.
+					 * We pick an unrelated (i.e. unused in in the 'current' isn) register, spill it,
+					 * and restore when it's next used.
+					 *
+					 * FIXME: this means a value is live in potentially different regs. Can no longer set
+					 * a register on a value's .u.local.loc.u.reg */
+					spill(i->val, i->start_isn, ctx->utl, ctx->function, ctx->block);
+				}else{
+					stack_alloc(i->loc, ctx->function, val_type(i->val));
+				}
+			} else {
+				i->loc->where = NAME_IN_REG;
+
+				i->loc->u.reg = free_regs_any(&merged_regs);
+				assert(i->loc->u.reg != -1);
+
+				dynarray_ent(freeregs, i->loc->u.reg) = (void *)(intptr_t)false;
+				interval_array_add(&active_intervals, i);
+			}
+
+			dynarray_reset(&merged_regs);
+		}else{
+			isn_iter = isn_next(isn_iter);
 		}
-
-		dynarray_reset(&merged_regs);
 	}
+	assert(next_interval == NULL);
 
 	interval_array_reset(&active_intervals);
-}
-
-static void spiltvals_delete(dynarray *spiltvals)
-{
-	size_t i;
-	dynarray_iter(spiltvals, i)
-		val_release(dynarray_ent(spiltvals, i));
-	dynarray_reset(spiltvals);
 }
 
 static void regalloc_block(block *b, void *vctx)
@@ -344,29 +273,17 @@ static void regalloc_block(block *b, void *vctx)
 	struct regalloc_func_ctx *ctx = vctx;
 	dynarray intervals = DYNARRAY_INIT;
 	dynarray freeregs = DYNARRAY_INIT;
-	dynarray spiltvals = DYNARRAY_INIT;
 	dynmap *lifetime_map = block_lifetime_map(b);
 
 	ctx->block = b;
 
-	for(;;){
-		bool ok;
+	intervals_create(&intervals, lifetime_map, block_first_isn(b), ctx->function, ctx->target);
+	free_regs_create(&freeregs, ctx->target);
 
-		intervals_create(&intervals, lifetime_map, block_first_isn(b), ctx->function, ctx->target);
-		free_regs_create(&freeregs, ctx->target);
-
-		ok = lsra_space_calc(&intervals, &freeregs, ctx->function, b, ctx->utl, &spiltvals);
-
-		if(ok)
-			break;
-
-		free_regs_delete(&freeregs);
-		intervals_delete(&intervals);
-	}
+	lsra_space_calc(&intervals, &freeregs, ctx->function, b, ctx->utl);
 
 	lsra_regalloc(&intervals, &freeregs, ctx);
 
-	spiltvals_delete(&spiltvals);
 	free_regs_delete(&freeregs);
 	intervals_delete(&intervals);
 
