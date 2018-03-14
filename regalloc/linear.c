@@ -229,33 +229,33 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regall
 				next_interval = dynarray_ent(intervals, idx);
 			}
 
-			expire_old_intervals(i, &active_intervals, freeregs);
+			expire_old_intervals(next_interval, &active_intervals, freeregs);
 
-			if(location_fully_allocated(i->loc))
+			if(location_fully_allocated(next_interval->loc))
 				continue;
 
-			free_regs_merge(&merged_regs, &i->freeregs, freeregs);
+			free_regs_merge(&merged_regs, &next_interval->freeregs, freeregs);
 
-			if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-				if(i->loc->constraint & CONSTRAINT_REG || i->loc->where == NAME_IN_REG_ANY){
+			if(next_interval->regspace == 0 || free_regs_available(&merged_regs) == 0){
+				if(next_interval->loc->constraint & CONSTRAINT_REG || next_interval->loc->where == NAME_IN_REG_ANY){
 					/* This is the tough part - the instruction requires a register, but we have none.
 					 * We pick an unrelated (i.e. unused in in the 'current' isn) register, spill it,
 					 * and restore when it's next used.
 					 *
 					 * FIXME: this means a value is live in potentially different regs. Can no longer set
 					 * a register on a value's .u.local.loc.u.reg */
-					spill(i->val, i->start_isn, ctx->utl, ctx->function, ctx->block);
+					spill(next_interval->val, next_interval->start_isn, ctx->utl, ctx->function, ctx->block);
 				}else{
-					stack_alloc(i->loc, ctx->function, val_type(i->val));
+					stack_alloc(next_interval->loc, ctx->function, val_type(next_interval->val));
 				}
 			} else {
-				i->loc->where = NAME_IN_REG;
+				next_interval->loc->where = NAME_IN_REG;
 
-				i->loc->u.reg = free_regs_any(&merged_regs);
-				assert(i->loc->u.reg != -1);
+				next_interval->loc->u.reg = free_regs_any(&merged_regs);
+				assert(next_interval->loc->u.reg != -1);
 
-				dynarray_ent(freeregs, i->loc->u.reg) = (void *)(intptr_t)false;
-				interval_array_add(&active_intervals, i);
+				dynarray_ent(freeregs, next_interval->loc->u.reg) = (void *)(intptr_t)false;
+				interval_array_add(&active_intervals, next_interval);
 			}
 
 			dynarray_reset(&merged_regs);
