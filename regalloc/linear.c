@@ -308,9 +308,10 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *fun
 		free_regs_merge(&merged_regs, &i->freeregs, freeregs);
 
 		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-			if(i->loc->constraint & CONSTRAINT_REG){
-				
+			if(i->loc->constraint & CONSTRAINT_REG || i->loc->where == NAME_IN_REG_ANY){
+				assert(0 && "already constrained to reg");
 			}else{
+				fprintf(stderr, "\x1b[31mSTACK ALLOC %s\n\x1b[0m", val_str(i->val));
 				stack_alloc(i->loc, function, val_type(i->val));
 			}
 		} else {
