@@ -216,7 +216,7 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regall
 	interval *next_interval = dynarray_ent(intervals, idx);
 	isn *isn_iter;
 
-	for(isn_iter = block_first_isn(ctx->block); isn_iter; isn_iter = isn_next(isn_iter)){
+	for(isn_iter = block_first_isn(ctx->block); isn_iter;){
 		if(next_interval && isn_iter == next_interval->start_isn){
 			dynarray merged_regs;
 			interval *i = next_interval;
@@ -259,8 +259,11 @@ static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regall
 			}
 
 			dynarray_reset(&merged_regs);
+		}else{
+			isn_iter = isn_next(isn_iter);
 		}
 	}
+	assert(next_interval == NULL);
 
 	interval_array_reset(&active_intervals);
 }
