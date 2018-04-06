@@ -37,6 +37,31 @@ static const unsigned ret_regs_x64[] = {
 	regt_make(3, 0)  /* rdx */
 };
 
+static const unsigned scratch_regs_armv7l[] = {
+	/* r0-r3 */
+	regt_make(0, 0),
+	regt_make(1, 0),
+	regt_make(2, 0),
+	regt_make(3, 0)
+};
+
+static const unsigned callee_saves_armv7l[] = {
+};
+
+static const unsigned arg_regs_armv7l[] = {
+	/* r0-r3 */
+	regt_make(0, 0),
+	regt_make(1, 0),
+	regt_make(2, 0),
+	regt_make(3, 0)
+};
+
+static const unsigned ret_regs_armv7l[] = {
+	/* r0-r1 */
+	regt_make(0, 0),
+	regt_make(1, 0)
+};
+
 #define ARCH_ABI(arch)             \
 	{                                \
 		{                              \
@@ -79,6 +104,12 @@ static const struct
 		{ { 8, 8 }, backend_isns_x64, true },
 		ARCH_ABI(x64),
 		x86_out
+	},
+	{
+		"armv7l",
+		{ 4, 4, backend_isns_armv7l, false },
+		ARCH_ABI(armv7l),
+		global_dump /* TODO */
 	}
 	/* TODO: i386 */
 };
