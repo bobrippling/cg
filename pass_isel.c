@@ -22,6 +22,11 @@
 
 #define ISEL_DEBUG 1
 
+struct isel_ctx
+{
+	dynarray *out;
+};
+
 /* FIXME: this is all x86(_64) specific */
 enum {
 	REG_EAX = 0,
@@ -56,62 +61,6 @@ static void populate_constraints(
 	/* div, shift, cmp
 	 */
 	switch(isn->type){
-		case ISN_OP:
-			switch(isn->u.op.op){
-				default:
-					return;
-				case op_sdiv:
-				case op_smod:
-				case op_udiv:
-				case op_umod:
-				{
-					const int is_div = (isn->u.op.op == op_sdiv || isn->u.op.op == op_udiv);
-					/* r = a/b
-					 * a -> %eax
-					 * b -> div operand, reg or mem
-					 * r -> (op == /) ? %eax : %edx
-					 */
-					req_lhs->req = CONSTRAINT_REG;
-					req_lhs->reg[0] = regt_make(REG_EAX, 0);
-					req_lhs->reg[1] = regt_make_invalid();
-					req_lhs->val = isn->u.op.lhs;
-
-					/* %edx s/zext is handled by isel_pad_cisc_isn() */
-
-					req_rhs->req = CONSTRAINT_REG | CONSTRAINT_MEM;
-					req_rhs->reg[0] = regt_make_invalid();
-					req_rhs->reg[1] = regt_make_invalid();
-					req_rhs->val = isn->u.op.rhs;
-
-					req_ret->req = CONSTRAINT_REG;
-					req_ret->reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
-					req_ret->reg[1] = regt_make_invalid();
-					req_ret->val = isn->u.op.res;
-					break;
-				}
-
-				case op_shiftl:
-				case op_shiftr_logic:
-				case op_shiftr_arith:
-				{
-					/* a << b
-					 * a: reg/mem
-					 * b: %cl or const
-					 */
-					req_lhs->req = CONSTRAINT_REG | CONSTRAINT_MEM;
-					req_lhs->reg[0] = regt_make_invalid();
-					req_lhs->reg[1] = regt_make_invalid();
-					req_lhs->val = isn->u.op.lhs;
-
-					req_rhs->req = CONSTRAINT_REG | CONSTRAINT_CONST;
-					req_rhs->reg[0] = regt_make(REG_ECX, 0);
-					req_rhs->reg[1] = regt_make_invalid();
-					req_rhs->val = isn->u.op.rhs;
-					req_rhs->size_req_primitive = i1;
-					break;
-				}
-			}
-			break;
 
 		default:
 			return;
@@ -320,102 +269,6 @@ out:
 		loc->constraint = req->req;
 }
 
-static void isel_reserve_cisc_isn(isn *isn, uniq_type_list *utl, function *fn)
-{
-	struct constraint req_lhs = { 0 }, req_rhs = { 0 }, req_ret = { 0 };
-
-	populate_constraints(isn, &req_lhs, &req_rhs, &req_ret);
-
-	if(req_lhs.val)
-		gen_constraint_isns(isn, &req_lhs, false, utl, fn);
-	if(req_rhs.val)
-		gen_constraint_isns(isn, &req_rhs, false, utl, fn);
-	if(req_ret.val)
-		gen_constraint_isns(isn, &req_ret, true, utl, fn);
-}
-
-static void isel_pad_cisc_isn(isn *i)
-{
-	if(i->type == ISN_OP){
-		bool is_signed = false;
-
-		switch(i->u.op.op){
-			case op_sdiv:
-			case op_smod:
-				is_signed = true;
-			case op_udiv:
-			case op_umod:
-			{
-				type *const opty = val_type(i->u.op.lhs);
-				unsigned const optysz = type_size(opty);
-				const regt reg_edx = regt_make(REG_EDX, 0);
-
-				if(optysz < 4)
-					break;
-
-				/* we'll be doing a
-				 * a    cltd - edx:eax
-				 * or a cqto - rdx:rax
-				 * or mov $0, %[er]dx (if unsigned)
-				 */
-
-				if(is_signed){
-					isn *edx_ext;
-					struct string str;
-
-					assert((optysz == 4 || optysz == 8) && "unreachable");
-
-					str.str = xstrdup(optysz == 4 ? "cltd" : "cqto");
-					str.len = strlen(str.str);
-
-					edx_ext = isn_asm(&str);
-
-					isn_add_reg_clobber(edx_ext, reg_edx);
-					isn_insert_before(i, edx_ext);
-				}else{
-					val *edx = val_new_reg(reg_edx, opty);
-					isn *use_start, *use_end;
-					isn *edx_set = isn_copy(edx, val_new_i(0, opty));
-
-					isn_implicit_use(&use_start, &use_end);
-
-					isn_implicit_use_add(use_start, edx);
-
-					isn_insert_before(i, edx_set);
-					isn_insert_before(i, use_start);
-					isn_insert_after(i, use_end);
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	}
-}
-
-static void isel_reserve_cisc_block(block *block, void *vctx)
-{
-	struct func_and_utl *ctx = vctx;
-	isn *i;
-
-	isns_flag(block_first_isn(block), true);
-
-	for(i = block_first_isn(block); i; i = i->next){
-		if(i->flag){
-			isel_reserve_cisc_isn(i, ctx->utl, ctx->fn);
-			isel_pad_cisc_isn(i);
-		}
-	}
-}
-
-static void isel_reserve_cisc(function *func, uniq_type_list *utl, function *fn)
-{
-	struct func_and_utl ctx;
-	ctx.fn = fn;
-	ctx.utl = utl;
-	function_onblocks(func, isel_reserve_cisc_block, &ctx);
-}
-
 static void isel_create_ptradd_isn(isn *i, type *steptype, val *rhs)
 {
 	const unsigned step = type_size(steptype);
@@ -456,53 +309,6 @@ static void isel_create_ptrsub_isn(isn *i)
 
 	div = isn_op(op_udiv, tmp, val_new_i(step, val_type(out)), out);
 	isn_insert_after(i, div);
-}
-
-static void isel_create_ptrmath_isn(isn *i)
-{
-	switch(i->type){
-		default:
-			return;
-		case ISN_PTRADD:
-			isel_create_ptradd_isn(
-					i,
-					type_deref(val_type(i->u.ptraddsub.lhs)),
-					i->u.ptraddsub.rhs);
-			break;
-		case ISN_PTRSUB:
-			isel_create_ptrsub_isn(i);
-			break;
-		case ISN_ELEM:
-		{
-			type *ty = val_type(i->u.elem.lval);
-
-			if(type_array_element(ty)){
-				isel_create_ptradd_isn(
-						i,
-						type_deref(val_type(i->u.elem.res)),
-						i->u.elem.index);
-			}else{
-				/* backend handles offsetting */
-			}
-			break;
-		}
-	}
-}
-
-static void isel_create_ptrmath_blk(block *block, void *vctx)
-{
-	isn *i;
-
-	(void)vctx;
-
-	for(i = block_first_isn(block); i; i = i->next){
-		isel_create_ptrmath_isn(i);
-	}
-}
-
-static void isel_create_ptrmath(function *fn)
-{
-	function_onblocks(fn, isel_create_ptrmath_blk, NULL);
 }
 
 static bool operand_type_convertible(
@@ -768,13 +574,14 @@ static void isel_generic(
 	}
 }
 
-static void isel_constrain_isn(
+static void isel_any(
 		isn *fi,
 		const struct target *target,
 		unit *unit,
 		function *fn,
 		block *block)
 {
+	/* TODO */
 	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
 
@@ -792,28 +599,188 @@ static void isel_constrain_isn(
 	isel_generic(fi, bi, unit_uniqtypes(unit), fn);
 }
 
-static void isel_constrain_isns_block(block *block, void *vctx)
+static void isel_op_x86_idiv_extend(isn *i)
 {
-	struct constrain_ctx *ctx = vctx;
-	isn *i;
+	bool is_signed = false;
 
-	isn *const first = block_first_isn(block);
+	switch(i->u.op.op){
+		case op_sdiv:
+		case op_smod:
+			is_signed = true;
+		case op_udiv:
+		case op_umod:
+		{
+			type *const opty = val_type(i->u.op.lhs);
+			unsigned const optysz = type_size(opty);
+			const regt reg_edx = regt_make(REG_EDX, 0);
 
-	isns_flag(first, true);
+			if(optysz < 4)
+				break;
 
-	for(i = block_first_isn(block); i; i = i->next){
-		if(i->flag)
-			isel_constrain_isn(i, ctx->target, ctx->unit, ctx->fn, block);
+			/* we'll be doing a
+				* a    cltd - edx:eax
+				* or a cqto - rdx:rax
+				* or mov $0, %[er]dx (if unsigned)
+				*/
+
+			if(is_signed){
+				isn *edx_ext;
+				struct string str;
+
+				assert((optysz == 4 || optysz == 8) && "unreachable");
+
+				str.str = xstrdup(optysz == 4 ? "cltd" : "cqto");
+				str.len = strlen(str.str);
+
+				edx_ext = isn_asm(&str);
+
+				isn_add_reg_clobber(edx_ext, reg_edx);
+				isn_insert_before(i, edx_ext);
+			}else{
+				val *edx = val_new_reg(reg_edx, opty);
+				isn *use_start, *use_end;
+				isn *edx_set = isn_copy(edx, val_new_i(0, opty));
+
+				isn_implicit_use(&use_start, &use_end);
+
+				isn_implicit_use_add(use_start, edx);
+
+				isn_insert_before(i, edx_set);
+				isn_insert_before(i, use_start);
+				isn_insert_after(i, use_end);
+			}
+			break;
+		}
+
+		default:
+			break;
 	}
 }
 
-static void isel_constrain_isns(function *fn, const struct target *target, unit *unit)
+static void isel_op_x86_idiv_shift_regs(isn *isn)
 {
-	struct constrain_ctx ctx;
-	ctx.unit = unit;
-	ctx.target = target;
-	ctx.fn = fn;
-	function_onblocks(fn, isel_constrain_isns_block, &ctx);
+	struct constraint req_lhs = { 0 }, req_rhs = { 0 }, req_ret = { 0 };
+
+	switch(i->u.op.op){
+		case op_udiv:
+		case op_sdiv:
+		case op_umod:
+		case op_smod:
+		{
+			const int is_div = (isn->u.op.op == op_sdiv || isn->u.op.op == op_udiv);
+			/* r = a/b
+			 * a -> %eax
+			 * b -> div operand, reg or mem
+			 * r -> (op == /) ? %eax : %edx
+			 */
+			struct machine_operand *idiv_operands[2];
+
+			idiv_operands[0] = isel_mov2reg_specific(isn->u.op.lhs, REG_EAX);
+			idiv_operands[1] = isel_mov2reg_or_mem(isn->u.op.rhs);
+
+			isel_emit("idiv", countof(idiv_operands), idiv_operands);
+
+			req_lhs.req = CONSTRAINT_REG;
+			req_lhs.reg[0] = regt_make(REG_EAX, 0);
+			req_lhs.reg[1] = regt_make_invalid();
+			req_lhs.val = isn->u.op.lhs;
+
+			/* %edx s/zext is handled by isel_pad_cisc_isn() */
+
+			req_rhs.req = CONSTRAINT_REG | CONSTRAINT_MEM;
+			req_rhs.reg[0] = regt_make_invalid();
+			req_rhs.reg[1] = regt_make_invalid();
+			req_rhs.val = isn->u.op.rhs;
+
+			req_ret.req = CONSTRAINT_REG;
+			req_ret.reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
+			req_ret.reg[1] = regt_make_invalid();
+			req_ret.val = isn->u.op.res;
+			break;
+		}
+
+		case op_shiftl:
+		case op_shiftr_logic:
+		case op_shiftr_arith:
+		{
+			/* a << b
+			 * a: reg/mem
+			 * b: %cl or const
+			 */
+			req_lhs.req = CONSTRAINT_REG | CONSTRAINT_MEM;
+			req_lhs.reg[0] = regt_make_invalid();
+			req_lhs.reg[1] = regt_make_invalid();
+			req_lhs.val = isn->u.op.lhs;
+
+			req_rhs.req = CONSTRAINT_REG | CONSTRAINT_CONST;
+			req_rhs.reg[0] = regt_make(REG_ECX, 0);
+			req_rhs.reg[1] = regt_make_invalid();
+			req_rhs.val = isn->u.op.rhs;
+			req_rhs.size_req_primitive = i1;
+			break;
+		}
+
+		default:
+			break;
+	}
+
+	if(req_lhs.val)
+		gen_constraint_isns(isn, &req_lhs, false, utl, fn);
+	if(req_rhs.val)
+		gen_constraint_isns(isn, &req_rhs, false, utl, fn);
+	if(req_ret.val)
+		gen_constraint_isns(isn, &req_ret, true, utl, fn);
+}
+
+static void isel_isn(isn *isn, struct isel_ctx *ctx)
+{
+	switch(i->type){
+		case ISN_PTRADD:
+			isel_create_ptradd_isn(
+					i,
+					type_deref(val_type(i->u.ptraddsub.lhs)),
+					i->u.ptraddsub.rhs);
+			break;
+		case ISN_PTRSUB:
+			isel_create_ptrsub_isn(i);
+			break;
+		case ISN_ELEM:
+		{
+			type *ty = val_type(i->u.elem.lval);
+
+			if(type_array_element(ty)){
+				isel_create_ptradd_isn(
+						i,
+						type_deref(val_type(i->u.elem.res)),
+						i->u.elem.index);
+			}else{
+				/* backend handles offsetting */
+			}
+			break;
+		}
+
+		case ISN_OP:
+		{
+			isel_op_x86_idiv_extend(isn);
+			isel_op_x86_idiv_shift_regs(isn);
+			break;
+		}
+	}
+
+	isel_any(isn, ctx);
+}
+
+static void isel_block(block *block, void *vctx)
+{
+	struct isel_ctx *ctx = vctx;
+	isn *const first = block_first_isn(block);
+	isn *i;
+
+	isns_flag(first, true);
+
+	for(i = block_first_isn(block); i; i = i->next)
+		if(i->flag)
+			isel_isn(i, ctx);
 }
 
 void pass_isel(function *fn, struct unit *unit, const struct target *target)
@@ -833,13 +800,12 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 	 * - recognise 1(%rdi, %rax, 4) ? (TODO)
 	 */
 	block *const entry = function_entry_block(fn, false);
+	struct isel_ctx ctx = { 0 };
 
 	if(!entry){
 		assert(function_is_forward_decl(fn));
 		return;
 	}
 
-	isel_create_ptrmath(fn);
-	isel_reserve_cisc(fn, unit_uniqtypes(unit), fn);
-	isel_constrain_isns(fn, target, unit);
+	function_onblocks(fn, isel_block, &ctx);
 }
