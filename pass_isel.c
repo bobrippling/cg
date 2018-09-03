@@ -678,11 +678,12 @@ static void isel_op_x86_idiv_shift_regs(isn *isn)
 			 * b -> div operand, reg or mem
 			 * r -> (op == /) ? %eax : %edx
 			 */
-			struct machine_operand idiv_operands[2];
+			struct machine_operand *idiv_operands[2];
 
-			isel_mov2reg_specific(isn->u.op.lhs, REG_EAX);
-			isel_mov2reg_or_mem(isn->u.op.rhs, &idiv_operand);
-			isel_emit("idiv", 1, &idiv_operand);
+			idiv_operands[0] = isel_mov2reg_specific(isn->u.op.lhs, REG_EAX);
+			idiv_operands[1] = isel_mov2reg_or_mem(isn->u.op.rhs);
+
+			isel_emit("idiv", countof(idiv_operands), idiv_operands);
 
 			req_lhs.req = CONSTRAINT_REG;
 			req_lhs.reg[0] = regt_make(REG_EAX, 0);
