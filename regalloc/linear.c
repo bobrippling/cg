@@ -267,10 +267,12 @@ static bool lsra_space_calc(
 			const char *sep = "";
 			struct location *loc = val_location(i->val);
 
-			fprintf(stderr, "%s: live={%u-%u} regspace=%u freeregs={",
+			fprintf(stderr, "%s: live={%u%s-%u%s} regspace=%u freeregs={",
 					val_str(i->val),
-					i->start,
-					i->end,
+					i->start / 2,
+					i->start % 2 ? "+" : "",
+					i->end / 2,
+					i->end % 2 ? "+" : "",
 					i->regspace);
 
 			dynarray_iter(&i->freeregs, regidx){
