@@ -126,9 +126,9 @@ static val *copy_val_to_reg(val *v, isn *isn_to_constrain)
 	reg = val_new_localf(
 			val_type(v),
 			false,
-			"reg.for.%s.%d",
+			"reg.for.%s.%u",
 			val_kind_to_str(v->kind),
-			(int)v);
+			(unsigned)v);
 
 	copy = isn_copy(reg, v);
 	isn_insert_before(isn_to_constrain, copy);
@@ -236,8 +236,8 @@ static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size
 	out = val_new_localf(
 			type_get_primitive(utl, size_req_primitive),
 			false,
-			"reg.for.size.%d",
-			(int)v);
+			"reg.for.size.%u",
+			(unsigned)v);
 
 	i = isn_trunc(v, out);
 	isn_insert_before(isn_to_constrain, i);

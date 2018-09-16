@@ -395,7 +395,7 @@ char *val_str_r(char buf[VAL_STR_SZ], val *v)
 			if(v->u.local.name)
 				xsnprintf(buf, VAL_STR_SZ, "$%s%s", v->u.local.name, v->flags & ABI ? "<abi>" : "");
 			else
-				xsnprintf(buf, VAL_STR_SZ, "$tmp.%p", v);
+				xsnprintf(buf, VAL_STR_SZ, "$anon_%p", v);
 			break;
 		case ALLOCA:
 			xsnprintf(buf, VAL_STR_SZ, "$%s", v->u.alloca.name);
