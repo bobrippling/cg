@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "mem.h"
 #include "dynmap.h"
@@ -22,6 +23,7 @@ isn *isn_new(enum isn_type t)
 	isn *isn = xcalloc(1, sizeof *isn);
 	isn->type = t;
 	isn->regusemarks = regset_marks_new();
+	isn->compiler_generated = true;
 	dynarray_init(&isn->clobbers);
 	return isn;
 }
@@ -883,6 +885,10 @@ void isn_on_live_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 
 static void isn_dump1(isn *i, FILE *f)
 {
+	const int colour = i->compiler_generated && isatty(fileno(f));
+	if(colour)
+		fprintf(f, "\x1b[1;30m");
+
 	switch(i->type){
 		case ISN_STORE:
 		{
@@ -1085,6 +1091,9 @@ static void isn_dump1(isn *i, FILE *f)
 			break;
 		}
 	}
+
+	if(colour)
+		fprintf(f, "\x1b[0;0m");
 }
 
 bool isn_call_getfnval_ret_args(
