@@ -906,7 +906,8 @@ loc:
 		}
 	}
 
-	assert(type_array_element(val_type(lval)));
+	fprintf(stderr, "val_type(lval) = %s\n", type_to_str(val_type(lval)));
+	assert(type_array_element(type_deref(val_type(lval))));
 	/* do the equivalent of x86_op/add,
 	 * but with more control over deref_[lr]hs and lea'ing of the lval */
 	x86_mov(lval, i->u.elem.res, octx);
