@@ -1,16 +1,45 @@
-type $struct_mem = { i8, i8, i8 }
+#type $struct_mem = { i8, i8, i8 }
+#
+#$callee_mem = $struct_mem(i8 $1, i8 $2, i8 $3)
+#{
+#	$a = alloca $struct_mem
+#
+#	$p0 = elem $a, i8 0
+#	$p1 = elem $a, i8 1
+#	$p2 = elem $a, i8 2
+#
+#	store $p0, $1
+#	store $p1, $2
+#	store $p2, $3
+#
+#	ret $a
+#}
 
-$callee_mem = $struct_mem(i8 $1, i8 $2, i8 $3)
+$f = i8(i8 $1, i8 $2, i8 $3)
 {
-	$a = alloca $struct_mem
+	$a = alloca [i8 x 30]
 
 	$p0 = elem $a, i8 0
 	$p1 = elem $a, i8 1
 	$p2 = elem $a, i8 2
+	$p3 = elem $a, i8 2
+	$p4 = elem $a, i8 2
+	$p5 = elem $a, i8 2
+	$p6 = elem $a, i8 2
+	$p7 = elem $a, i8 2
+	$p8 = elem $a, i8 2
+	$p9 = elem $a, i8 2
 
-	store $p0, $1
-	store $p1, $2
-	store $p2, $3
+	store $p0, i8 0
+	store $p1, i8 1
+	store $p2, i8 2
+	store $p3, i8 2
+	store $p4, i8 2
+	store $p5, i8 2
+	store $p6, i8 2
+	store $p7, i8 2
+	store $p8, i8 2
+	store $p9, i8 2
 
-	ret $a
+	ret i8 0
 }
