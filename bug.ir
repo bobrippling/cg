@@ -1,0 +1,16 @@
+type $struct_mem = { i8, i8, i8 }
+
+$callee_mem = $struct_mem(i8 $1, i8 $2, i8 $3)
+{
+	$a = alloca $struct_mem
+
+	$p0 = elem $a, i8 0
+	$p1 = elem $a, i8 1
+	$p2 = elem $a, i8 2
+
+	store $p0, $1
+	store $p1, $2
+	store $p2, $3
+
+	ret $a
+}
