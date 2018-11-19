@@ -1,0 +1,38 @@
+WIP: fixing lea
+	We can't lea into an arbitrary value (on x86), we must lea into a register.
+	(see in stret.ir codegen)
+	Add this constraint.
+
++++ shouldn't `assert(loc->where == NAME_NOWHERE || loc->where == NAME_IN_REG || loc->where == NAME_IN_REG_ANY);` not include NAME_IN_REG? Otherwise it's already been regalloced and we can't change it below, breaking the previous (abi? potentially) regallocation
+
+invetigation
+	Reintroduce lea constraint logic, which forces regalloc to run out of registers.
+	Alter regalloc so it checks if we are attempting to stack_alloc() a value that's constrained to be a register. If so... TBC
+	(also allow struct-lea through)
+
+bug.ir
+	self explanatory
+
+WIP proper guard
+	Fix the guard in regalloc, introduced in HEAD~2
+
+spill mucking about
+	Attempt to spill _a_ value in regalloc, and then retry regalloc (TBC)
+
+wip
+	Some nonsense about introducing an orthogonal isel output
+
+wip isel?
+	Two parts
+	a) some continuation of HEAD^, unrelated to b)
+	b) removal of the regalloc-retry logic, evicition (OOM-style) of a random value to satisfy the spill
+	-> this implies that values can no longer be assumed to live in a single register for their lifetime
+
+more wip
+	minor fixes to some iteration logic
+
+iterate over isns
+	more iteration fixing - handle multiple intervals starting on the same isn
+	(commit message should be "iterate over intervals")
+
+In short, the FIXME introduced in "wip isel?" is where to continue
