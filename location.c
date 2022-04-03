@@ -1,6 +1,9 @@
+#include <string.h>
 #include <assert.h>
 
 #include "location.h"
+
+#include "mem.h"
 
 unsigned location_hash(struct location const *loc)
 {
@@ -26,4 +29,21 @@ bool location_eq(struct location const *a, struct location const *b)
 
 	assert(false);
 	return false;
+}
+
+const char *location_constraint_to_str(enum location_constraint c)
+{
+	static char buf[sizeof "REG|CONST|MEM|" + 1];
+
+	xsnprintf(buf, sizeof(buf), "%s%s%s",
+			c & CONSTRAINT_REG ? "REG|" : "",
+			c & CONSTRAINT_CONST ? "CONST|" : "",
+			c & CONSTRAINT_MEM ? "MEM|" : "");
+
+	if(*buf)
+		buf[strlen(buf)-1] = '\0';
+	else
+		strcpy(buf, "NONE");
+
+	return buf;
 }

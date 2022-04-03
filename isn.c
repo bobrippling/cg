@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "mem.h"
 #include "dynmap.h"
@@ -22,6 +23,7 @@ isn *isn_new(enum isn_type t)
 	isn *isn = xcalloc(1, sizeof *isn);
 	isn->type = t;
 	isn->regusemarks = regset_marks_new();
+	isn->compiler_generated = true;
 	dynarray_init(&isn->clobbers);
 	return isn;
 }
@@ -883,6 +885,10 @@ void isn_on_live_vals(isn *current, void fn(val *, isn *, void *), void *ctx)
 
 static void isn_dump1(isn *i, FILE *f)
 {
+	const int colour = i->compiler_generated && isatty(fileno(f));
+	if(colour)
+		fprintf(f, "\x1b[1;30m");
+
 	switch(i->type){
 		case ISN_STORE:
 		{
@@ -1085,6 +1091,9 @@ static void isn_dump1(isn *i, FILE *f)
 			break;
 		}
 	}
+
+	if(colour)
+		fprintf(f, "\x1b[0;0m");
 }
 
 bool isn_call_getfnval_ret_args(
@@ -1129,11 +1138,8 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 		case GLOBAL:
 		case LABEL:
 			return;
-		case BACKEND_TEMP:
-		case ABI_TEMP:
 		case ALLOCA:
-		case ARGUMENT:
-		case FROM_ISN:
+		case LOCAL:
 			break;
 	}
 
@@ -1142,6 +1148,7 @@ static void get_named_val(val *v, isn *isn, void *ctx)
 
 #define SHOW_LIFE 0
 #define SHOW_TYPE 0
+#define SHOW_CONSTRAINTS 0
 void isn_dump(isn *const head, block *blk, FILE *f)
 {
 	size_t idx = 0;
@@ -1159,7 +1166,7 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 		isn_dump1(i, f);
 	}
 
-	if(SHOW_LIFE || SHOW_TYPE){
+	if(SHOW_LIFE || SHOW_TYPE || SHOW_CONSTRAINTS){
 		dynmap *vals = dynmap_new(val *, 0, val_hash);
 
 		for(i = head; i; i = i->next)
@@ -1187,6 +1194,12 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 					fprintf(f, " no-ltime inter-block = %d",
 							v->live_across_blocks);
 				}
+			}
+
+			if(SHOW_CONSTRAINTS){
+				struct location *loc = val_location(v);
+				if(loc)
+					fprintf(f, " constraint %s", location_constraint_to_str(loc->constraint));
 			}
 
 			fputc('\n', f);

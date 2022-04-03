@@ -141,6 +141,7 @@ struct isn
 
 	bool skip;
 	bool flag; /* for spills */
+	bool compiler_generated;
 };
 
 const char *isn_type_to_str(enum isn_type);

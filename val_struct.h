@@ -17,15 +17,13 @@ struct val
 		struct global *global;
 		struct
 		{
-			struct location loc;
-			char *name;
-		} local, alloca, argument;
-		struct
-		{
 			char *name;
 		} label;
-		struct location temp_loc;
-		struct location abi;
+		struct
+		{
+			struct location loc;
+			char *name;
+		} local, alloca;
 	} u;
 
 	void *pass_data;
@@ -38,13 +36,17 @@ struct val
 		LITERAL,  /* i4 5, { i4, [i1 x 2] }* 54 */
 		GLOBAL,   /* $x from global */
 		LABEL,    /* &&here */
-		ARGUMENT, /* $x from arg */
-		FROM_ISN, /* $y = load i4* 1 */
+		UNDEF,    /* undef */
 		ALLOCA,   /* $z = alloca i4 */
-		BACKEND_TEMP, /* mov $3, %eax ; ret */
-		ABI_TEMP, /* an actual register or stack slot */
-		UNDEF     /* undef */
+		LOCAL     /* $y = load i4* 1 */
 	} kind;
+
+	enum val_flags
+	{
+		ABI = 1 << 0,
+		ARG = 1 << 1,
+		SPILL = 1 << 2
+	} flags;
 };
 
 typedef struct sym sym;

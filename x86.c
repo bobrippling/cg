@@ -29,6 +29,7 @@
 
 #include "x86_call.h"
 #include "x86_isns.h"
+#include "x86_isn.h"
 
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 1
@@ -86,13 +87,8 @@ static enum operand_category val_category(val *v, bool dereference)
 		case ALLOCA:
 			return dereference ? OPERAND_MEM_CONTENTS : OPERAND_MEM_PTR;
 
-		case ABI_TEMP:
 		case UNDEF:
-			return OPERAND_REG;
-
-		case BACKEND_TEMP:
-		case ARGUMENT:
-		case FROM_ISN:
+		case LOCAL:
 			return OPERAND_REG;
 	}
 	assert(0);
@@ -110,10 +106,7 @@ static bool must_lea_val(val *v)
 
 		case UNDEF:
 		case LITERAL:
-		case ARGUMENT:
-		case FROM_ISN:
-		case BACKEND_TEMP:
-		case ABI_TEMP:
+		case LOCAL:
 			return false;
 	}
 }
@@ -208,20 +201,8 @@ static bool x86_can_infer_size(val *val)
 		case LABEL: return false;
 		case UNDEF: return false;
 
-		case ABI_TEMP:
-			loc = &val->u.abi;
-			break;
-
-		case ARGUMENT:
-			loc = &val->u.argument.loc;
-			break;
-
-		case FROM_ISN:
+		case LOCAL:
 			loc = &val->u.local.loc;
-			break;
-
-		case BACKEND_TEMP:
-			loc = &val->u.temp_loc;
 			break;
 	}
 
@@ -326,11 +307,8 @@ static const char *x86_val_str(
 			break;
 		}
 
-		case ARGUMENT: loc = &val->u.argument.loc; goto loc;
 		case ALLOCA: loc = &val->u.alloca.loc; goto loc;
-		case FROM_ISN: loc = &val->u.local.loc; goto loc;
-		case BACKEND_TEMP: loc = &val->u.temp_loc; goto loc;
-		case ABI_TEMP: loc = &val->u.abi; goto loc;
+		case LOCAL: loc = &val->u.local.loc; goto loc;
 loc:
 		{
 			return x86_name_str(
@@ -360,16 +338,16 @@ void x86_make_stack_slot(val *stack_slot, unsigned off, type *ty)
 {
 	val_temporary_init(stack_slot, ty);
 
-	stack_slot->u.temp_loc.where = NAME_SPILT;
-	stack_slot->u.temp_loc.u.off = off;
+	stack_slot->u.local.loc.where = NAME_SPILT;
+	stack_slot->u.local.loc.u.off = off;
 }
 
 void x86_make_reg(val *reg, int regidx, type *ty)
 {
 	val_temporary_init(reg, ty);
 
-	reg->u.temp_loc.where = NAME_IN_REG;
-	reg->u.temp_loc.u.reg = regidx; /* FIXME: regt indexing */
+	reg->u.local.loc.where = NAME_IN_REG;
+	reg->u.local.loc.u.reg = regidx; /* FIXME: regt indexing */
 }
 
 void x86_make_eax(val *out, type *ty)
@@ -747,7 +725,7 @@ static void x86_op(
 		enum op op, val *lhs, val *rhs,
 		val *res, x86_octx *octx)
 {
-	bool deref_lhs, deref_rhs;
+	bool deref_lhs, deref_rhs, deref_res;
 	struct backend_isn opisn;
 
 	if(op == op_mul && /* XXX: disabled */false){
@@ -810,6 +788,7 @@ static void x86_op(
 
 	deref_lhs = val_on_stack(lhs);
 	deref_rhs = val_on_stack(rhs);
+	deref_res = val_on_stack(res);
 
 	/* to match isel's selections (or more specifically, how we define backend
 	 * instructions in x86_isns.c as l=INPUT r=INPUT|OUTPUT), we must match the
@@ -820,7 +799,7 @@ static void x86_op(
 	 * changed corresponding isn definitions.
 	 */
 	x86_mov_deref(lhs, res, octx, deref_lhs, false);
-	emit_isn_binary(&opisn, octx, rhs, deref_rhs, res, deref_rhs, NULL);
+	emit_isn_binary(&opisn, octx, rhs, deref_rhs, res, deref_res, NULL);
 }
 
 static void emit_elem(isn *i, x86_octx *octx)
@@ -847,22 +826,12 @@ static void emit_elem(isn *i, x86_octx *octx)
 			case LITERAL:
 				break;
 
-			case ARGUMENT:
-				loc = &lval->u.argument.loc;
-				goto loc;
 			case ALLOCA:
 				loc = &lval->u.alloca.loc;
 				goto loc;
-			case FROM_ISN:
+			case LOCAL:
 				loc = &lval->u.local.loc;
 				goto loc;
-			case BACKEND_TEMP:
-				loc = &lval->u.temp_loc;
-				goto loc;
-			case ABI_TEMP:
-				loc = &lval->u.abi;
-				goto loc;
-
 loc:
 				{
 					switch(loc->where){
@@ -938,7 +907,7 @@ loc:
 		}
 	}
 
-	assert(type_array_element(val_type(lval)));
+	assert(type_array_element(type_deref(val_type(lval))));
 	/* do the equivalent of x86_op/add,
 	 * but with more control over deref_[lr]hs and lea'ing of the lval */
 	x86_mov(lval, i->u.elem.res, octx);
@@ -1019,33 +988,13 @@ static void x86_ext(val *from, val *to, const bool sign, x86_octx *octx)
 {
 	unsigned sz_from = val_size(from);
 	unsigned sz_to = val_size(to);
-	struct location *from_loc = val_location(from);
-	struct location *to_loc = val_location(to);
 
 	if(sz_from > sz_to){
 		/* trunc */
 		return x86_trunc(from, to, octx);
 	}
 
-	/* zext requires something in a reg */
-	if(from_loc && from_loc->where == NAME_IN_REG
-	&& to_loc   && to_loc->where == NAME_IN_REG)
-	{
-		x86_ext_reg(from, to, octx, sign, sz_from, sz_to);
-	}
-	else
-	{
-		val short_reg, long_reg;
-
-		x86_make_reg(&short_reg, SCRATCH_REG, val_type(from));
-		x86_make_reg(&long_reg,  SCRATCH_REG, val_type(to));
-
-		x86_mov(from, &short_reg, octx);
-
-		x86_ext_reg(&short_reg, &long_reg, octx, sign, sz_from, sz_to);
-
-		x86_mov(&long_reg, to, octx);
-	}
+	x86_ext_reg(from, to, octx, sign, sz_from, sz_to);
 }
 
 static void x86_cmp(
@@ -1056,13 +1005,11 @@ static void x86_cmp(
 	val *zero;
 	emit_isn_operand set_operand;
 
-	x86_comment(octx, "PRE-BINARY CMP");
 	emit_isn_binary(&x86_isn_cmp, octx,
 			/* x86 cmp operands are reversed */
 			rhs, false,
 			lhs, false,
 			NULL);
-	x86_comment(octx, "POST-BINARY CMP");
 
 	zero = val_retain(val_new_i(0, res->ty));
 

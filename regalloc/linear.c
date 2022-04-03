@@ -6,27 +6,36 @@
 #include "../dynmap.h"
 
 #include "../val.h"
+#include "../val_internal.h"
+#include "../val_struct.h"
 #include "../function.h"
 #include "../pass_regalloc.h"
 
 #include "interval.h"
 #include "interval_array.h"
 #include "../isn.h"
+#include "../isn_struct.h"
 #include "../lifetime.h"
 #include "../lifetime_struct.h"
 #include "../mem.h"
 #include "../target.h"
+#include "../isn_replace.h"
+#include "../type.h"
+#include "../spill.h"
+#include "../stack.h"
 #include "free_regs.h"
 #include "intervals.h"
-#include "stack.h"
 
 /* to get useful debugging info, sort what this emits */
-#define REGALLOC_DEBUG 0
+#define REGALLOC_DEBUG 1
+#define SPILL_DEBUG 1
 
 struct regalloc_func_ctx
 {
 	const struct target *target;
 	function *function;
+	uniq_type_list *utl;
+	block *block;
 };
 
 attr_nonnull((1, 2))
@@ -57,35 +66,6 @@ static void expire_old_intervals(
 	}
 }
 
-static bool possible(interval *interval)
-{
-	enum location_constraint req = interval->loc->constraint;
-
-	if(req & CONSTRAINT_MEM)
-		return true;
-
-	if(req & CONSTRAINT_REG){
-		switch(interval->loc->where){
-			case NAME_IN_REG_ANY:
-				return interval->regspace > 0;
-			case NAME_IN_REG:
-			{
-				/* constraint is reg-specific */
-				regt reg = interval->loc->u.reg;
-				return dynarray_ent(&interval->freeregs, reg);
-			}
-			case NAME_NOWHERE:
-			case NAME_SPILT:
-				return true;
-		}
-	}
-
-	if(req == CONSTRAINT_NONE)
-		return true;
-
-	assert(0 && "unreachable");
-}
-
 static void reduce_interval_from_interval(interval *toreduce, interval *from)
 {
 	struct location *loc_constraint = from->loc;
@@ -111,7 +91,8 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 			break;
 
 		case NAME_IN_REG_ANY:
-			toreduce->regspace--;
+			if(toreduce->regspace > 0)
+				toreduce->regspace--;
 
 			if(REGALLOC_DEBUG){
 				fprintf(stderr, "%s regspace--, because of %s\n",
@@ -161,11 +142,15 @@ static void reduce_interval_from_interval(interval *toreduce, interval *from)
 	}
 }
 
-static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
+static void lsra_space_calc(
+		dynarray *intervals,
+		dynarray *freeregs,
+		function *fn,
+		block *block,
+		uniq_type_list *utl)
 {
-	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
+	struct interval_array active_intervals = DYNARRAY_INIT;
 	size_t idx;
-	bool impossible = false;
 
 	dynarray_iter(intervals, idx){
 		interval *i = dynarray_ent(intervals, idx);
@@ -185,16 +170,13 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			reduce_interval_from_interval(a, i);
 			reduce_interval_from_interval(i, a);
 
-			if(!possible(a)){
-				fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(a->val));
-				impossible = true;
-			}
+			/* It may be impossible to have `a` in its desired location here.
+			 * Doesn't matter - our allocation will notice and correctly perform
+			 * spills later on
+			 */
 		}
 
-		if(!possible(i)){
-			fprintf(stderr, "%s: can't constrain, nowhere to go\n", val_str(i->val));
-			impossible = true;
-		}
+		/* same here, for `i` */
 
 		interval_array_add(&active_intervals, i);
 	}
@@ -206,11 +188,14 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 			interval *i = dynarray_ent(intervals, idx);
 			size_t regidx;
 			const char *sep = "";
+			struct location *loc = val_location(i->val);
 
-			fprintf(stderr, "%s: live={%u-%u} regspace=%u freeregs={",
+			fprintf(stderr, "%s: live={%u%s-%u%s} regspace=%u freeregs={",
 					val_str(i->val),
-					i->start,
-					i->end,
+					i->start / 2,
+					i->start % 2 ? "+" : "",
+					i->end / 2,
+					i->end % 2 ? "+" : "",
 					i->regspace);
 
 			dynarray_iter(&i->freeregs, regidx){
@@ -219,69 +204,90 @@ static void lsra_space_calc(dynarray *intervals, dynarray *freeregs)
 					sep = ", ";
 				}
 			}
-			fprintf(stderr, "} / %zu\n", regidx);
+			fprintf(stderr, "} / %zu, constraint %#x\n", regidx, loc->constraint);
 		}
 	}
-
-	assert(!impossible && "impossible to satisfy regalloc constraints");
 }
 
-static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, function *function)
+static void lsra_regalloc(dynarray *intervals, dynarray *freeregs, struct regalloc_func_ctx *ctx)
 {
 	struct interval_array active_intervals = INTERVAL_ARRAY_INIT;
-	size_t idx;
+	size_t idx = 0;
+	interval *next_interval = dynarray_ent(intervals, idx);
+	isn *isn_iter;
 
-	dynarray_iter(intervals, idx){
-		interval *i = dynarray_ent(intervals, idx);
-		dynarray merged_regs = DYNARRAY_INIT;
+	for(isn_iter = block_first_isn(ctx->block); isn_iter;){
+		if(next_interval && isn_iter == next_interval->start_isn){
+			dynarray merged_regs;
+			interval *i = next_interval;
 
-		expire_old_intervals(i, &active_intervals, freeregs);
+			idx++;
+			if(idx == dynarray_count(intervals)){
+				next_interval = NULL;
+			}else{
+				assert(idx < dynarray_count(intervals));
+				next_interval = dynarray_ent(intervals, idx);
+			}
 
-		if(location_fully_allocated(i->loc))
-			continue;
+			expire_old_intervals(next_interval, &active_intervals, freeregs);
 
-		free_regs_merge(&merged_regs, &i->freeregs, freeregs);
+			if(location_fully_allocated(next_interval->loc))
+				continue;
 
-		if(i->regspace == 0 || free_regs_available(&merged_regs) == 0){
-			lsra_stackalloc(i->loc, function, val_type(i->val));
-		} else {
-			i->loc->where = NAME_IN_REG;
+			free_regs_merge(&merged_regs, &next_interval->freeregs, freeregs);
 
-			i->loc->u.reg = free_regs_any(&merged_regs);
-			assert(i->loc->u.reg != -1);
+			if(next_interval->regspace == 0 || free_regs_available(&merged_regs) == 0){
+				if(next_interval->loc->constraint & CONSTRAINT_REG || next_interval->loc->where == NAME_IN_REG_ANY){
+					/* This is the tough part - the instruction requires a register, but we have none.
+					 * We pick an unrelated (i.e. unused in in the 'current' isn) register, spill it,
+					 * and restore when it's next used.
+					 *
+					 * FIXME: this means a value is live in potentially different regs. Can no longer set
+					 * a register on a value's .u.local.loc.u.reg */
+					spill(next_interval->val, next_interval->start_isn, ctx->utl, ctx->function, ctx->block);
+				}else{
+					stack_alloc(next_interval->loc, ctx->function, val_type(next_interval->val));
+				}
+			} else {
+				next_interval->loc->where = NAME_IN_REG;
 
-			dynarray_ent(freeregs, i->loc->u.reg) = (void *)(intptr_t)false;
-			interval_array_add(&active_intervals, i);
+				next_interval->loc->u.reg = free_regs_any(&merged_regs);
+				assert(next_interval->loc->u.reg != -1);
+
+				dynarray_ent(freeregs, next_interval->loc->u.reg) = (void *)(intptr_t)false;
+				interval_array_add(&active_intervals, next_interval);
+			}
+
+			dynarray_reset(&merged_regs);
+		}else{
+			isn_iter = isn_next(isn_iter);
 		}
-
-		dynarray_reset(&merged_regs);
 	}
+	assert(next_interval == NULL);
 
 	interval_array_reset(&active_intervals);
-}
-
-static void lsra_constrained(dynarray *intervals, const struct target *target, function *function)
-{
-	dynarray freeregs = DYNARRAY_INIT;
-
-	free_regs_create(&freeregs, target);
-
-	lsra_space_calc(intervals, &freeregs);
-	lsra_regalloc(intervals, &freeregs, function);
-
-	free_regs_delete(&freeregs);
 }
 
 static void regalloc_block(block *b, void *vctx)
 {
 	struct regalloc_func_ctx *ctx = vctx;
 	dynarray intervals = DYNARRAY_INIT;
+	dynarray freeregs = DYNARRAY_INIT;
+	dynmap *lifetime_map = block_lifetime_map(b);
 
-	intervals_create(&intervals, block_lifetime_map(b), block_first_isn(b), ctx->function, ctx->target);
+	ctx->block = b;
 
-	lsra_constrained(&intervals, ctx->target, ctx->function);
+	intervals_create(&intervals, lifetime_map, block_first_isn(b), ctx->function, ctx->target);
+	free_regs_create(&freeregs, ctx->target);
 
+	lsra_space_calc(&intervals, &freeregs, ctx->function, b, ctx->utl);
+
+	lsra_regalloc(&intervals, &freeregs, ctx);
+
+	free_regs_delete(&freeregs);
 	intervals_delete(&intervals);
+
+	ctx->block = NULL;
 }
 
 void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
@@ -289,8 +295,7 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 	struct regalloc_func_ctx ctx = { 0 };
 	ctx.target = target;
 	ctx.function = fn;
-
-	(void)unit;
+	ctx.utl = unit_uniqtypes(unit);
 
 	lifetime_fill_func(fn);
 

@@ -24,6 +24,7 @@
 
 #include "x86_internal.h"
 #include "x86_isns.h"
+#include "x86_isn.h"
 #include "x86_call.h"
 
 /* FIXME: hack */
@@ -82,13 +83,10 @@ static void maybe_gather_for_spill(val *v, isn *isn, void *vctx)
 		case LITERAL:
 		case GLOBAL:
 		case LABEL:
-		case BACKEND_TEMP:
 		case ALLOCA:
-		case ABI_TEMP:
 			return; /* no need to spill */
 
-		case FROM_ISN:
-		case ARGUMENT:
+		case LOCAL:
 			break;
 	}
 
@@ -125,13 +123,13 @@ static void spill_vals(x86_octx *octx, struct x86_spill_ctx *spillctx)
 
 		x86_mov_deref(v, &stack_slot, octx, false, true);
 
-		assert(stack_slot.kind == BACKEND_TEMP);
-		assert(stack_slot.u.temp_loc.where == NAME_SPILT);
+		assert(stack_slot.kind == LOCAL);
+		assert(stack_slot.u.local.loc.where == NAME_SPILT);
 		dynmap_set(
 				val *, uintptr_t,
 				spillctx->spill,
 				v,
-				(uintptr_t)stack_slot.u.temp_loc.u.off);
+				(uintptr_t)stack_slot.u.local.loc.u.off);
 	}
 }
 
@@ -141,10 +139,8 @@ static void find_args_in_isn(val *v, isn *isn, void *vctx)
 
 	(void)isn;
 
-	if(v->kind != ARGUMENT)
-		return;
-
-	gather_for_spill(v, spillctx);
+	if(v->flags & ARG)
+		gather_for_spill(v, spillctx);
 }
 
 static void find_args_in_block(block *blk, void *vctx)

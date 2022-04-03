@@ -14,8 +14,9 @@
 #include "../mem.h"
 #include "../type.h"
 #include "../val_struct.h"
+#include "../val_internal.h"
 #include "../target.h"
-#include "stack.h"
+#include "../stack.h"
 
 static int sort_interval_start(const void *va, const void *vb)
 {
@@ -67,11 +68,11 @@ void intervals_create(
 		assert(loc);
 
 		if(v->live_across_blocks){
-			lsra_stackalloc(loc, fn, val_type(v));
+			stack_alloc(loc, fn, val_type(v));
 			continue;
 		}
 		if(val_is_mem(v)){
-			lsra_stackalloc(loc, fn, type_deref(val_type(v)));
+			stack_alloc(loc, fn, type_deref(val_type(v)));
 			continue;
 		}
 
@@ -84,10 +85,12 @@ void intervals_create(
 		assert(start != -1 && end != -1);
 
 		interval = xmalloc(sizeof(*interval));
-		interval->val = v;
+		interval->val = val_retain(v);
 		interval->loc = loc;
 		interval->regspace = 0;
 		dynarray_init(&interval->freeregs);
+
+		interval->start_isn = lt->start;
 
 		/* multiply by two - we can then add one to prevent overlaps for output
 		 * values, as opposed to input values */
@@ -106,14 +109,18 @@ void intervals_create(
 	dynarray_sort(intervals, sort_interval_start);
 }
 
+void interval_delete(interval *iv)
+{
+	val_release(iv->val);
+	dynarray_reset(&iv->freeregs);
+	free(iv);
+}
+
 void intervals_delete(dynarray *intervals)
 {
 	size_t i;
 	dynarray_iter(intervals, i){
-		interval *iv = dynarray_ent(intervals, i);
-
-		dynarray_reset(&iv->freeregs);
-		free(iv);
+		interval_delete(dynarray_ent(intervals, i));
 	}
 	dynarray_reset(intervals);
 }

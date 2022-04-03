@@ -17,8 +17,13 @@ enum replace_mode
 	REPLACE_OUTPUTS = 1 << 1
 };
 
-void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *, struct function *);
+void isn_replace_uses_with_load_store(struct val *old, struct val *spill, struct function *);
+
+void isn_replace_uses_with_load_store_isn(
+		struct isn *current_isn,
+		struct val *old,
+		struct val *spill,
+		struct block *);
 
 void isn_replace_val_with_val(
 		struct isn *,

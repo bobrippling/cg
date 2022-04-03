@@ -1,19 +1,23 @@
 #ifndef X86_ISNS_H
 #define X86_ISNS_H
 
-#include <stdbool.h>
+#include "backend_isn.h" /* MAX_OPERANDS */
 
-typedef struct emit_isn_operand {
-	struct val *val;
-	bool dereference;
-} emit_isn_operand;
+struct x86_isn
+{
+	const char *mnemonic;
 
-struct x86_octx;
-struct backend_isn;
-void x86_emit_isn(
-		const struct backend_isn *isn, struct x86_octx *octx,
-		emit_isn_operand operands[],
-		unsigned operand_count,
-		const char *isn_suffix);
+	enum operand_category constraints[MAX_OPERANDS];
+};
+
+extern const struct backend_isn
+	x86_isn_mov,
+	x86_isn_lea,
+	x86_isn_add,
+	x86_isn_cmp,
+	x86_isn_imul,
+	x86_isn_movzx,
+	x86_isn_set,
+	x86_isn_test;
 
 #endif

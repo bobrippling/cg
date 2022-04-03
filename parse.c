@@ -13,8 +13,11 @@
 #include "dynmap.h"
 #include "val.h"
 #include "isn.h"
+#include "isn_struct.h"
 #include "type.h"
 #include "variable_struct.h"
+
+#define ISN(kind, ...) parsed_isn(isn_##kind(__VA_ARGS__))
 
 typedef struct {
 	tokeniser *tok;
@@ -86,6 +89,12 @@ static void sema_error(parse *p, const char *fmt, ...)
 static type *default_type(parse *p)
 {
 	return type_get_primitive(unit_uniqtypes(p->unit), i4);
+}
+
+static isn *parsed_isn(isn *i)
+{
+	i->compiler_generated = false;
+	return i;
 }
 
 static void create_names2vals(parse *p)
@@ -522,7 +531,7 @@ static void parse_call(parse *p, char *ident)
 
 	eat(p, "call paren", tok_rparen);
 
-	block_add_isn(p->entry, isn_call(into, target, &args));
+	block_add_isn(p->entry, ISN(call, into, target, &args));
 
 	dynarray_reset(&args);
 }
@@ -562,7 +571,7 @@ static void parse_ident(parse *p, char *spel)
 			}
 
 			lhs = uniq_val(p, spel, deref_ty, VAL_CREATE);
-			block_add_isn(p->entry, isn_load(lhs, rhs));
+			block_add_isn(p->entry, ISN(load, lhs, rhs));
 			break;
 		}
 
@@ -581,7 +590,7 @@ static void parse_ident(parse *p, char *spel)
 					type_get_ptr(unit_uniqtypes(p->unit), ty),
 					VAL_CREATE | VAL_ALLOCA);
 
-			block_add_isn(p->entry, isn_alloca(vlhs));
+			block_add_isn(p->entry, ISN(alloca, vlhs));
 			break;
 		}
 
@@ -639,7 +648,7 @@ static void parse_ident(parse *p, char *spel)
 
 			vlhs = uniq_val(p, spel, resolved_ty, VAL_CREATE);
 
-			block_add_isn(p->entry, isn_elem(index_into, idx, vlhs));
+			block_add_isn(p->entry, ISN(elem, index_into, idx, vlhs));
 			break;
 		}
 
@@ -743,7 +752,7 @@ static void parse_ident(parse *p, char *spel)
 						sz_to);
 			}
 
-			block_add_isn(p->entry, isn_make(from, vres));
+			block_add_isn(p->entry, ISN(make, from, vres));
 			break;
 		}
 
@@ -796,9 +805,9 @@ static void parse_ident(parse *p, char *spel)
 				vres = uniq_val(p, spel, opty, VAL_CREATE);
 
 				if(is_cmp)
-					block_add_isn(p->entry, isn_cmp(cmp, vlhs, vrhs, vres));
+					block_add_isn(p->entry, ISN(cmp, cmp, vlhs, vrhs, vres));
 				else
-					block_add_isn(p->entry, isn_op(op, vlhs, vrhs, vres));
+					block_add_isn(p->entry, ISN(op, op, vlhs, vrhs, vres));
 
 			}else if(tok == tok_ident){
 				char *from = token_last_ident(p->tok);
@@ -807,7 +816,7 @@ static void parse_ident(parse *p, char *spel)
 				rhs = uniq_val(p, from, NULL, 0);
 				lhs = uniq_val(p, spel, val_type(rhs), VAL_CREATE);
 
-				block_add_isn(p->entry, isn_copy(lhs, rhs));
+				block_add_isn(p->entry, ISN(copy, lhs, rhs));
 
 			}else{
 				parse_error(p, "expected load, alloca, elem or operator (got %s)",
@@ -843,7 +852,7 @@ static void parse_ident(parse *p, char *spel)
 			else if(tok == tok_int2ptr)
 				block_add_isn(p->entry, isn_int2ptr(input, vres));
 			else if(tok == tok_ptrcast)
-				block_add_isn(p->entry, isn_ptrcast(input, vres));
+				block_add_isn(p->entry, ISN(ptrcast, input, vres));
 			else
 				assert(0 && "unreachable");
 			break;
@@ -873,7 +882,7 @@ static void parse_ret(parse *p)
 				type_to_str_r(buf, sizeof buf, expected_ty));
 	}
 
-	block_add_isn(p->entry, isn_ret(v));
+	block_add_isn(p->entry, ISN(ret, v));
 	block_set_type(p->entry, BLK_EXIT);
 }
 
@@ -894,7 +903,7 @@ static void parse_store(parse *p)
 				type_to_str_r(buf, sizeof buf, val_type(lval)));
 	}
 
-	block_add_isn(p->entry, isn_store(rval, lval));
+	block_add_isn(p->entry, ISN(store, rval, lval));
 }
 
 static void enter_unreachable_code(parse *p)
@@ -925,7 +934,7 @@ static void parse_br(parse *p)
 	btrue = function_block_find(p->func, p->unit, ltrue, NULL);
 	bfalse = function_block_find(p->func, p->unit, lfalse, NULL);
 
-	block_add_isn(p->entry, isn_br(cond, btrue, bfalse));
+	block_add_isn(p->entry, ISN(br, cond, btrue, bfalse));
 	block_set_branch(p->entry, cond, btrue, bfalse);
 
 	enter_unreachable_code(p);
@@ -936,7 +945,7 @@ static void parse_jmp(parse *p)
 	if(token_accept(p->tok, tok_star)){
 		val *target = parse_val(p);
 
-		block_add_isn(p->entry, isn_jmp_computed(target));
+		block_add_isn(p->entry, ISN(jmp_computed, target));
 		block_set_type(p->entry, BLK_JMP_COMP);
 
 	}else{
@@ -948,7 +957,7 @@ static void parse_jmp(parse *p)
 
 		target = function_block_find(p->func, p->unit, lbl, NULL);
 
-		block_add_isn(p->entry, isn_jmp(target));
+		block_add_isn(p->entry, ISN(jmp, target));
 		block_set_jmp(p->entry, target);
 	}
 
@@ -966,7 +975,7 @@ static void parse_label(parse *p)
 	lbl = token_last_ident(p->tok);
 
 	blkval = uniq_val(p, xstrdup(lbl), blkty, VAL_CREATE | VAL_LABEL);
-	block_add_isn(p->entry, isn_label(blkval));
+	block_add_isn(p->entry, ISN(label, blkval));
 
 	function_block_find(p->func, p->unit, lbl, NULL);
 }
@@ -979,7 +988,7 @@ static void parse_asm(parse *p)
 
 	token_last_string(p->tok, &str);
 
-	block_add_isn(p->entry, isn_asm(&str));
+	block_add_isn(p->entry, ISN(asm, &str));
 }
 
 static void parse_memcpy(parse *p)
@@ -996,7 +1005,7 @@ static void parse_memcpy(parse *p)
 		sema_error(p, "memcpy type is not a pointer");
 	}
 
-	block_add_isn(p->entry, isn_memcpy(dest, src));
+	block_add_isn(p->entry, ISN(memcpy, dest, src));
 }
 
 static void parse_block(parse *p)
@@ -1039,7 +1048,7 @@ static void parse_block(parse *p)
 
 				if(p->entry && from && block_unknown_ending(from)){
 					/* current block is fall-thru */
-					block_add_isn(from, isn_jmp(p->entry));
+					block_add_isn(from, ISN(jmp, p->entry));
 					block_set_jmp(from, p->entry);
 				}
 			}else{

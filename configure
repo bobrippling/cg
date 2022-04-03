@@ -61,6 +61,7 @@ try_cflag -Wmissing-declarations
 
 try_cflag -Werror=incompatible-pointer-types
 try_cflag -Werror=int-conversion
+try_cflag -Werror=implicit-function-declaration
 
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-missing-braces

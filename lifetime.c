@@ -8,6 +8,7 @@
 #include "function.h"
 #include "function_struct.h"
 #include "val.h"
+#include "val_internal.h"
 #include "val_struct.h"
 #include "isn.h"
 #include "block_struct.h"
@@ -26,10 +27,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 	(void)isn;
 
 	switch(v->kind){
-		case ABI_TEMP:
-		case FROM_ISN:
-		case BACKEND_TEMP:
-		case ARGUMENT:
+		case LOCAL:
 			/* even though arguments technically exist
 			 * from the start, we count their lifetime
 			 * from their first use,
@@ -51,6 +49,7 @@ static void assign_lifetime(val *v, isn *isn, void *vctx)
 
 	if(!lt){
 		lt = xcalloc(1, sizeof *lt);
+		val_retain(v);
 		dynmap_set(val *, struct lifetime *, ctx->blk->val_lifetimes, v, lt);
 
 		lt->start = isn;

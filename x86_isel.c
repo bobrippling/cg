@@ -6,6 +6,7 @@
 #include "val.h"
 #include "val_struct.h"
 #include "backend_isn.h"
+#include "type.h"
 
 #include "x86_isel.h"
 
@@ -17,14 +18,11 @@ static void check_lea_result(val *v_result)
 		case UNDEF:
 		case LITERAL:
 		case GLOBAL:
-		case ARGUMENT:
 		case ALLOCA:
 		case LABEL:
-		case BACKEND_TEMP:
 			assert(0 && "invalid elem");
 
-		case FROM_ISN:
-		case ABI_TEMP:
+		case LOCAL:
 			break;
 	}
 
@@ -52,11 +50,20 @@ static void check_lea_result(val *v_result)
 
 bool x86_isel_lea(isn *i, const struct target *target)
 {
+	struct location *loc = val_location(i->u.elem.res);
+
 	assert(i->type == ISN_ELEM);
 
 	check_lea_result(i->u.elem.res);
 
-	return true;
+	assert(loc->where == NAME_NOWHERE || loc->where == NAME_IN_REG || loc->where == NAME_IN_REG_ANY);
+	assert(loc->constraint == CONSTRAINT_NONE);
+	loc->where = NAME_IN_REG_ANY;
+	loc->constraint = CONSTRAINT_REG;
+
+	/* if it's a struct, we've done everything we need to
+	 * arrays may be more flexible, and we can apply isel based on the backend_isn */
+	return type_is_struct(type_deref(val_type(i->u.elem.lval)));
 }
 
 bool x86_isel_op(isn *i, const struct target *target)

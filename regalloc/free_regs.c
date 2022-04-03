@@ -65,6 +65,8 @@ void free_regs_merge(dynarray *dest, dynarray *src1, dynarray *src2)
 	size_t i;
 	assert(dynarray_count(src1) == dynarray_count(src2));
 
+	dynarray_init(dest);
+
 	dynarray_iter(src1, i){
 		bool a = !!dynarray_ent(src1, i);
 		bool b = !!dynarray_ent(src2, i);

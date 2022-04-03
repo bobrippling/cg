@@ -10,6 +10,7 @@
 #include "isn_struct.h"
 #include "val.h"
 #include "val_internal.h"
+#include "val_struct.h"
 #include "type.h"
 #include "lifetime_struct.h"
 #include "location.h"
@@ -161,7 +162,9 @@ static void isn_replace_input_with_load(
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
-			tmp, lt);
+			val_retain(tmp), lt);
+
+	tmp->flags |= SPILL;
 
 	/* update the out param, which will end up replacing the value in at_isn */
 	*input = tmp;
@@ -188,7 +191,9 @@ static void isn_replace_output_with_store(
 	dynmap_set(
 			val *, struct lifetime *,
 			block_lifetime_map(ctx->block),
-			tmp, lt);
+			val_retain(tmp), lt);
+
+	tmp->flags |= SPILL;
 
 	/* update the out param, which will end up replacing the value in at_isn */
 	*output = tmp;
@@ -213,6 +218,9 @@ static void replace_args_with_load_store(
 
 		if(arg == old){
 			isn_replace_input_with_load(isn, old, spill, &arg, ctx);
+
+			assert(dynarray_ent(args, i) != arg);
+
 			val_release(dynarray_ent(args, i));
 			dynarray_ent(args, i) = val_retain(arg);
 		}
@@ -220,50 +228,58 @@ static void replace_args_with_load_store(
 }
 #endif
 
-static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
+void isn_replace_uses_with_load_store_isn(
+		isn *current_isn,
+		val *old,
+		val *spill,
+		block *block)
 {
-	struct replace_block_ctx *args = vctx;
 	struct replace_ctx ctx = { 0 };
-	isn *any_isn;
-	val *const old = args->old, *const spill = args->spill;
 
-	ctx.block = blk;
+	ctx.block = block;
 
-	for(any_isn = block_first_isn(blk);
-			any_isn;
-			any_isn = isn_next(any_isn), ctx.isn_count++)
-	{
+	for(; current_isn; current_isn = isn_next(current_isn), ctx.isn_count++){
 		val *inputs[2];
 		val *output;
 		bool writeback = false;
 
-		isn_vals_get(any_isn, inputs, &output);
+		isn_vals_get(current_isn, inputs, &output);
 
 		if(inputs[0] == old){
-			isn_replace_input_with_load(any_isn, old, spill, &inputs[0], &ctx);
+			isn_replace_input_with_load(current_isn, old, spill, &inputs[0], &ctx);
 			writeback = true;
 		}
 		if(inputs[1] == old){
-			isn_replace_input_with_load(any_isn, old, spill, &inputs[1], &ctx);
+			isn_replace_input_with_load(current_isn, old, spill, &inputs[1], &ctx);
 			writeback = true;
 		}
 		if(output == old){
-			isn_replace_output_with_store(any_isn, old, spill, &output, &ctx);
+			isn_replace_output_with_store(current_isn, old, spill, &output, &ctx);
 			writeback = true;
 		}
 
 		if(writeback)
-			isn_vals_set(any_isn, inputs, &output);
+			isn_vals_set(current_isn, inputs, &output);
 
 #if REPLACE_CALL_ARGUMENTS
 		/* not necessary - abi spills these into normal abi variables early on */
-		replace_args_with_load_store(any_isn, old, spill, &ctx);
+		replace_args_with_load_store(current_isn, old, spill, &ctx);
 #endif
 	}
 }
 
-void isn_replace_uses_with_load_store(
-		struct val *old, struct val *spill, struct isn *any_isn, function *fn)
+static void isn_replace_uses_with_load_store_block(block *blk, void *vctx)
+{
+	struct replace_block_ctx *args = vctx;
+
+	isn_replace_uses_with_load_store_isn(
+			block_first_isn(blk),
+			args->old,
+			args->spill,
+			blk);
+}
+
+void isn_replace_uses_with_load_store(struct val *old, struct val *spill, function *fn)
 {
 	struct replace_block_ctx ctx;
 
@@ -286,6 +302,7 @@ static void isn_replace_val_with_val_call(isn *isn, val *old, val *new)
 		val *arg = dynarray_ent(args, i);
 
 		if(arg == old){
+			assert(arg != new);
 			dynarray_ent(args, i) = val_retain(new);
 			val_release(old);
 		}
