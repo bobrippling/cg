@@ -24,6 +24,7 @@
 
 #include "x86_internal.h"
 #include "x86_isns.h"
+#include "x86_isn.h"
 #include "x86_call.h"
 
 /* FIXME: hack */

@@ -29,6 +29,7 @@
 
 #include "x86_call.h"
 #include "x86_isns.h"
+#include "x86_isn.h"
 
 #define OPERAND_SHOW_TYPE 0
 #define TEMPORARY_SHOW_MOVES 1

@@ -37,4 +37,12 @@ void x86_mov_deref(
 
 void x86_mov(struct val *from, struct val *to, x86_octx *octx);
 
+/* ===--- instruction emitting ---=== */
+#include "x86_isn.h"
+void x86_emit_isn(
+		const struct backend_isn *isn, x86_octx *octx,
+		emit_isn_operand operands[],
+		unsigned operand_count,
+		const char *x86_isn_suffix);
+
 #endif

@@ -24,7 +24,10 @@
 
 struct isel_ctx
 {
-	dynarray *out;
+	const struct target *target;
+	unit *unit;
+	function *fn;
+	block *block;
 };
 
 /* FIXME: this is all x86(_64) specific */
@@ -77,7 +80,7 @@ static val *copy_val_to_reg(val *v, isn *isn_to_constrain)
 			false,
 			"reg.for.%s.%u",
 			val_kind_to_str(v->kind),
-			(unsigned)v);
+			(unsigned)(long)v);
 
 	copy = isn_copy(reg, v);
 	isn_insert_before(isn_to_constrain, copy);
@@ -186,7 +189,7 @@ static void constrain_to_size(val **const out_v, isn *isn_to_constrain, int size
 			type_get_primitive(utl, size_req_primitive),
 			false,
 			"reg.for.size.%u",
-			(unsigned)v);
+			(unsigned)(long)v);
 
 	i = isn_trunc(v, out);
 	isn_insert_before(isn_to_constrain, i);
@@ -576,13 +579,10 @@ static void isel_generic(
 
 static void isel_any(
 		isn *fi,
-		const struct target *target,
-		unit *unit,
-		function *fn,
-		block *block)
+		struct isel_ctx *ctx)
 {
 	/* TODO */
-	const struct target_arch_isn *arch_isn = &target->arch.instructions[fi->type];
+	const struct target_arch_isn *arch_isn = &ctx->target->arch.instructions[fi->type];
 	const struct backend_isn *bi;
 
 	if(isn_is_noop(fi))
@@ -590,13 +590,13 @@ static void isel_any(
 	if(fi->type == ISN_MEMCPY)
 		return;
 
-	if(arch_isn->custom_isel && arch_isn->custom_isel(fi, target))
+	if(arch_isn->custom_isel && arch_isn->custom_isel(fi, ctx->target))
 		return;
 	bi = arch_isn->backend_isn;
 	if(!bi)
 		return;
 
-	isel_generic(fi, bi, unit_uniqtypes(unit), fn);
+	isel_generic(fi, bi, unit_uniqtypes(ctx->unit), ctx->fn);
 }
 
 static void isel_op_x86_idiv_extend(isn *i)
@@ -657,11 +657,11 @@ static void isel_op_x86_idiv_extend(isn *i)
 	}
 }
 
-static void isel_op_x86_idiv_shift_regs(isn *isn)
+static void isel_op_x86_idiv_shift_regs(isn *isn, uniq_type_list *utl, function *fn)
 {
 	struct constraint req_lhs = { 0 }, req_rhs = { 0 }, req_ret = { 0 };
 
-	switch(i->u.op.op){
+	switch(isn->u.op.op){
 		case op_udiv:
 		case op_sdiv:
 		case op_umod:
@@ -673,6 +673,7 @@ static void isel_op_x86_idiv_shift_regs(isn *isn)
 			 * b -> div operand, reg or mem
 			 * r -> (op == /) ? %eax : %edx
 			 */
+#ifdef TODO
 			struct machine_operand *idiv_operands[2];
 
 			idiv_operands[0] = isel_mov2reg_specific(isn->u.op.lhs, REG_EAX);
@@ -696,6 +697,7 @@ static void isel_op_x86_idiv_shift_regs(isn *isn)
 			req_ret.reg[0] = regt_make(is_div ? REG_EAX : REG_EDX, 0);
 			req_ret.reg[1] = regt_make_invalid();
 			req_ret.val = isn->u.op.res;
+#endif
 			break;
 		}
 
@@ -734,25 +736,25 @@ static void isel_op_x86_idiv_shift_regs(isn *isn)
 
 static void isel_isn(isn *isn, struct isel_ctx *ctx)
 {
-	switch(i->type){
+	switch(isn->type){
 		case ISN_PTRADD:
 			isel_create_ptradd_isn(
-					i,
-					type_deref(val_type(i->u.ptraddsub.lhs)),
-					i->u.ptraddsub.rhs);
+					isn,
+					type_deref(val_type(isn->u.ptraddsub.lhs)),
+					isn->u.ptraddsub.rhs);
 			break;
 		case ISN_PTRSUB:
-			isel_create_ptrsub_isn(i);
+			isel_create_ptrsub_isn(isn);
 			break;
 		case ISN_ELEM:
 		{
-			type *ty = val_type(i->u.elem.lval);
+			type *ty = val_type(isn->u.elem.lval);
 
 			if(type_array_element(ty)){
 				isel_create_ptradd_isn(
-						i,
-						type_deref(val_type(i->u.elem.res)),
-						i->u.elem.index);
+						isn,
+						type_deref(val_type(isn->u.elem.res)),
+						isn->u.elem.index);
 			}else{
 				/* backend handles offsetting */
 			}
@@ -762,9 +764,14 @@ static void isel_isn(isn *isn, struct isel_ctx *ctx)
 		case ISN_OP:
 		{
 			isel_op_x86_idiv_extend(isn);
-			isel_op_x86_idiv_shift_regs(isn);
+#ifdef TODO
+			isel_op_x86_idiv_shift_regs(isn, utl, fn);
+#endif
 			break;
 		}
+
+		default:
+			break;
 	}
 
 	isel_any(isn, ctx);
@@ -775,6 +782,8 @@ static void isel_block(block *block, void *vctx)
 	struct isel_ctx *ctx = vctx;
 	isn *const first = block_first_isn(block);
 	isn *i;
+
+	ctx->block = block;
 
 	isns_flag(first, true);
 
@@ -806,6 +815,11 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 		assert(function_is_forward_decl(fn));
 		return;
 	}
+
+	ctx.target = target;
+	ctx.unit = unit;
+	ctx.fn = fn;
+	ctx.block = NULL;
 
 	function_onblocks(fn, isel_block, &ctx);
 }
