@@ -1,9 +1,0 @@
-#ifndef STACK_H
-#define STACK_H
-
-struct type;
-struct function;
-
-void stack_alloc(struct location *loc, struct function *fn, struct type *ty);
-
-#endif
