@@ -1,3 +1,8 @@
+pub struct Pass;
+
+impl crate::pass::Pass for Pass {}
+
+/*
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
@@ -480,3 +485,4 @@ void pass_regalloc(function *fn, struct unit *unit, const struct target *target)
 
 	dynmap_free(alloc_markers);
 }
+*/

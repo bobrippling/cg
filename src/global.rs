@@ -1,3 +1,33 @@
+use std::io::Write;
+
+use crate::target::Target;
+
+pub struct Global
+{
+	/*
+	enum global_kind
+	{
+		GLOBAL_FUNC,
+		GLOBAL_VAR,
+		GLOBAL_TYPE
+	} kind;
+
+	union
+	{
+		function *fn;
+		variable_global *var;
+		struct type *ty;
+	} u;
+	*/
+}
+
+impl Global {
+	pub fn emit(&self, _target: &Target, _out: &dyn Write) {
+		todo!()
+	}
+}
+
+/*
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
@@ -120,3 +150,4 @@ bool global_is_forward_decl(global *g)
 			return true;
 	}
 }
+*/

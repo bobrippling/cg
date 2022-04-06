@@ -1,3 +1,8 @@
+pub struct Pass;
+
+impl crate::pass::Pass for Pass {}
+
+/*
 #include <assert.h>
 #include <stdio.h>
 
@@ -158,3 +163,4 @@ void pass_spill(function *fn, struct unit *unit, const struct target *target)
 	ctx.utl = unit_uniqtypes(unit);
 	function_onblocks(fn, blk_spill, &ctx);
 }
+*/

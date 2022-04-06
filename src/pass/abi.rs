@@ -1,3 +1,8 @@
+pub struct Pass;
+
+impl crate::pass::Pass for Pass {}
+
+/*
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -796,3 +801,4 @@ void pass_abi(function *fn, unit *unit, const struct target *target)
 
 	convert_outgoing_args_and_call(target, unit_uniqtypes(unit), fn);
 }
+*/

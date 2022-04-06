@@ -1,3 +1,8 @@
+pub struct Pass;
+
+impl crate::pass::Pass for Pass {}
+
+/*
 #include <assert.h>
 
 #include "pass_expand_builtins.h"
@@ -46,3 +51,4 @@ void pass_expand_builtins(function *fn, struct unit *unit, const struct target *
 	ctx.unit = unit;
 	function_onblocks(fn, expand_block, &ctx);
 }
+*/

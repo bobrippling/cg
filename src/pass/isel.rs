@@ -1,3 +1,8 @@
+pub struct Pass;
+
+impl crate::pass::Pass for Pass {}
+
+/*
 #include <stdio.h>
 #include <assert.h>
 
@@ -823,3 +828,4 @@ void pass_isel(function *fn, struct unit *unit, const struct target *target)
 
 	function_onblocks(fn, isel_block, &ctx);
 }
+*/

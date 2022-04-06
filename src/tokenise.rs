@@ -1,3 +1,23 @@
+use std::io::Read;
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum Token {
+    Eof,
+}
+
+pub struct Tokeniser;
+
+impl Tokeniser {
+    pub fn new(_f: &dyn Read, _fname: &str) -> Self {
+	todo!()
+    }
+
+    pub fn next(&mut self) -> Token {
+	todo!()
+    }
+}
+
+/*
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -15,28 +35,28 @@
 
 struct tokeniser
 {
-	FILE *f;
-	char *str;
+    FILE *f;
+    char *str;
 
-	int eof;
-	int ferr;
-	unsigned lno;
+    int eof;
+    int ferr;
+    unsigned lno;
 
-	const char *fname;
-	char *line, *linep, *last_tok_start;
-	enum token unget;
+    const char *fname;
+    char *line, *linep, *last_tok_start;
+    enum token unget;
 
-	char *lastident;
-	char *lastbareword;
-	char *laststring;
-	size_t laststringlen;
-	long lastint;
+    char *lastident;
+    char *lastbareword;
+    char *laststring;
+    size_t laststringlen;
+    long lastint;
 };
 
 static const struct
 {
-	const char *kw;
-	enum token tok;
+    const char *kw;
+    enum token tok;
 } keywords[] = {
 #define KW(t) { #t, tok_ ## t },
 #define OTHER(t)
@@ -44,7 +64,7 @@ static const struct
 #define PUNCTSTR(t, s)
 #define OP KW
 #define CMP KW
-	TOKENS
+    TOKENS
 #undef CMP
 #undef OP
 #undef PUNCTSTR
@@ -55,239 +75,239 @@ static const struct
 
 tokeniser *token_init(FILE *f, const char *fname)
 {
-	tokeniser *t = xmalloc(sizeof *t);
-	memset(t, 0, sizeof *t);
+    tokeniser *t = xmalloc(sizeof *t);
+    memset(t, 0, sizeof *t);
 
-	t->f = f;
-	t->fname = fname;
-	t->unget = TOKEN_PEEK_EMPTY;
+    t->f = f;
+    t->fname = fname;
+    t->unget = TOKEN_PEEK_EMPTY;
 
-	return t;
+    return t;
 }
 
 tokeniser *token_init_str(const char *str)
 {
-	tokeniser *t = xmalloc(sizeof *t);
-	memset(t, 0, sizeof *t);
+    tokeniser *t = xmalloc(sizeof *t);
+    memset(t, 0, sizeof *t);
 
-	t->unget = TOKEN_PEEK_EMPTY;
-	t->str = xstrdup(str);
+    t->unget = TOKEN_PEEK_EMPTY;
+    t->str = xstrdup(str);
 
-	return t;
+    return t;
 }
 
 static char *token_read_line(tokeniser *t)
 {
-	char *r;
+    char *r;
 
-	if(t->f){
-		char *l = read_line(t->f);
-		if(errno){
-			fprintf(stderr, "read: %s\n", strerror(errno));
-			free(l);
-			l = NULL;
-		}
-		return l;
-	}
+    if(t->f){
+        char *l = read_line(t->f);
+        if(errno){
+            fprintf(stderr, "read: %s\n", strerror(errno));
+            free(l);
+            l = NULL;
+        }
+        return l;
+    }
 
-	r = t->str;
-	t->str = NULL;
-	return r;
+    r = t->str;
+    t->str = NULL;
+    return r;
 }
 
 static void token_free_line(tokeniser *t)
 {
-	assert(!t->line || !t->str);
-	free(t->line);
-	t->line = NULL;
+    assert(!t->line || !t->str);
+    free(t->line);
+    t->line = NULL;
 }
 
 void token_fin(tokeniser *t, int *const err)
 {
-	if(t->f){
-		int failed = fclose(t->f);
+    if(t->f){
+        int failed = fclose(t->f);
 
-		if(!t->ferr && failed)
-			t->ferr = errno;
-	}
+        if(!t->ferr && failed)
+            t->ferr = errno;
+    }
 
-	*err = t->ferr;
+    *err = t->ferr;
 
-	free(t->lastident);
-	free(t->lastbareword);
-	free(t->str);
-	free(t);
+    free(t->lastident);
+    free(t->lastbareword);
+    free(t->str);
+    free(t);
 }
 
 const char *token_to_str(enum token t)
 {
-	switch(t){
+    switch(t){
 #define OTHER(x) case tok_ ## x: return #x;
 #define KW(x) case tok_ ## x: return "tok_" #x;
 #define PUNCT(x, p) case tok_ ## x: return #p;
 #define PUNCTSTR(x, p) case tok_ ## x: return p;
 #define OP OTHER
 #define CMP OTHER
-		TOKENS
+        TOKENS
 #undef OTHER
 #undef KW
 #undef PUNCTSTR
 #undef PUNCT
 #undef OP
 #undef CMP
-	}
-	assert(0);
+    }
+    assert(0);
 }
 
 static int consume_word(tokeniser *t, const char *word)
 {
-	if(!str_beginswith(t->linep, word))
-		return 0;
+    if(!str_beginswith(t->linep, word))
+        return 0;
 
-	if(isident(t->linep[strlen(word)], 1))
-		return 0;
+    if(isident(t->linep[strlen(word)], 1))
+        return 0;
 
-	t->linep += strlen(word);
-	return 1;
+    t->linep += strlen(word);
+    return 1;
 }
 
 static char *tokenise_ident(tokeniser *t)
 {
-	char *end;
-	char *buf;
-	size_t len;
+    char *end;
+    char *buf;
+    size_t len;
 
-	for(end = t->linep + 1; isident(*end, 1); end++);
+    for(end = t->linep + 1; isident(*end, 1); end++);
 
-	len = end - t->linep + 1;
-	buf = xmalloc(len);
-	memcpy(buf, t->linep, len - 1);
-	buf[len - 1] = '\0';
+    len = end - t->linep + 1;
+    buf = xmalloc(len);
+    memcpy(buf, t->linep, len - 1);
+    buf[len - 1] = '\0';
 
-	t->linep += len - 1;
+    t->linep += len - 1;
 
-	return buf;
+    return buf;
 }
 
 static bool octdigit(int ch)
 {
-	return '0' <= ch && ch < '8';
+    return '0' <= ch && ch < '8';
 }
 
 static enum token parse_string(tokeniser *t)
 {
-	char *const start = t->linep;
-	char *str;
-	char *end, *p;
-	size_t stri, len;
+    char *const start = t->linep;
+    char *str;
+    char *end, *p;
+    size_t stri, len;
 
-	++t->linep;
+    ++t->linep;
 
-	/* string is alphanumeric or /\\[0-7]{1,3}/ */
-	end = strchr(t->linep, '"');
-	if(!end){
-		fprintf(stderr, "no terminating '\"' in '%s'\n", start);
-		return tok_unknown;
-	}
+    /* string is alphanumeric or /\\[0-7]{1,3}/ */
+    end = strchr(t->linep, '"');
+    if(!end){
+        fprintf(stderr, "no terminating '\"' in '%s'\n", start);
+        return tok_unknown;
+    }
 
-	len = end - t->linep;
-	str = xmalloc(len);
-	t->linep = end + 1;
+    len = end - t->linep;
+    str = xmalloc(len);
+    t->linep = end + 1;
 
-	for(p = start + 1, stri = 0; p != end; p++, stri++){
-		if(*p == '\\'){
-			const size_t n_to_end = end - (p + 1);
-			char buf[4];
-			int octval;
-			size_t i;
+    for(p = start + 1, stri = 0; p != end; p++, stri++){
+        if(*p == '\\'){
+            const size_t n_to_end = end - (p + 1);
+            char buf[4];
+            int octval;
+            size_t i;
 
-			if(n_to_end == 0){
-				fprintf(stderr, "empty escape sequence in '%s'\n", start);
-				goto bad_esc;
-			}
+            if(n_to_end == 0){
+                fprintf(stderr, "empty escape sequence in '%s'\n", start);
+                goto bad_esc;
+            }
 
-			for(i = 0; i < MIN(n_to_end, 3); i++){
-				buf[i] = p[i + 1];
+            for(i = 0; i < MIN(n_to_end, 3); i++){
+                buf[i] = p[i + 1];
 
-				if(!octdigit(buf[i])){
-					buf[i] = '\0';
-					break;
-				}
-			}
-			buf[i] = '\0';
+                if(!octdigit(buf[i])){
+                    buf[i] = '\0';
+                    break;
+                }
+            }
+            buf[i] = '\0';
 
-			if(sscanf(buf, "%o", &octval) != 1){
-				fprintf(stderr, "bad escape sequence in '%s'\n", start);
-				goto bad_esc;
-			}
+            if(sscanf(buf, "%o", &octval) != 1){
+                fprintf(stderr, "bad escape sequence in '%s'\n", start);
+                goto bad_esc;
+            }
 
-			str[stri] = octval;
-			p += strlen(buf);
-		}else{
-			str[stri] = *p;
-		}
-	}
+            str[stri] = octval;
+            p += strlen(buf);
+        }else{
+            str[stri] = *p;
+        }
+    }
 
-	free(t->laststring);
-	t->laststring = str;
-	t->laststringlen = stri;
-	assert(stri <= len);
+    free(t->laststring);
+    t->laststring = str;
+    t->laststringlen = stri;
+    assert(stri <= len);
 
-	return tok_string;
+    return tok_string;
 bad_esc:
-	free(str);
-	return tok_unknown;
+    free(str);
+    return tok_unknown;
 }
 
 enum token token_next(tokeniser *t)
 {
-	size_t i;
+    size_t i;
 
-	t->last_tok_start = NULL;
+    t->last_tok_start = NULL;
 
-	if(t->unget != TOKEN_PEEK_EMPTY){
-		enum token unget = t->unget;
-		t->unget = TOKEN_PEEK_EMPTY;
-		return unget;
-	}
+    if(t->unget != TOKEN_PEEK_EMPTY){
+        enum token unget = t->unget;
+        t->unget = TOKEN_PEEK_EMPTY;
+        return unget;
+    }
 
-	if(t->eof)
-		return tok_eof;
+    if(t->eof)
+        return tok_eof;
 
-	t->linep = skipspace(t->linep);
+    t->linep = skipspace(t->linep);
 
-	while(!t->linep || !*t->linep){
-		token_free_line(t);
-		t->line = t->linep = token_read_line(t);
+    while(!t->linep || !*t->linep){
+        token_free_line(t);
+        t->line = t->linep = token_read_line(t);
 
-		if(!t->line){
-			t->eof = 1;
+        if(!t->line){
+            t->eof = 1;
 
-			if(t->f && ferror(t->f))
-				t->ferr = errno;
+            if(t->f && ferror(t->f))
+                t->ferr = errno;
 
-			/* file closed later */
-			return tok_eof;
-		}
+            /* file closed later */
+            return tok_eof;
+        }
 
-		t->lno++;
-		t->linep = skipspace(t->linep);
-	}
+        t->lno++;
+        t->linep = skipspace(t->linep);
+    }
 
-	t->last_tok_start = t->linep;
+    t->last_tok_start = t->linep;
 
-	/* check for long string before single chars - handle '...' before '.' */
+    /* check for long string before single chars - handle '...' before '.' */
 #define OTHER(x)
 #define KW(x)
 #define PUNCT(t, c)
 #define PUNCTSTR(tok, s) \
-	if(!strncmp(t->linep, s, strlen(s))){ \
-		t->linep += strlen(s); \
-		return tok_ ## tok; \
-	}
+    if(!strncmp(t->linep, s, strlen(s))){ \
+        t->linep += strlen(s); \
+        return tok_ ## tok; \
+    }
 #define OP(x)
 #define CMP(x)
-	TOKENS
+    TOKENS
 #undef OTHER
 #undef KW
 #undef PUNCTSTR
@@ -295,14 +315,14 @@ enum token token_next(tokeniser *t)
 #undef OP
 #undef CMP
 
-	switch(*t->linep++){
+    switch(*t->linep++){
 #define OTHER(x)
 #define KW(x)
 #define PUNCT(t, c) case c: return tok_ ## t;
 #define PUNCTSTR(t, c)
 #define OP(x)
 #define CMP(x)
-		TOKENS
+        TOKENS
 #undef OTHER
 #undef KW
 #undef PUNCTSTR
@@ -310,86 +330,86 @@ enum token token_next(tokeniser *t)
 #undef OP
 #undef CMP
 
-		case '#':
-			for(; *t->linep && *t->linep != '\n'; t->linep++);
-			return token_next(t);
+        case '#':
+            for(; *t->linep && *t->linep != '\n'; t->linep++);
+            return token_next(t);
 
-		default:
-			t->linep--;
-	}
+        default:
+            t->linep--;
+    }
 
-	if(isdigit(*t->linep) || (*t->linep == '-' && isdigit(t->linep[1]))){
-		char *end;
-		t->lastint = strtol(t->linep, &end, 0);
-		assert(end > t->linep);
-		t->linep = end;
-		return tok_int;
-	}
+    if(isdigit(*t->linep) || (*t->linep == '-' && isdigit(t->linep[1]))){
+        char *end;
+        t->lastint = strtol(t->linep, &end, 0);
+        assert(end > t->linep);
+        t->linep = end;
+        return tok_int;
+    }
 
-	for(i = 0; i < countof(keywords); i++)
-		if(consume_word(t, keywords[i].kw))
-			return keywords[i].tok;
+    for(i = 0; i < countof(keywords); i++)
+        if(consume_word(t, keywords[i].kw))
+            return keywords[i].tok;
 
-	if(*t->linep == '$' && isident(t->linep[1], 1)){
-		++t->linep;
+    if(*t->linep == '$' && isident(t->linep[1], 1)){
+        ++t->linep;
 
-		free(t->lastident);
-		t->lastident = tokenise_ident(t);
+        free(t->lastident);
+        t->lastident = tokenise_ident(t);
 
-		return tok_ident;
-	}
+        return tok_ident;
+    }
 
-	if(isident(*t->linep, 0)){
-		free(t->lastbareword);
-		t->lastbareword = tokenise_ident(t);
-		return tok_bareword;
-	}
+    if(isident(*t->linep, 0)){
+        free(t->lastbareword);
+        t->lastbareword = tokenise_ident(t);
+        return tok_bareword;
+    }
 
-	if(*t->linep == '"'){
-		return parse_string(t);
-	}
+    if(*t->linep == '"'){
+        return parse_string(t);
+    }
 
-	fprintf(stderr, "unknown token '%s'\n", t->linep);
+    fprintf(stderr, "unknown token '%s'\n", t->linep);
 
-	return tok_unknown;
+    return tok_unknown;
 }
 
 enum token token_peek(tokeniser *t)
 {
-	if(t->unget == TOKEN_PEEK_EMPTY)
-		t->unget = token_next(t);
+    if(t->unget == TOKEN_PEEK_EMPTY)
+        t->unget = token_next(t);
 
-	return t->unget;
+    return t->unget;
 }
 
 bool token_accept(tokeniser *t, enum token tk)
 {
-	if(token_peek(t) == tk){
-		token_next(t);
-		return true;
-	}
-	return false;
+    if(token_peek(t) == tk){
+        token_next(t);
+        return true;
+    }
+    return false;
 }
 
 void token_curline(tokeniser *t, char *out, size_t len, size_t *const poff)
 {
-	const char *src = t->line;
-	const char *i, *anchor = NULL;
-	size_t off;
+    const char *src = t->line;
+    const char *i, *anchor = NULL;
+    size_t off;
 
-	*poff = 0;
+    *poff = 0;
 
-	if(!src){
-		xsnprintf(out, len, "[eof]");
-		return;
-	}
+    if(!src){
+        xsnprintf(out, len, "[eof]");
+        return;
+    }
 
-	off = t->linep - src;
+    off = t->linep - src;
 
-	if(off > len / 2)
-		src = t->linep - len / 2;
+    if(off > len / 2)
+        src = t->linep - len / 2;
 
-	/* ensure we're not before linep's line */
+    /* ensure we're not before linep's line */
 	for(i = src; i < t->linep; i++)
 		if(*i == '\n')
 			anchor = i + 1;
@@ -491,3 +511,4 @@ int token_is_cmp(enum token t, enum op_cmp *const o)
 	}
 	return 0;
 }
+*/

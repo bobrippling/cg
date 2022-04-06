@@ -1,3 +1,11 @@
+#[derive(Debug, Clone)]
+pub struct RegSet
+{
+	// const regt *regs;
+	// unsigned count;
+}
+
+/*
 #include <stddef.h>
 #include <assert.h>
 
@@ -45,3 +53,4 @@ regt regset_nth(const struct regset *rs, unsigned index, int is_fp)
 {
 	return rs->regs[regset_index(rs, index, is_fp)];
 }
+*/

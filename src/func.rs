@@ -1,3 +1,6 @@
+pub struct Func;
+
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -472,3 +475,4 @@ bool function_is_forward_decl(function *f)
 {
 	return !function_entry_block(f, false);
 }
+*/
