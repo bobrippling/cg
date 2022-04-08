@@ -8,6 +8,7 @@ mod regset;
 mod size_align;
 mod target;
 mod unit;
+mod ty;
 
 mod pass;
 
@@ -34,7 +35,11 @@ use unit::Unit;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-fn read_and_parse(fname: Option<&str>, dump_tok: bool, target: &Target) -> Result<Option<Unit>> {
+fn read_and_parse<'t>(
+    fname: Option<&str>,
+    dump_tok: bool,
+    target: &'t Target,
+) -> Result<Option<Unit<'t>>> {
     let (file, stdin);
     let (reader, fname): (Box<dyn BufRead>, _) = match fname {
         Some(fname) => {
@@ -55,7 +60,7 @@ fn read_and_parse(fname: Option<&str>, dump_tok: bool, target: &Target) -> Resul
         }
         Ok(None)
     } else {
-        let unit = Unit::parse(&mut tok, target)?;
+        let unit = Unit::parse(tok, target)?;
         Ok(Some(unit))
     }
 }

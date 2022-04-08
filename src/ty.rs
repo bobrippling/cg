@@ -1,3 +1,10 @@
+#[derive(PartialEq, Eq)]
+pub enum Type {
+	Func { },
+	Ptr {},
+	Primitive {},
+}
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -742,3 +749,4 @@ void type_free_dynarray_r(dynarray *ar)
 	}
 	/* no reset */
 }
+*/

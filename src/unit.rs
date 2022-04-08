@@ -1,9 +1,28 @@
 use crate::global::Global;
 use crate::pass::Pass;
+use crate::target::Target;
 
-pub struct Unit;
+pub struct Unit<'a> {
+    target: &'a Target,
+}
 
-impl Unit {
+pub enum GlobalSearch {
+    Complete(Global),
+    Forward(Global),
+    NotFound,
+}
+
+impl<'a> Unit<'a> {
+    pub fn new(target: &'a Target) -> Self {
+        Self {
+            target
+        }
+    }
+
+    pub fn global_by_name(&self, name: &str) -> Option<&Global> {
+        todo!()
+    }
+
     pub fn run_pass(&mut self, _pass: &dyn Pass) {
         todo!()
     }
@@ -12,6 +31,10 @@ impl Unit {
     where
         F: FnMut(&Global),
     {
+        todo!()
+    }
+
+    pub fn add_global(&self, g: Global) -> &Global {
         todo!()
     }
 }

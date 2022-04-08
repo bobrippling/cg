@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 
 use thiserror::Error;
 
@@ -30,7 +30,7 @@ pub struct Tokeniser<'a, R> {
 
 impl<'a, R> Tokeniser<'a, R>
 where
-    R: BufRead,
+    R: Read,
 {
     pub fn new(reader: R, fname: &'a str) -> Result<Self> {
         let reader = BufReader::new(reader);
@@ -45,6 +45,10 @@ where
 
             unget: None,
         })
+    }
+
+    pub fn eof(&self) -> bool {
+        self.eof
     }
 
     fn next_line(&mut self) -> Result<()> {

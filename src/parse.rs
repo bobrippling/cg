@@ -1,23 +1,152 @@
 use std::io::Read;
 
+use thiserror::Error;
+
+use crate::global::{Global, Function, Variable};
 use crate::target::Target;
+use crate::token::{Keyword, Punctuation, Token};
+use crate::ty::Type;
 use crate::{tokenise::Tokeniser, unit::Unit};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
-#[derive(Debug)]
-pub enum ParseError {}
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("early eof")]
+    EarlyEof,
 
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+    #[error("expected {0:?}")]
+    Expected(Token),
+
+    #[error(transparent)]
+    LexError(#[from] crate::tokenise::Error),
+}
+
+impl<'t> Unit<'t> {
+    pub fn parse(tok: Tokeniser<impl Read>, target: &'t Target) -> Result<Self> {
+        let parser = Parser {
+            unit: Unit::new(target),
+            tok,
+        };
+
+        parser.parse()
     }
 }
 
-impl std::error::Error for ParseError {}
+struct Parser<'a, 't, R> {
+    tok: Tokeniser<'a, R>,
+    unit: Unit<'t>,
+}
 
-impl Unit {
-    pub fn parse(_tokeniser: &mut Tokeniser<impl Read>, _target: &Target) -> Result<Self> {
+impl<'t, R> Parser<'_, 't, R>
+where
+    R: Read,
+{
+    fn parse(self) -> Result<Unit<'t>> {
+        while !self.parse_finished() {
+            self.global()?;
+        }
+
+        Ok(self.unit)
+    }
+
+    fn parse_finished(&self) -> bool {
+        self.tok.eof()
+    }
+
+    fn next(&mut self) -> Result<Token> {
+        self.tok.next()?.ok_or(ParseError::EarlyEof)
+    }
+
+    fn expect<T, F>(&mut self, desc: &'static str, f: F) -> Result<T>
+    where
+        F: FnOnce(Token) -> std::result::Result<T, Token>,
+    {
+        let tok = self.next()?;
+        f(tok).map_err(|tok| {
+            // self.parse_error(
+            //     "expected {}{}{}, got {:?}",
+            //     desc,
+            //     tok,
+            // );
+            ParseError::Expected(tok)
+        })
+    }
+
+    fn eat(&mut self, desc: &'static str, expected: Token) -> Result<()> {
+        self.expect(desc, |tok| if tok == expected { Ok(()) } else { Err(tok) })
+    }
+
+    fn accept(&mut self, token: Token) -> Result<bool> {
+        Ok(self.next()? == token)
+    }
+
+    fn sema_err(&mut self, desc: String) {
+        todo!()
+    }
+
+    fn global(&mut self) -> Result<()> {
+        /* type $ident = type */
+        let is_type = self.accept(Token::Keyword(Keyword::Type))?;
+
+        let name = self.expect("identifier", |tok| {
+            if let Token::Identifier(ident) = tok {
+                Ok(ident)
+            } else {
+                Err(tok)
+            }
+        })?;
+
+        self.eat("global assign", Token::Punctuation(Punctuation::Equal))?;
+
+        let (ty, toplvl_args) = self.parse_type_maybe_func();
+
+        // need to insert decl before parsing body - for recursion
+        let decl = match self.unit.global_by_name(&name) {
+            Some(decl) => {
+                if decl.is_complete() {
+                    self.sema_err(format!("global '{}' already defined", name));
+                } else {
+                    if *decl.ty() != ty {
+                        self.sema_err("completing decl with mismatching type".into());
+                    }
+                }
+                decl
+            }
+            None => {
+                if is_type {
+                    self.unit.add_global(Global::Type(name, ty))
+                } else if matches!(ty, Type::Func { .. }) {
+                    self.unit.add_global(Global::Function(name, ty))
+                } else {
+                    self.unit
+                        .add_global(Global::Variable(todo!()));
+                }
+            }
+        };
+
+        if is_type {
+            self.unit.add_global(Global::Type(name, ty));
+        } else if matches!(ty, Type::Func { .. }) {
+            self.unit
+                .add_global(Global::Function(self.parse_function(name, ty, toplvl_args)));
+        } else {
+            self.unit
+                .add_global(Global::Variable(self.parse_variable(name, ty)));
+        }
+
+        Ok(())
+    }
+
+    fn parse_type_maybe_func(&mut self) -> (Type, Vec<()>) {
+        todo!()
+    }
+
+    fn parse_function(&mut self, name: String, ty: Type, toplvl_args: Vec<()>) -> Function {
+        todo!()
+    }
+
+    fn parse_variable(&mut self, name: String, ty: Type) -> Variable {
         todo!()
     }
 }
@@ -64,7 +193,6 @@ enum val_opts
 };
 
 static type *parse_type(parse *);
-
 
 attr_printf(2, 0)
 static void error_v(parse *p, const char *fmt, va_list l)
@@ -1393,92 +1521,5 @@ static void parse_variable(parse *p, char *name, type *ty)
 
     if(init_top)
         variable_global_init_set(v, init_top);
-}
-
-static void parse_global(parse *p)
-{
-    type *ty;
-    char *name;
-    dynarray toplvl_args = DYNARRAY_INIT;
-    global *already;
-    int is_type;
-    struct typealias *alias;
-
-    /* type $ident = type */
-    is_type = token_accept(p->tok, tok_type);
-
-    eat(p, "decl name", tok_ident);
-    name = token_last_ident(p->tok);
-    if(!name){
-        name = xstrdup("_error"); /* error already emitted by eat() */
-    }
-    else if((already = unit_global_find(p->unit, name))
-    && !global_is_forward_decl(already))
-    {
-        sema_error(p, "global '%s' already defined", name);
-    }
-    else
-    {
-        /* all good - add placeholder type */
-        if(is_type)
-            alias = type_alias_add(unit_uniqtypes(p->unit), name);
-    }
-
-    eat(p, "global assign", tok_equal);
-
-    ty = parse_type_maybe_func(p, &toplvl_args);
-
-    if(is_type){
-        /* name consumed above */
-        type *completed = type_alias_complete(alias, ty);
-        unit_type_new(p->unit, completed);
-
-    }else if(type_is_fn(ty)){
-        parse_function(p, name, ty, &toplvl_args);
-    }else{
-        parse_variable(p, name, ty);
-    }
-}
-
-static unit *parse_code_internal(
-        tokeniser *tok,
-        int *const err,
-        const struct target *target,
-        parse_error_fn on_error,
-        void *on_error_ctx)
-{
-    parse state = { 0 };
-
-    state.tok = tok;
-    state.unit = unit_new(target);
-    state.error_v = on_error;
-    state.error_ctx = on_error_ctx;
-
-    while(!parse_finished(tok)){
-        parse_global(&state);
-    }
-
-    if(state.entry && block_unknown_ending(state.entry)){
-        parse_error(&state, "control reaches end of function");
-    }
-
-    /* char* => val*
-     * the char* is present in the name-value and owned by it */
-    dynmap_free(state.names2vals);
-
-    *err = state.err;
-
-    return state.unit;
-}
-
-unit *parse_code(tokeniser *tok, int *const err, const struct target *target)
-{
-    return parse_code_internal(tok, err, target, NULL, NULL);
-}
-
-unit *parse_code_cb(tokeniser *tok, const struct target *target, parse_error_fn on_error, void *ctx)
-{
-    int err;
-    return parse_code_internal(tok, &err, target, on_error, ctx);
 }
 */
