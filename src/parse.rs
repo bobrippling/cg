@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use crate::target::Target;
 use crate::{tokenise::Tokeniser, unit::Unit};
 
@@ -15,7 +17,7 @@ impl std::fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 impl Unit {
-    pub fn parse(_tokeniser: &mut Tokeniser, _target: &Target) -> Result<Self> {
+    pub fn parse(_tokeniser: &mut Tokeniser<impl Read>, _target: &Target) -> Result<Self> {
         todo!()
     }
 }

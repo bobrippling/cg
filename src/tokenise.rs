@@ -1,19 +1,227 @@
-use std::io::Read;
+use std::io::{BufRead, BufReader};
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum Token {
-    Eof,
+use thiserror::Error;
+
+use crate::token::{Keyword, Punctuation, Token};
+
+type Result<T> = std::io::Result<T>;
+type LexResult = std::result::Result<Option<Token>, Error>;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error("unknown token")]
+    UnknownToken(String),
+    #[error("no terminating quote to string")]
+    UnterminatedStr(String),
 }
 
-pub struct Tokeniser;
+pub struct Tokeniser<'a, R> {
+    fname: &'a str,
 
-impl Tokeniser {
-    pub fn new(_f: &dyn Read, _fname: &str) -> Self {
-	todo!()
+    reader: BufReader<R>,
+    line: String,
+    eof: bool,
+    offset: usize,
+
+    unget: Option<Token>,
+}
+
+impl<'a, R> Tokeniser<'a, R>
+where
+    R: BufRead,
+{
+    pub fn new(reader: R, fname: &'a str) -> Result<Self> {
+        let reader = BufReader::new(reader);
+
+        Ok(Self {
+            fname,
+
+            reader,
+            line: String::new(),
+            eof: false,
+            offset: 0,
+
+            unget: None,
+        })
     }
 
-    pub fn next(&mut self) -> Token {
-	todo!()
+    fn next_line(&mut self) -> Result<()> {
+        self.offset = 0;
+        self.line.truncate(0);
+        let n = self.reader.read_line(&mut self.line)?;
+
+        if n == 0 {
+            self.eof = true;
+        }
+
+        Ok(())
+    }
+
+    fn skip_space(&mut self) -> Result<()> {
+        self.next_while(|b| b.is_ascii_whitespace())
+    }
+
+    fn next_while<P>(&mut self, mut pred: P) -> Result<()>
+    where
+        P: FnMut(u8) -> bool,
+    {
+        loop {
+            for ch in self.line.bytes().skip(self.offset) {
+                if pred(ch) {
+                    self.offset += 1;
+                    if self.offset == self.line.len() {
+                        break;
+                    }
+                } else {
+                    return Ok(());
+                }
+            }
+
+            self.next_line()?;
+            if self.eof {
+                return Ok(());
+            }
+        }
+    }
+
+    /// Ok(Some(t)) - token
+    /// Ok(None) - eof
+    /// Err(_) - lex or i/o error
+    pub fn next(&mut self) -> LexResult {
+        if let unget @ Some(_) = self.unget.take() {
+            return Ok(unget);
+        }
+
+        if self.eof {
+            return Ok(None);
+        }
+
+        self.skip_space()?;
+
+        let line = &self.line[self.offset..];
+
+        let ch = match line.bytes().next() {
+            Some(ch) => ch,
+            None => return Ok(None),
+        };
+
+        if ch == b'#' {
+            self.next_line()?;
+            return self.next();
+        }
+
+        if let Some(p) = match ch {
+            b'(' => Some(Punctuation::LParen),
+            b')' => Some(Punctuation::RParen),
+            b'{' => Some(Punctuation::LBrace),
+            b'}' => Some(Punctuation::RBrace),
+            b'<' => Some(Punctuation::LSquare),
+            b'>' => Some(Punctuation::RSquare),
+            b'.' => Some(Punctuation::Dot),
+            b',' => Some(Punctuation::Comma),
+            b'=' => Some(Punctuation::Equal),
+            b':' => Some(Punctuation::Colon),
+            b';' => Some(Punctuation::Semi),
+            b'*' => Some(Punctuation::Star),
+            _ => None,
+        } {
+            self.offset += 1;
+            return Ok(Some(Token::Punctuation(p)));
+        }
+
+        if line.starts_with("->") {
+            self.offset += 2;
+            return Ok(Some(Token::Punctuation(Punctuation::Arrow)));
+        }
+        if line.starts_with("...") {
+            self.offset += 3;
+            return Ok(Some(Token::Punctuation(Punctuation::Ellipses)));
+        }
+
+        if ch.is_ascii_digit() || ch == b'-' {
+            let neg = ch == b'-';
+            let (n, count) = line
+                .bytes()
+                .skip(if neg { 1 } else { 0 })
+                .take_while(u8::is_ascii_digit)
+                .fold((0i32, 0), |(num, count), byte| {
+                    (num * 10 + (byte - b'0') as i32, count + 1)
+                });
+
+            self.offset += count;
+
+            return Ok(Some(Token::Integer(if neg { -n } else { n })));
+        }
+
+        if let Ok(kw) = Keyword::try_from(line) {
+            self.offset += kw.len();
+            return Ok(Some(Token::Keyword(kw)));
+        }
+
+        if ch == b'$' {
+            self.offset += 1;
+            if let Some(ident) = self.parse_ident() {
+                return Ok(Some(Token::Identifier(ident.into())));
+            }
+        }
+
+        if ch.is_ident(false) {
+            if let Some(bare) = self.parse_ident() {
+                return Ok(Some(Token::Bareword(bare.into())));
+            }
+        }
+
+        if ch == b'"' {
+            let (s, bytelen) = self
+                .parse_string()
+                .ok_or(Error::UnterminatedStr(self.line_remaining().into()))?;
+
+            self.offset += bytelen;
+
+            return Ok(Some(Token::String(s)));
+        }
+
+        return Err(Error::UnknownToken(self.line_remaining().into()));
+    }
+
+    fn line_remaining(&self) -> &str {
+        &self.line[self.offset..]
+    }
+
+    fn parse_ident(&mut self) -> Option<&str> {
+        self.line
+            .bytes()
+            .skip(self.offset)
+            .enumerate()
+            .take_while(|&(i, b)| b.is_ident(i > 0))
+            .last()
+            .filter(|&(i, _)| i > 0)
+            .map(|(i, _)| {
+                let slice = &self.line[self.offset..][..i + 1];
+                self.offset += i + 1;
+                slice
+            })
+    }
+
+    fn parse_string(&mut self) -> Option<(Box<[u8]>, usize)> {
+        todo!()
+    }
+}
+
+trait IsIdent {
+    fn is_ident(self, inc_digit: bool) -> bool
+    where
+        Self: Sized;
+}
+
+impl IsIdent for u8 {
+    fn is_ident(self, inc_digit: bool) -> bool
+    where
+        Self: Sized,
+    {
+        self.is_ascii_alphabetic() || (inc_digit && self.is_ascii_digit())
     }
 }
 

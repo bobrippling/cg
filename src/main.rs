@@ -1,4 +1,5 @@
 mod parse;
+mod token;
 mod tokenise;
 
 mod func;
@@ -20,7 +21,7 @@ mod global;
 use std::{
     error::Error,
     fs::File,
-    io::{Read, Write},
+    io::{BufRead, BufReader, Write},
     process,
 };
 
@@ -28,33 +29,29 @@ use clap::Parser;
 
 // use func::Func;
 use target::Target;
-use tokenise::{Token, Tokeniser};
+use tokenise::Tokeniser;
 use unit::Unit;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 fn read_and_parse(fname: Option<&str>, dump_tok: bool, target: &Target) -> Result<Option<Unit>> {
     let (file, stdin);
-    let (f, fname): (&dyn Read, _) = match fname {
+    let (reader, fname): (Box<dyn BufRead>, _) = match fname {
         Some(fname) => {
             file = File::open(fname)?;
-            (&file, fname)
+            (Box::new(BufReader::new(file)), fname)
         }
         None => {
             stdin = std::io::stdin();
-            (&stdin, "-")
+            (Box::new(BufReader::new(stdin)), "-")
         }
     };
 
-    let mut tok = Tokeniser::new(f, fname);
+    let mut tok = Tokeniser::new(reader, fname)?;
 
     if dump_tok {
-        loop {
-            let t = tok.next();
-            if t == Token::Eof {
-                break;
-            }
-            println!("token {:?}", t);
+        while let Some(t) = tok.next()? {
+            println!("{:?}", t);
         }
         Ok(None)
     } else {
@@ -168,7 +165,7 @@ fn main() -> Result<()> {
     };
 
     unit.for_globals(|global| {
-	global.emit(&target, fout);
+        global.emit(&target, fout);
     });
 
     Ok(())
