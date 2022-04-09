@@ -6,12 +6,6 @@ pub struct Unit<'a> {
     target: &'a Target,
 }
 
-pub enum GlobalSearch {
-    Complete(Global),
-    Forward(Global),
-    NotFound,
-}
-
 impl<'a> Unit<'a> {
     pub fn new(target: &'a Target) -> Self {
         Self {
@@ -19,14 +13,12 @@ impl<'a> Unit<'a> {
         }
     }
 
-    pub fn global_by_name(&self, name: &str) -> Option<&Global> {
-        todo!()
-    }
-
     pub fn run_pass(&mut self, _pass: &dyn Pass) {
         todo!()
     }
+}
 
+impl<'a> Unit<'a> {
     pub fn for_globals<F>(&self, _f: F)
     where
         F: FnMut(&Global),
@@ -34,7 +26,7 @@ impl<'a> Unit<'a> {
         todo!()
     }
 
-    pub fn add_global(&self, g: Global) -> &Global {
+    pub fn add_global(&self, g: Global) -> (Option<Global>, &Global) {
         todo!()
     }
 }

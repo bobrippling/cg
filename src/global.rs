@@ -1,26 +1,23 @@
 use std::io::Write;
 
-use crate::{target::Target, ty::Type};
+use crate::{target::Target, ty::Type, func::Func, variable::Var};
 
-pub type Function = ();
-pub type Variable = ();
-
-pub enum Global {
-    Type(Type),
-    Function(Function),
-    Variable(Variable),
+pub enum Global<'t> {
+    Type { name: String, ty: Type<'t> },
+    Func(Func<'t>),
+    Var(Var),
 }
 
-impl Global {
+impl Global<'_> {
     pub fn emit(&self, _target: &Target, _out: &dyn Write) {
         todo!()
     }
 
-    pub fn is_complete(&self) -> bool {
+    pub fn ty(&self) -> &Type {
         todo!()
     }
 
-    pub fn ty(&self) -> &Type {
+    pub fn name(&self) -> &str {
         todo!()
     }
 }

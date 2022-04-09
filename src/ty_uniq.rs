@@ -1,15 +1,18 @@
-#include <stdlib.h>
-#include <assert.h>
+use std::collections::HashMap;
 
-#include "macros.h"
-#include "dynmap.h"
+use crate::{ty::{Primitive, TypeS}, size_align::SizeAlign};
 
-#include "type.h"
-#include "type_free.h"
+pub struct TyUniq<'t> {
+    primitives: [Box<TypeS<'t>>; Primitive::len()],
+    void: Box<TypeS<'t>>,
 
-#include "uniq_type_list.h"
-#include "uniq_type_list_struct.h"
+    structs: Vec<TypeS<'t>>,
+    aliases: HashMap<String, TypeS<'t>>,
 
+    ptr: SizeAlign,
+}
+
+/*
 void uniq_type_list_init(
 		struct uniq_type_list *us, unsigned ptrsz, unsigned ptralign)
 {
@@ -39,3 +42,4 @@ void uniq_type_list_free(uniq_type_list *utl)
 
 	dynmap_free(utl->aliases);
 }
+*/

@@ -2,10 +2,12 @@ use std::io::Read;
 
 use thiserror::Error;
 
-use crate::global::{Global, Function, Variable};
+use crate::func::Func;
+use crate::global::Global;
 use crate::target::Target;
 use crate::token::{Keyword, Punctuation, Token};
-use crate::ty::Type;
+use crate::ty::{Type, TypeS};
+use crate::variable::Var;
 use crate::{tokenise::Tokeniser, unit::Unit};
 
 type Result<T> = std::result::Result<T, ParseError>;
@@ -23,26 +25,32 @@ pub enum ParseError {
 }
 
 impl<'t> Unit<'t> {
-    pub fn parse(tok: Tokeniser<impl Read>, target: &'t Target) -> Result<Self> {
+    pub fn parse<F>(tok: Tokeniser<impl Read>, target: &'t Target, sema_error: F) -> Result<Self>
+    where
+        F: FnMut(String),
+    {
         let parser = Parser {
             unit: Unit::new(target),
             tok,
+            sema_error,
         };
 
         parser.parse()
     }
 }
 
-struct Parser<'a, 't, R> {
+struct Parser<'a, 't, R, F> {
     tok: Tokeniser<'a, R>,
     unit: Unit<'t>,
+    sema_error: F,
 }
 
-impl<'t, R> Parser<'_, 't, R>
+impl<'t, R, F> Parser<'_, 't, R, F>
 where
     R: Read,
+    F: FnMut(String),
 {
-    fn parse(self) -> Result<Unit<'t>> {
+    fn parse(mut self) -> Result<Unit<'t>> {
         while !self.parse_finished() {
             self.global()?;
         }
@@ -58,38 +66,27 @@ where
         self.tok.next()?.ok_or(ParseError::EarlyEof)
     }
 
-    fn expect<T, F>(&mut self, desc: &'static str, f: F) -> Result<T>
+    fn expect<T, Check>(&mut self, f: Check) -> Result<T>
     where
-        F: FnOnce(Token) -> std::result::Result<T, Token>,
+        Check: FnOnce(Token) -> std::result::Result<T, Token>,
     {
         let tok = self.next()?;
-        f(tok).map_err(|tok| {
-            // self.parse_error(
-            //     "expected {}{}{}, got {:?}",
-            //     desc,
-            //     tok,
-            // );
-            ParseError::Expected(tok)
-        })
+        f(tok).map_err(|tok| ParseError::Expected(tok))
     }
 
-    fn eat(&mut self, desc: &'static str, expected: Token) -> Result<()> {
-        self.expect(desc, |tok| if tok == expected { Ok(()) } else { Err(tok) })
+    fn eat(&mut self, expected: Token) -> Result<()> {
+        self.expect(|tok| if tok == expected { Ok(()) } else { Err(tok) })
     }
 
     fn accept(&mut self, token: Token) -> Result<bool> {
         Ok(self.next()? == token)
     }
 
-    fn sema_err(&mut self, desc: String) {
-        todo!()
-    }
-
     fn global(&mut self) -> Result<()> {
         /* type $ident = type */
         let is_type = self.accept(Token::Keyword(Keyword::Type))?;
 
-        let name = self.expect("identifier", |tok| {
+        let name = self.expect(|tok| {
             if let Token::Identifier(ident) = tok {
                 Ok(ident)
             } else {
@@ -97,56 +94,35 @@ where
             }
         })?;
 
-        self.eat("global assign", Token::Punctuation(Punctuation::Equal))?;
+        self.eat(Token::Punctuation(Punctuation::Equal))?;
 
         let (ty, toplvl_args) = self.parse_type_maybe_func();
 
-        // need to insert decl before parsing body - for recursion
-        let decl = match self.unit.global_by_name(&name) {
-            Some(decl) => {
-                if decl.is_complete() {
-                    self.sema_err(format!("global '{}' already defined", name));
-                } else {
-                    if *decl.ty() != ty {
-                        self.sema_err("completing decl with mismatching type".into());
-                    }
-                }
-                decl
-            }
-            None => {
-                if is_type {
-                    self.unit.add_global(Global::Type(name, ty))
-                } else if matches!(ty, Type::Func { .. }) {
-                    self.unit.add_global(Global::Function(name, ty))
-                } else {
-                    self.unit
-                        .add_global(Global::Variable(todo!()));
-                }
-            }
+        let new = if is_type {
+            Global::Type { name, ty }
+        } else if matches!(ty, TypeS::Func { .. }) {
+            Global::Func(self.parse_function(name, ty, toplvl_args))
+        } else {
+            Global::Var(self.parse_variable(name, ty))
         };
 
-        if is_type {
-            self.unit.add_global(Global::Type(name, ty));
-        } else if matches!(ty, Type::Func { .. }) {
-            self.unit
-                .add_global(Global::Function(self.parse_function(name, ty, toplvl_args)));
-        } else {
-            self.unit
-                .add_global(Global::Variable(self.parse_variable(name, ty)));
+        let (old, new) = self.unit.add_global(new);
+        if let Some(old) = old {
+            (self.sema_error)(format!("global '{}' already defined", old.name()));
         }
 
         Ok(())
     }
 
-    fn parse_type_maybe_func(&mut self) -> (Type, Vec<()>) {
+    fn parse_type_maybe_func(&mut self) -> (Type<'t>, Vec<()>) {
         todo!()
     }
 
-    fn parse_function(&mut self, name: String, ty: Type, toplvl_args: Vec<()>) -> Function {
+    fn parse_function(&mut self, name: String, ty: Type<'t>, toplvl_args: Vec<()>) -> Func<'t> {
         todo!()
     }
 
-    fn parse_variable(&mut self, name: String, ty: Type) -> Variable {
+    fn parse_variable(&mut self, name: String, ty: Type<'t>) -> Var {
         todo!()
     }
 }

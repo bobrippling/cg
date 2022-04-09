@@ -1,3 +1,5 @@
+use crate::enum_string;
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum Token {
     Integer(i32),
@@ -11,117 +13,59 @@ pub enum Token {
     Cmp(Cmp),
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum Punctuation {
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
-    LSquare,
-    RSquare,
-    Dot,
-    Comma,
-    Equal,
-    Colon,
-    Semi,
-    Star,
-    Arrow,
-    Ellipses,
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum Keyword {
-    Load,
-    Store,
-    Alloca,
-    Elem,
-    Ptradd,
-    Ptrsub,
-    Ptr2int,
-    Int2ptr,
-    Ptrcast,
-    Memcpy,
-    Ret,
-    Zext,
-    Sext,
-    Trunc,
-    Br,
-    Jmp,
-    Label,
-    Call,
-    I1,
-    I2,
-    I4,
-    I8,
-    F4,
-    F8,
-    Flarge,
-    Void,
-    Undef,
-    Global,
-    Internal,
-    Aliasinit,
-    Type,
-    Asm,
-}
-
-static KEYWORDS: &[(&str, Keyword)] = &[
-    ("load", Keyword::Load),
-    ("store", Keyword::Store),
-    ("alloca", Keyword::Alloca),
-    ("elem", Keyword::Elem),
-    ("ptradd", Keyword::Ptradd),
-    ("ptrsub", Keyword::Ptrsub),
-    ("ptr2int", Keyword::Ptr2int),
-    ("int2ptr", Keyword::Int2ptr),
-    ("ptrcast", Keyword::Ptrcast),
-    ("memcpy", Keyword::Memcpy),
-    ("ret", Keyword::Ret),
-    ("zext", Keyword::Zext),
-    ("sext", Keyword::Sext),
-    ("trunc", Keyword::Trunc),
-    ("br", Keyword::Br),
-    ("jmp", Keyword::Jmp),
-    ("label", Keyword::Label),
-    ("call", Keyword::Call),
-    ("i1", Keyword::I1),
-    ("i2", Keyword::I2),
-    ("i4", Keyword::I4),
-    ("i8", Keyword::I8),
-    ("f4", Keyword::F4),
-    ("f8", Keyword::F8),
-    ("flarge", Keyword::Flarge),
-    ("void", Keyword::Void),
-    ("undef", Keyword::Undef),
-    ("global", Keyword::Global),
-    ("internal", Keyword::Internal),
-    ("aliasinit", Keyword::Aliasinit),
-    ("type", Keyword::Type),
-    ("asm", Keyword::Asm),
-];
-
-impl Keyword {
-    pub fn len(&self) -> usize {
-        for (s, kw) in KEYWORDS {
-            if kw == self {
-                return s.len();
-            }
-        }
-        unreachable!()
+enum_string! {
+    pub enum Punctuation {
+        LParen = "(",
+        RParen = ")",
+        LBrace = "{",
+        RBrace = "}",
+        LSquare = "<",
+        RSquare = ">",
+        Dot = ".",
+        Comma = ",",
+        Equal = "=",
+        Colon = ":",
+        Semi = ";",
+        Star = "*",
+        Arrow = "->",
+        Ellipses = "...",
     }
 }
 
-impl TryFrom<&str> for Keyword {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        for (s, kw) in KEYWORDS {
-            if value.starts_with(s) {
-                return Ok(*kw);
-            }
-        }
-
-        Err(())
+enum_string! {
+    pub enum Keyword {
+        Load = "load",
+        Store = "store",
+        Alloca = "alloca",
+        Elem = "elem",
+        Ptradd = "ptradd",
+        Ptrsub = "ptrsub",
+        Ptr2int = "ptr2int",
+        Int2ptr = "int2ptr",
+        Ptrcast = "ptrcast",
+        Memcpy = "memcpy",
+        Ret = "ret",
+        Zext = "zext",
+        Sext = "sext",
+        Trunc = "trunc",
+        Br = "br",
+        Jmp = "jmp",
+        Label = "label",
+        Call = "call",
+        I1 = "i1",
+        I2 = "i2",
+        I4 = "i4",
+        I8 = "i8",
+        F4 = "f4",
+        F8 = "f8",
+        Flarge = "flarge",
+        Void = "void",
+        Undef = "undef",
+        Global = "global",
+        Internal = "internal",
+        Aliasinit = "aliasinit",
+        Type = "type",
+        Asm = "asm",
     }
 }
 

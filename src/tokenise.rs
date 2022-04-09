@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::token::{Keyword, Punctuation, Token};
 
-type Result<T> = std::io::Result<T>;
+type IoResult<T> = std::io::Result<T>;
 type LexResult = std::result::Result<Option<Token>, Error>;
 
 #[derive(Error, Debug)]
@@ -32,26 +32,26 @@ impl<'a, R> Tokeniser<'a, R>
 where
     R: Read,
 {
-    pub fn new(reader: R, fname: &'a str) -> Result<Self> {
+    pub fn new(reader: R, fname: &'a str) -> Self {
         let reader = BufReader::new(reader);
 
-        Ok(Self {
-            fname,
+	Self {
+	    fname,
 
-            reader,
-            line: String::new(),
-            eof: false,
-            offset: 0,
+	    reader,
+	    line: String::new(),
+	    eof: false,
+	    offset: 0,
 
-            unget: None,
-        })
+	    unget: None,
+	}
     }
 
     pub fn eof(&self) -> bool {
         self.eof
     }
 
-    fn next_line(&mut self) -> Result<()> {
+    fn next_line(&mut self) -> IoResult<()> {
         self.offset = 0;
         self.line.truncate(0);
         let n = self.reader.read_line(&mut self.line)?;
@@ -63,11 +63,11 @@ where
         Ok(())
     }
 
-    fn skip_space(&mut self) -> Result<()> {
+    fn skip_space(&mut self) -> IoResult<()> {
         self.next_while(|b| b.is_ascii_whitespace())
     }
 
-    fn next_while<P>(&mut self, mut pred: P) -> Result<()>
+    fn next_while<P>(&mut self, mut pred: P) -> IoResult<()>
     where
         P: FnMut(u8) -> bool,
     {
@@ -116,32 +116,9 @@ where
             return self.next();
         }
 
-        if let Some(p) = match ch {
-            b'(' => Some(Punctuation::LParen),
-            b')' => Some(Punctuation::RParen),
-            b'{' => Some(Punctuation::LBrace),
-            b'}' => Some(Punctuation::RBrace),
-            b'<' => Some(Punctuation::LSquare),
-            b'>' => Some(Punctuation::RSquare),
-            b'.' => Some(Punctuation::Dot),
-            b',' => Some(Punctuation::Comma),
-            b'=' => Some(Punctuation::Equal),
-            b':' => Some(Punctuation::Colon),
-            b';' => Some(Punctuation::Semi),
-            b'*' => Some(Punctuation::Star),
-            _ => None,
-        } {
-            self.offset += 1;
+        if let Ok(p) = Punctuation::try_from(line) {
+            self.offset += p.len();
             return Ok(Some(Token::Punctuation(p)));
-        }
-
-        if line.starts_with("->") {
-            self.offset += 2;
-            return Ok(Some(Token::Punctuation(Punctuation::Arrow)));
-        }
-        if line.starts_with("...") {
-            self.offset += 3;
-            return Ok(Some(Token::Punctuation(Punctuation::Ellipses)));
         }
 
         if ch.is_ascii_digit() || ch == b'-' {
@@ -169,6 +146,7 @@ where
             if let Some(ident) = self.parse_ident() {
                 return Ok(Some(Token::Identifier(ident.into())));
             }
+            self.offset -= 1;
         }
 
         if ch.is_ident(false) {
@@ -214,6 +192,18 @@ where
     }
 }
 
+#[cfg(test)]
+impl<'a, R> Tokeniser<'a, R>
+where
+    R: Read + 'a,
+{
+    fn into_iter(mut self) -> impl Iterator<Item = Result<Token, Error>> + 'a {
+	std::iter::from_fn(move || {
+	    self.next().transpose()
+	})
+    }
+}
+
 trait IsIdent {
     fn is_ident(self, inc_digit: bool) -> bool
     where
@@ -226,6 +216,38 @@ impl IsIdent for u8 {
         Self: Sized,
     {
         self.is_ascii_alphabetic() || (inc_digit && self.is_ascii_digit())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn tokenisation() -> std::result::Result<(), Error> {
+	let s: &[u8] = b"$main = i4() { ret i4 0 }";
+
+	let tok = Tokeniser::new(s, "");
+
+	let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>()?;
+
+	assert_eq!(
+	    tokens,
+	    vec![
+		Token::Identifier("main".into()),
+		Token::Punctuation(Punctuation::Equal),
+		Token::Keyword(Keyword::I4),
+		Token::Punctuation(Punctuation::LParen),
+		Token::Punctuation(Punctuation::RParen),
+		Token::Punctuation(Punctuation::LBrace),
+		Token::Keyword(Keyword::Ret),
+		Token::Keyword(Keyword::I4),
+		Token::Integer(0),
+		Token::Punctuation(Punctuation::RBrace),
+	    ]
+	);
+
+	Ok(())
     }
 }
 

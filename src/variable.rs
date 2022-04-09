@@ -1,3 +1,6 @@
+pub struct Var;
+
+/*
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -62,3 +65,4 @@ unsigned variable_size(variable *v)
 	variable_size_align(v, &sz, &align);
 	return sz;
 }
+*/

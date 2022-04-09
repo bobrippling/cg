@@ -1,14 +1,21 @@
+mod enum_string;
+
 mod parse;
 mod token;
 mod tokenise;
 
-mod func;
-mod reg;
-mod regset;
 mod size_align;
 mod target;
 mod unit;
+
+mod reg;
+mod regset;
+
 mod ty;
+mod ty_uniq;
+mod func;
+mod variable;
+mod global;
 
 mod pass;
 
@@ -16,8 +23,6 @@ mod pass;
 //mod opt_dse;
 //mod opt_loadmerge;
 //mod opt_storeprop;
-
-mod global;
 
 use std::{
     error::Error,
@@ -52,7 +57,7 @@ fn read_and_parse<'t>(
         }
     };
 
-    let mut tok = Tokeniser::new(reader, fname)?;
+    let mut tok = Tokeniser::new(reader, fname);
 
     if dump_tok {
         while let Some(t) = tok.next()? {
@@ -60,7 +65,16 @@ fn read_and_parse<'t>(
         }
         Ok(None)
     } else {
-        let unit = Unit::parse(tok, target)?;
+        let mut had_err = false;
+        let unit = Unit::parse(tok, target, |err| {
+            eprintln!("error: {}", err);
+            had_err = true;
+        })?;
+
+        if had_err {
+            todo!("error handling");
+        }
+
         Ok(Some(unit))
     }
 }

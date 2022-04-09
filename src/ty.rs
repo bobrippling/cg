@@ -1,9 +1,103 @@
-#[derive(PartialEq, Eq)]
-pub enum Type {
-	Func { },
-	Ptr {},
-	Primitive {},
+use crate::size_align::SizeAlign;
+use crate::ty_uniq::TyUniq;
+
+pub type Type<'t> = &'t TypeS<'t>;
+
+pub enum TypeS<'t> {
+    Primitive(Primitive),
+    Ptr {
+        pointee: Type<'t>,
+        uniqs: TyUniq<'t>,
+    },
+    Array {
+        elem: Type<'t>,
+        n: usize,
+    },
+    Func {
+        ret: Type<'t>,
+        args: Vec<Type<'t>>,
+        variadic: bool,
+    },
+    Struct {
+        membs: Type<'t>,
+    },
+    Alias {
+        name: String,
+        actual: Type<'t>,
+    }
 }
+
+macro_rules! primitives {
+    (
+        pub enum Primitive {
+            $($member:ident => { size: $size:expr, align: $align:expr, integral: $int:expr }),*
+            $(,)*
+        }
+    ) => {
+        #[derive(Copy, Clone)]
+        pub enum Primitive {
+            $($member),*
+        }
+
+        impl Primitive {
+            pub fn is_integral(self) -> bool {
+                match self {
+                    $(Primitive::$member => $int),*
+                }
+            }
+
+            pub fn size_align(self) -> SizeAlign {
+                match self {
+                    $(Primitive::$member => SizeAlign { size: $size, align: $align }),*
+                }
+            }
+
+	    pub const fn len() -> usize {
+		[$($int),*].len()
+	    }
+        }
+    }
+}
+
+primitives! {
+    pub enum Primitive {
+        I1 => { size: 1, align: 1, integral: true },
+        I2 => { size: 2, align: 2, integral: true },
+        I4 => { size: 4, align: 4, integral: true },
+        I8 => { size: 8, align: 8, integral: true },
+        F4 => { size: 4, align: 4, integral: false },
+        F8 => { size: 8, align: 8, integral: false },
+        Flarge => { size: 16, align: 16, integral: false },
+    }
+}
+
+impl TypeS<'_> {
+    fn resolve(mut self: &Self) -> &Self {
+        while let TypeS::Alias { actual, .. } = self {
+            self = actual;
+        }
+        self
+    }
+
+    fn primitive(&self) -> Option<Primitive> {
+        if let TypeS::Primitive(p) = self.resolve() {
+            Some(*p)
+        } else {
+            None
+        }
+    }
+}
+
+impl PartialEq for TypeS<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        let a = self.resolve();
+        let b = other.resolve();
+        a as *const _ == b as *const _
+    }
+}
+
+impl Eq for TypeS<'_> {}
+
 /*
 #include <stdio.h>
 #include <stdlib.h>
