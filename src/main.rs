@@ -3,6 +3,7 @@ mod enum_string;
 mod parse;
 mod token;
 mod tokenise;
+mod srcloc;
 
 mod size_align;
 mod target;
@@ -67,7 +68,7 @@ fn read_and_parse<'t>(
     } else {
         let mut had_err = false;
         let unit = Unit::parse(tok, target, |err| {
-            eprintln!("error: {}", err);
+            eprintln!("sema error: {}", err);
             had_err = true;
         })?;
 

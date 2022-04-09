@@ -2,6 +2,7 @@ use std::io::{BufRead, BufReader, Read};
 
 use thiserror::Error;
 
+use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 
 type IoResult<T> = std::io::Result<T>;
@@ -19,6 +20,7 @@ pub enum Error {
 
 pub struct Tokeniser<'a, R> {
     fname: &'a str,
+    line_no: u32,
 
     reader: BufReader<R>,
     line: String,
@@ -35,20 +37,33 @@ where
     pub fn new(reader: R, fname: &'a str) -> Self {
         let reader = BufReader::new(reader);
 
-	Self {
-	    fname,
+        Self {
+            fname,
+            line_no: 1,
 
-	    reader,
-	    line: String::new(),
-	    eof: false,
-	    offset: 0,
+            reader,
+            line: String::new(),
+            eof: false,
+            offset: 0,
 
-	    unget: None,
+            unget: None,
+        }
+    }
+
+    pub fn loc(&self) -> SrcLoc {
+	SrcLoc {
+	    line: self.line_no,
+	    col: self.offset as u32,
 	}
     }
 
     pub fn eof(&self) -> bool {
         self.eof
+    }
+
+    pub fn unget(&mut self, tok: Token) {
+	let old = self.unget.replace(tok);
+	assert!(old.is_none());
     }
 
     fn next_line(&mut self) -> IoResult<()> {
@@ -59,6 +74,7 @@ where
         if n == 0 {
             self.eof = true;
         }
+	self.line_no += 1;
 
         Ok(())
     }
@@ -198,9 +214,7 @@ where
     R: Read + 'a,
 {
     fn into_iter(mut self) -> impl Iterator<Item = Result<Token, Error>> + 'a {
-	std::iter::from_fn(move || {
-	    self.next().transpose()
-	})
+        std::iter::from_fn(move || self.next().transpose())
     }
 }
 
@@ -225,29 +239,29 @@ mod test {
 
     #[test]
     fn tokenisation() -> std::result::Result<(), Error> {
-	let s: &[u8] = b"$main = i4() { ret i4 0 }";
+        let s: &[u8] = b"$main = i4() { ret i4 0 }";
 
-	let tok = Tokeniser::new(s, "");
+        let tok = Tokeniser::new(s, "");
 
-	let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>()?;
 
-	assert_eq!(
-	    tokens,
-	    vec![
-		Token::Identifier("main".into()),
-		Token::Punctuation(Punctuation::Equal),
-		Token::Keyword(Keyword::I4),
-		Token::Punctuation(Punctuation::LParen),
-		Token::Punctuation(Punctuation::RParen),
-		Token::Punctuation(Punctuation::LBrace),
-		Token::Keyword(Keyword::Ret),
-		Token::Keyword(Keyword::I4),
-		Token::Integer(0),
-		Token::Punctuation(Punctuation::RBrace),
-	    ]
-	);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Identifier("main".into()),
+                Token::Punctuation(Punctuation::Equal),
+                Token::Keyword(Keyword::I4),
+                Token::Punctuation(Punctuation::LParen),
+                Token::Punctuation(Punctuation::RParen),
+                Token::Punctuation(Punctuation::LBrace),
+                Token::Keyword(Keyword::Ret),
+                Token::Keyword(Keyword::I4),
+                Token::Integer(0),
+                Token::Punctuation(Punctuation::RBrace),
+            ]
+        );
 
-	Ok(())
+        Ok(())
     }
 }
 

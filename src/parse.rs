@@ -4,6 +4,7 @@ use thiserror::Error;
 
 use crate::func::Func;
 use crate::global::Global;
+use crate::srcloc::SrcLoc;
 use crate::target::Target;
 use crate::token::{Keyword, Punctuation, Token};
 use crate::ty::{Type, TypeS};
@@ -17,8 +18,8 @@ pub enum ParseError {
     #[error("early eof")]
     EarlyEof,
 
-    #[error("expected {0:?}")]
-    Expected(Token),
+    #[error("{1:?}: expected {0:?}")]
+    Expected(Token, SrcLoc),
 
     #[error(transparent)]
     LexError(#[from] crate::tokenise::Error),
@@ -71,7 +72,7 @@ where
         Check: FnOnce(Token) -> std::result::Result<T, Token>,
     {
         let tok = self.next()?;
-        f(tok).map_err(|tok| ParseError::Expected(tok))
+        f(tok).map_err(|tok| ParseError::Expected(tok, self.tok.loc()))
     }
 
     fn eat(&mut self, expected: Token) -> Result<()> {
@@ -79,11 +80,17 @@ where
     }
 
     fn accept(&mut self, token: Token) -> Result<bool> {
-        Ok(self.next()? == token)
+        let got = self.next()?;
+
+        Ok(if got == token {
+            true
+        } else {
+            self.tok.unget(got);
+            false
+        })
     }
 
     fn global(&mut self) -> Result<()> {
-        /* type $ident = type */
         let is_type = self.accept(Token::Keyword(Keyword::Type))?;
 
         let name = self.expect(|tok| {
@@ -106,7 +113,7 @@ where
             Global::Var(self.parse_variable(name, ty))
         };
 
-        let (old, new) = self.unit.add_global(new);
+        let (old, _new) = self.unit.add_global(new);
         if let Some(old) = old {
             (self.sema_error)(format!("global '{}' already defined", old.name()));
         }
@@ -118,11 +125,11 @@ where
         todo!()
     }
 
-    fn parse_function(&mut self, name: String, ty: Type<'t>, toplvl_args: Vec<()>) -> Func<'t> {
+    fn parse_function(&mut self, _name: String, _ty: Type<'t>, _toplvl_args: Vec<()>) -> Func<'t> {
         todo!()
     }
 
-    fn parse_variable(&mut self, name: String, ty: Type<'t>) -> Var {
+    fn parse_variable(&mut self, _name: String, _ty: Type<'t>) -> Var {
         todo!()
     }
 }
