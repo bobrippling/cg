@@ -71,8 +71,13 @@ where
         self.expect(|tok| if tok == expected { Ok(()) } else { Err(tok) })
     }
 
-    fn accept(&mut self, token: Token) -> PResult<bool> {
-        Ok(self.accept_with(|got| Ok(token == got))?.unwrap_or(false))
+    fn accept(&mut self, expected: Token) -> PResult<bool> {
+        let res = self.accept_with(|got| if got == expected { Ok(()) } else { Err(got) })?;
+
+        Ok(match res {
+            Some(()) => true,
+            None => false,
+        })
     }
 
     fn accept_with<T, F>(&mut self, f: F) -> PResult<Option<T>>
