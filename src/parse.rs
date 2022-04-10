@@ -374,6 +374,38 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn parse_alias() -> Result<(), Box<dyn std::error::Error>> {
+        let target = Target::dummy();
+        let arena = Arena::new();
+
+        let s: &[u8] = b"$size_t";
+
+        let mut unit = Unit::new(&target, &arena);
+        let i4 = unit.types.primitive(Primitive::I4);
+        unit.types.add_alias("size_t", i4);
+
+        let error = Cell::new(false);
+        let mut parser = Parser {
+            tok: Tokeniser::new(s, "fname"),
+            unit,
+            sema_error: |_| error.set(true),
+        };
+        let t = parser.parse_type()?;
+        assert!(!error.get(), "sema error during parse");
+
+        assert_eq!(t, i4); // resolve(), etc
+        match t {
+            &TypeS::Alias { ref name, actual } => {
+                assert_eq!(name, "size_t");
+                assert_eq!(actual, i4);
+            }
+            got => panic!("expected Alias, got {:?}", got),
+        }
+
+        Ok(())
+    }
 }
 
 /*
