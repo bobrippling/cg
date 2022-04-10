@@ -435,7 +435,7 @@ mod test {
 
     fn parse_str<F>(s: &[u8], f: F)
     where
-        F: FnOnce(Parser, &mut dyn FnMut()),
+        F: FnOnce(Parser, &mut dyn FnMut(&mut Parser)),
     {
         let target = Target::dummy();
         let arena = Arena::new();
@@ -448,8 +448,12 @@ mod test {
         };
 
         let mut done = false;
-        f(parser, &mut || {
+        f(parser, &mut |parser| {
             assert!(!error.get(), "sema error during parse");
+
+            parser.eat(Token::Eof).unwrap(); // needed to bump us onto eof()
+            assert!(parser.eof());
+
             done = true;
         });
         assert!(done);
@@ -459,7 +463,7 @@ mod test {
     fn parse_type() {
         parse_str(b"i4", |mut parser, done| {
             let t = parser.parse_type().unwrap();
-            done();
+            done(&mut parser);
 
             assert_eq!(t, parser.unit.types.primitive(Primitive::I4));
             assert!(matches!(t, TypeS::Primitive(Primitive::I4)));
@@ -473,7 +477,7 @@ mod test {
             parser.unit.types.add_alias("size_t", i4);
 
             let t = parser.parse_type().unwrap();
-            done();
+            done(&mut parser);
 
             assert_eq!(t, i4); // resolve(), etc
             match t {
@@ -498,7 +502,7 @@ mod test {
             let f = parser
                 .parse_function("f".into(), fnty, arg_names.clone())
                 .unwrap();
-            done();
+            done(&mut parser);
 
             let mut expected = Func::new("f".into(), fnty, arg_names);
             expected.add_attr(FuncAttr::INTERNAL);
