@@ -44,14 +44,14 @@ where
     SemaErr: FnMut(String),
 {
     pub fn parse(mut self) -> PResult<Unit<'a, 't>> {
-        while !self.parse_finished() {
+        while !self.eof() {
             self.global()?;
         }
 
         Ok(self.unit)
     }
 
-    fn parse_finished(&self) -> bool {
+    fn eof(&self) -> bool {
         self.tok.eof()
     }
 
@@ -388,7 +388,7 @@ where
             let mut blocks = vec![];
 
             loop {
-                if self.parse_finished() {
+                if self.eof() {
                     return Err(ParseError::Generic(format!(
                         "No closing bracket for function body"
                     )));
