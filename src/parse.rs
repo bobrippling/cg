@@ -345,6 +345,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::cell::Cell;
+
     use typed_arena::Arena;
 
     use crate::target::Target;
@@ -358,12 +360,14 @@ mod test {
 
         let s: &[u8] = b"i4";
 
+        let error = Cell::new(false);
         let mut parser = Parser {
             tok: Tokeniser::new(s, "fname"),
             unit: Unit::new(&target, &arena),
-            sema_error: |_| {},
+            sema_error: |_| error.set(true),
         };
         let t = parser.parse_type()?;
+        assert!(!error.get(), "sema error during parse");
 
         assert_eq!(t, parser.unit.types.primitive(Primitive::I4));
         assert!(matches!(t, TypeS::Primitive(Primitive::I4)));
