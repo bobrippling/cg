@@ -31,6 +31,8 @@ pub enum ParseError {
 }
 
 pub struct Parser<'a, 't, R, F> {
+    // 'a: Target, fname
+    // 't: types
     pub tok: Tokeniser<'a, R>,
     pub unit: Unit<'a, 't>,
     pub sema_error: F,
@@ -111,7 +113,7 @@ where
         Ok(())
     }
 
-    fn parse_type_maybe_func(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
+    fn parse_type_maybe_func<'s>(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
         let (ty, toplvl_args) = self.parse_type_maybe_func_nochk()?;
 
         if ty.array_elem().is_fn() {
@@ -129,7 +131,7 @@ where
         todo!()
     }
 
-    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
+    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Option<Vec<String>>)> {
         /*
          * void
          * i1, i2, i4, i8
@@ -140,6 +142,8 @@ where
          * f4 (i2)
          * $typename
          */
+        let mut arg_names = None;
+
         let t = match self.next()? {
             Token::Identifier(spel) => match self.unit.types.resolve_alias(&spel) {
                 Some(ty) => ty,
@@ -162,8 +166,13 @@ where
             },
 
             Token::Punctuation(Punctuation::LBrace) => {
-                let (types, variadic) =
+                let (types, variadic, names) =
                     self.parse_type_list(Token::Punctuation(Punctuation::RBrace), false)?;
+
+                assert!(match names {
+                    Some(names) => names.is_empty(),
+                    None => true,
+                });
 
                 if variadic {
                     todo!("error");
@@ -202,7 +211,7 @@ where
 
                 let t = self.unit.types.array_of(elemty, nelems);
 
-                self.eat(Token::Punctuation(Punctuation::RSquare));
+                self.eat(Token::Punctuation(Punctuation::RSquare))?;
 
                 t
             }
@@ -220,8 +229,15 @@ where
             }
 
             if self.accept(Token::Punctuation(Punctuation::LParen))? {
-                let (types, variadic) =
+                let (types, variadic, names) =
                     self.parse_type_list(Token::Punctuation(Punctuation::RParen), true)?;
+
+                if let Some(names) = names {
+                    let old = arg_names.replace(names);
+                    if old.is_some() {
+                        todo!("error: multiple top-level argument names")
+                    }
+                }
 
                 t = self.unit.types.func_of(t, types, variadic);
                 continue;
@@ -230,14 +246,14 @@ where
             break;
         }
 
-        Ok((t, todo!()))
+        Ok((t, arg_names))
     }
 
     fn parse_type_list(
         &mut self,
         closer: Token,
         toplvl_args: bool,
-    ) -> PResult<(Vec<Type<'t>>, bool)> {
+    ) -> PResult<(Vec<Type<'t>>, bool, Option<Vec<String>>)> {
         todo!()
         /*
         if(variadic)

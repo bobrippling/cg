@@ -1,10 +1,13 @@
 use std::io::Read;
 
+use typed_arena::Arena;
+
 use crate::global::Global;
 use crate::parse::{Parser, ParseError};
 use crate::pass::Pass;
 use crate::target::Target;
 use crate::tokenise::Tokeniser;
+use crate::ty::TypeS;
 use crate::ty_uniq::TyUniq;
 
 pub struct Unit<'a, 't> {
@@ -13,19 +16,23 @@ pub struct Unit<'a, 't> {
 }
 
 impl<'a, 't> Unit<'a, 't> {
-    fn new(target: &'a Target) -> Self {
+    fn new(target: &'a Target, arena: &'t Arena<TypeS<'t>>) -> Self {
         Self {
             target,
-            types: TyUniq::new(target.arch.ptr),
+            types: TyUniq::new(target.arch.ptr, arena),
         }
     }
 
-    pub fn parse<F>(tok: Tokeniser<'a, impl Read>, target: &'a Target, sema_error: F) -> Result<Self, ParseError>
+    pub fn parse<F>(
+        tok: Tokeniser<'a, impl Read>, target: &'a Target,
+        arena: &'t Arena<TypeS<'t>>,
+        sema_error: F,
+    ) -> Result<Self, ParseError>
     where
         F: FnMut(String),
     {
         let parser = Parser {
-            unit: Self::new(target),
+            unit: Self::new(target, arena),
             tok,
             sema_error,
         };

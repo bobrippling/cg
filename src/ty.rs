@@ -6,10 +6,10 @@ pub type Type<'t> = &'t TypeS<'t>;
 
 #[derive(Hash, Debug)]
 pub enum TypeS<'t> {
+    Void,
     Primitive(Primitive),
     Ptr {
         pointee: Type<'t>,
-	size_align: SizeAlign,
     },
     Array {
         elem: Type<'t>,
@@ -21,7 +21,7 @@ pub enum TypeS<'t> {
         variadic: bool,
     },
     Struct {
-        membs: Type<'t>,
+        membs: Vec<Type<'t>>,
     },
     Alias {
         name: String,

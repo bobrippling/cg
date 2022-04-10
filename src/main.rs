@@ -32,12 +32,14 @@ use std::{
     process,
 };
 
+use typed_arena::Arena;
 use clap::Parser;
 
 // use func::Func;
 use target::Target;
 use tokenise::Tokeniser;
 use unit::Unit;
+use ty::TypeS;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -45,6 +47,7 @@ fn read_and_parse<'a, 't>(
     fname: Option<&'a str>,
     dump_tok: bool,
     target: &'a Target,
+    arena: &'t Arena<TypeS<'t>>,
 ) -> Result<Option<Unit<'a, 't>>> {
     let (file, stdin);
     let (reader, fname): (Box<dyn BufRead>, _) = match fname {
@@ -67,7 +70,7 @@ fn read_and_parse<'a, 't>(
         Ok(None)
     } else {
         let mut had_err = false;
-        let unit = Unit::parse(tok, target, |err| {
+        let unit = Unit::parse(tok, target, arena, |err| {
             eprintln!("sema error: {}", err);
             had_err = true;
         })?;
@@ -155,7 +158,8 @@ fn main() -> Result<()> {
         None => None,
     };
 
-    let mut unit = match read_and_parse(fname, opts.dump_tokens, &target)? {
+    let arena = Arena::new();
+    let mut unit = match read_and_parse(fname, opts.dump_tokens, &target, &arena)? {
         Some(u) => u,
         None => process::exit(0),
     };
