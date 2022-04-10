@@ -5,13 +5,12 @@ use thiserror::Error;
 use crate::func::Func;
 use crate::global::Global;
 use crate::srcloc::SrcLoc;
-use crate::target::Target;
 use crate::token::{Keyword, Punctuation, Token};
-use crate::ty::{Type, TypeS};
+use crate::ty::{Primitive, Type, TypeQueries, TypeS};
 use crate::variable::Var;
 use crate::{tokenise::Tokeniser, unit::Unit};
 
-type Result<T> = std::result::Result<T, ParseError>;
+type PResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -21,37 +20,28 @@ pub enum ParseError {
     #[error("{1:?}: expected {0:?}")]
     Expected(Token, SrcLoc),
 
+    #[error("parse error, expected {0}")]
+    Generic(String),
+
     #[error(transparent)]
     LexError(#[from] crate::tokenise::Error),
+
+    #[error("overflow parsing number")]
+    Overflow,
 }
 
-impl<'t> Unit<'t> {
-    pub fn parse<F>(tok: Tokeniser<impl Read>, target: &'t Target, sema_error: F) -> Result<Self>
-    where
-        F: FnMut(String),
-    {
-        let parser = Parser {
-            unit: Unit::new(target),
-            tok,
-            sema_error,
-        };
-
-        parser.parse()
-    }
+pub struct Parser<'a, 't, R, F> {
+    pub tok: Tokeniser<'a, R>,
+    pub unit: Unit<'a, 't>,
+    pub sema_error: F,
 }
 
-struct Parser<'a, 't, R, F> {
-    tok: Tokeniser<'a, R>,
-    unit: Unit<'t>,
-    sema_error: F,
-}
-
-impl<'t, R, F> Parser<'_, 't, R, F>
+impl<'a, 't, R, F> Parser<'a, 't, R, F>
 where
     R: Read,
     F: FnMut(String),
 {
-    fn parse(mut self) -> Result<Unit<'t>> {
+    pub fn parse(mut self) -> PResult<Unit<'a, 't>> {
         while !self.parse_finished() {
             self.global()?;
         }
@@ -63,11 +53,11 @@ where
         self.tok.eof()
     }
 
-    fn next(&mut self) -> Result<Token> {
+    fn next(&mut self) -> PResult<Token> {
         self.tok.next()?.ok_or(ParseError::EarlyEof)
     }
 
-    fn expect<T, Check>(&mut self, f: Check) -> Result<T>
+    fn expect<T, Check>(&mut self, f: Check) -> PResult<T>
     where
         Check: FnOnce(Token) -> std::result::Result<T, Token>,
     {
@@ -75,11 +65,11 @@ where
         f(tok).map_err(|tok| ParseError::Expected(tok, self.tok.loc()))
     }
 
-    fn eat(&mut self, expected: Token) -> Result<()> {
+    fn eat(&mut self, expected: Token) -> PResult<()> {
         self.expect(|tok| if tok == expected { Ok(()) } else { Err(tok) })
     }
 
-    fn accept(&mut self, token: Token) -> Result<bool> {
+    fn accept(&mut self, token: Token) -> PResult<bool> {
         let got = self.next()?;
 
         Ok(if got == token {
@@ -90,7 +80,7 @@ where
         })
     }
 
-    fn global(&mut self) -> Result<()> {
+    fn global(&mut self) -> PResult<()> {
         let is_type = self.accept(Token::Keyword(Keyword::Type))?;
 
         let name = self.expect(|tok| {
@@ -103,7 +93,7 @@ where
 
         self.eat(Token::Punctuation(Punctuation::Equal))?;
 
-        let (ty, toplvl_args) = self.parse_type_maybe_func();
+        let (ty, toplvl_args) = self.parse_type_maybe_func()?;
 
         let new = if is_type {
             Global::Type { name, ty }
@@ -121,8 +111,194 @@ where
         Ok(())
     }
 
-    fn parse_type_maybe_func(&mut self) -> (Type<'t>, Vec<()>) {
+    fn parse_type_maybe_func(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
+        let (ty, toplvl_args) = self.parse_type_maybe_func_nochk()?;
+
+        if ty.array_elem().is_fn() {
+            todo!("error");
+            // sema_error(p, "array of functions");
+            // return default_type(p);
+        }
+
+        if ty.called().array_elem().is_some() {
+            todo!("error");
+            // sema_error(p, "function returning array");
+            // return default_type(p);
+        }
+
         todo!()
+    }
+
+    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
+        /*
+         * void
+         * i1, i2, i4, i8
+         * f4, f8, flarge
+         * { i2, f4 }
+         * [ i2 x 7 ]
+         * i8 *
+         * f4 (i2)
+         * $typename
+         */
+        let t = match self.next()? {
+            Token::Identifier(spel) => match self.unit.types.resolve_alias(&spel) {
+                Some(ty) => ty,
+                None => {
+                    (self.sema_error)(format!("no such type '{}'", spel));
+                    self.unit.types.default()
+                }
+            },
+
+            Token::Keyword(kw) => match kw {
+                Keyword::I1 => self.unit.types.primitive(Primitive::I1),
+                Keyword::I2 => self.unit.types.primitive(Primitive::I2),
+                Keyword::I4 => self.unit.types.primitive(Primitive::I4),
+                Keyword::I8 => self.unit.types.primitive(Primitive::I8),
+                Keyword::F4 => self.unit.types.primitive(Primitive::F4),
+                Keyword::F8 => self.unit.types.primitive(Primitive::F8),
+                Keyword::FLarge => self.unit.types.primitive(Primitive::FLarge),
+                Keyword::Void => self.unit.types.void(),
+                _ => return Err(ParseError::Generic("type expected".into())),
+            },
+
+            Token::Punctuation(Punctuation::LBrace) => {
+                let (types, variadic) =
+                    self.parse_type_list(Token::Punctuation(Punctuation::RBrace), false)?;
+
+                if variadic {
+                    todo!("error");
+                }
+
+                self.unit.types.struct_of(types)
+            }
+
+            Token::Punctuation(Punctuation::LSquare) => {
+                let elemty = self.parse_type()?;
+
+                let mul = self.expect(|tok| {
+                    if let Token::Bareword(ident) = tok {
+                        Ok(ident)
+                    } else {
+                        Err(tok)
+                    }
+                })?;
+
+                if mul != "x" {
+                    return Err(ParseError::Generic(format!(
+                        "'x' expected for array multiplier, got {}",
+                        mul
+                    )));
+                }
+
+                let nelems = self.expect(|tok| {
+                    if let Token::Integer(i) = tok {
+                        Ok(i)
+                    } else {
+                        Err(tok)
+                    }
+                })?;
+
+                let nelems = nelems.try_into().map_err(|_| ParseError::Overflow)?;
+
+                let t = self.unit.types.array_of(elemty, nelems);
+
+                self.eat(Token::Punctuation(Punctuation::RSquare));
+
+                t
+            }
+
+            tok => {
+                return Err(ParseError::Generic(format!("type expected, got {}", tok)));
+            }
+        };
+
+        let mut t = t;
+        loop {
+            if self.accept(Token::Punctuation(Punctuation::Star))? {
+                t = self.unit.types.ptr_to(t);
+                continue;
+            }
+
+            if self.accept(Token::Punctuation(Punctuation::LParen))? {
+                let (types, variadic) =
+                    self.parse_type_list(Token::Punctuation(Punctuation::RParen), true)?;
+
+                t = self.unit.types.func_of(t, types, variadic);
+                continue;
+            }
+
+            break;
+        }
+
+        Ok((t, todo!()))
+    }
+
+    fn parse_type_list(
+        &mut self,
+        closer: Token,
+        toplvl_args: bool,
+    ) -> PResult<(Vec<Type<'t>>, bool)> {
+        todo!()
+        /*
+        if(variadic)
+            *variadic = false;
+
+
+        if(token_accept(p->tok, tok_ellipses)){
+            *variadic = true;
+
+        }else if(token_peek(p->tok) != lasttok){
+            bool have_idents = false;
+
+            for(;;){
+                type *memb = parse_type(p);
+
+                if(type_is_fn(memb)){
+                    sema_error(p, "function in aggregate");
+                    memb = default_type(p);
+                }
+
+                if(toplvl_args){
+                    if(dynarray_is_empty(types)){
+                        /* first time, decide whether to have arg names */
+                        if(token_peek(p->tok) == tok_ident){
+                            have_idents = true;
+                        }else{
+                            have_idents = false;
+                        }
+                    }
+
+                    if(have_idents){
+                        char *ident;
+
+                        eat(p, "argument name", tok_ident);
+
+                        ident = token_last_ident(p->tok);
+                        dynarray_add(toplvl_args, ident);
+                    }
+                }
+
+                dynarray_add(types, memb);
+
+                if(token_accept(p->tok, tok_comma)){
+                    if(variadic && token_accept(p->tok, tok_ellipses)){
+                        *variadic = true;
+                    }else{
+                        /* , xyz */
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+
+        eat(p, NULL, lasttok);
+        */
+    }
+
+    fn parse_type(&mut self) -> PResult<Type<'t>> {
+        let (ty, args) = self.parse_type_maybe_func()?;
+        Ok(ty)
     }
 
     fn parse_function(&mut self, _name: String, _ty: Type<'t>, _toplvl_args: Vec<()>) -> Func<'t> {
@@ -351,197 +527,6 @@ static int parse_finished(tokeniser *tok)
     return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
 }
 
-static void parse_type_list(
-        parse *p, dynarray *types,
-        dynarray *toplvl_args,
-        bool *const variadic,
-        enum token lasttok)
-{
-    if(variadic)
-        *variadic = false;
-
-
-    if(token_accept(p->tok, tok_ellipses)){
-        *variadic = true;
-
-    }else if(token_peek(p->tok) != lasttok){
-        bool have_idents = false;
-
-        for(;;){
-            type *memb = parse_type(p);
-
-            if(type_is_fn(memb)){
-                sema_error(p, "function in aggregate");
-                memb = default_type(p);
-            }
-
-            if(toplvl_args){
-                if(dynarray_is_empty(types)){
-                    /* first time, decide whether to have arg names */
-                    if(token_peek(p->tok) == tok_ident){
-                        have_idents = true;
-                    }else{
-                        have_idents = false;
-                    }
-                }
-
-                if(have_idents){
-                    char *ident;
-
-                    eat(p, "argument name", tok_ident);
-
-                    ident = token_last_ident(p->tok);
-                    dynarray_add(toplvl_args, ident);
-                }
-            }
-
-            dynarray_add(types, memb);
-
-            if(token_accept(p->tok, tok_comma)){
-                if(variadic && token_accept(p->tok, tok_ellipses)){
-                    *variadic = true;
-                }else{
-                    /* , xyz */
-                    continue;
-                }
-            }
-            break;
-        }
-    }
-
-    eat(p, NULL, lasttok);
-}
-
-
-static type *parse_type_maybe_func_nochk(parse *p, dynarray *toplvl_args)
-{
-    /*
-     * void
-     * i1, i2, i4, i8
-     * f4, f8, flarge
-     * { i2, f4 }
-     * [ i2 x 7 ]
-     * i8 *
-     * f4 (i2)
-     * $typename
-     */
-    type *t = NULL;
-    enum token tok;
-
-    switch((tok = token_next(p->tok))){
-            enum type_primitive prim;
-
-        case tok_ident:
-        {
-            char *spel = token_last_ident(p->tok);
-
-            t = type_alias_find(unit_uniqtypes(p->unit), spel);
-
-            if(!t){
-                parse_error(p, "no such type '%s'", spel);
-                t = default_type(p);
-            }
-
-            free(spel);
-            break;
-        }
-
-        case tok_i1: prim = i1; goto prim;
-        case tok_i2: prim = i2; goto prim;
-        case tok_i4: prim = i4; goto prim;
-        case tok_i8: prim = i8; goto prim;
-
-        case tok_f4:     prim = f4; goto prim;
-        case tok_f8:     prim = f8; goto prim;
-        case tok_flarge: prim = flarge; goto prim;
-prim:
-            t = type_get_primitive(unit_uniqtypes(p->unit), prim);
-            break;
-
-        case tok_void:
-            t = type_get_void(unit_uniqtypes(p->unit));
-            break;
-
-        case tok_lbrace:
-        {
-            dynarray types = DYNARRAY_INIT;
-
-            parse_type_list(p, &types, NULL, NULL, tok_rbrace);
-
-            t = type_get_struct(unit_uniqtypes(p->unit), &types);
-            break;
-        }
-
-        case tok_lsquare:
-        {
-            type *elemty = parse_type(p);
-            char *mul;
-            unsigned nelems;
-
-            eat(p, "array multiplier", tok_bareword);
-            mul = token_last_bareword(p->tok);
-            if(strcmp(mul, "x")){
-                parse_error(p, "'x' expected for array multiplier, got %s", mul);
-            }
-            free(mul);
-
-            eat(p, "array multiple", tok_int);
-            nelems = token_last_int(p->tok);
-
-            t = type_get_array(unit_uniqtypes(p->unit), elemty, nelems);
-
-            eat(p, "end array", tok_rsquare);
-            break;
-        }
-
-        default:
-            parse_error(p, "type expected, got %s", token_to_str(tok));
-            return default_type(p);
-    }
-
-    for(;;){
-        if(token_accept(p->tok, tok_star)){
-            t = type_get_ptr(unit_uniqtypes(p->unit), t);
-            continue;
-        }
-
-        if(token_accept(p->tok, tok_lparen)){
-            dynarray types = DYNARRAY_INIT;
-            bool variadic;
-
-            parse_type_list(p, &types, toplvl_args, &variadic, tok_rparen);
-
-            t = type_get_func(unit_uniqtypes(p->unit), t, &types, variadic);
-            continue;
-        }
-
-        break;
-    }
-
-    return t;
-}
-
-static type *parse_type_maybe_func(parse *p, dynarray *toplvl_args)
-{
-    type *t = parse_type_maybe_func_nochk(p, toplvl_args);
-
-    if(type_is_fn(type_array_element(t))){
-        sema_error(p, "array of functions");
-        return default_type(p);
-    }
-
-    if(type_array_element(type_func_call(t, NULL, NULL))){
-        sema_error(p, "function returning array");
-        return default_type(p);
-    }
-
-    return t;
-}
-
-static type *parse_type(parse *p)
-{
-    return parse_type_maybe_func(p, NULL);
-}
 
 static val *parse_val(parse *p)
 {

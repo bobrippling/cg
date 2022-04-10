@@ -41,11 +41,11 @@ use unit::Unit;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-fn read_and_parse<'t>(
-    fname: Option<&str>,
+fn read_and_parse<'a, 't>(
+    fname: Option<&'a str>,
     dump_tok: bool,
-    target: &'t Target,
-) -> Result<Option<Unit<'t>>> {
+    target: &'a Target,
+) -> Result<Option<Unit<'a, 't>>> {
     let (file, stdin);
     let (reader, fname): (Box<dyn BufRead>, _) = match fname {
         Some(fname) => {

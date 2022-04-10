@@ -1,16 +1,36 @@
+use std::io::Read;
+
 use crate::global::Global;
+use crate::parse::{Parser, ParseError};
 use crate::pass::Pass;
 use crate::target::Target;
+use crate::tokenise::Tokeniser;
+use crate::ty_uniq::TyUniq;
 
-pub struct Unit<'a> {
-    target: &'a Target,
+pub struct Unit<'a, 't> {
+    pub target: &'a Target,
+    pub types: TyUniq<'t>,
 }
 
-impl<'a> Unit<'a> {
-    pub fn new(target: &'a Target) -> Self {
+impl<'a, 't> Unit<'a, 't> {
+    fn new(target: &'a Target) -> Self {
         Self {
-            target
+            target,
+            types: TyUniq::new(target.arch.ptr),
         }
+    }
+
+    pub fn parse<F>(tok: Tokeniser<'a, impl Read>, target: &'a Target, sema_error: F) -> Result<Self, ParseError>
+    where
+        F: FnMut(String),
+    {
+        let parser = Parser {
+            unit: Self::new(target),
+            tok,
+            sema_error,
+        };
+
+        parser.parse()
     }
 
     pub fn run_pass(&mut self, _pass: &dyn Pass) {
@@ -18,7 +38,7 @@ impl<'a> Unit<'a> {
     }
 }
 
-impl<'a> Unit<'a> {
+impl Unit<'_, '_> {
     pub fn for_globals<F>(&self, _f: F)
     where
         F: FnMut(&Global),

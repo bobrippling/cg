@@ -1,13 +1,15 @@
+use std::ptr;
+
 use crate::size_align::SizeAlign;
-use crate::ty_uniq::TyUniq;
 
 pub type Type<'t> = &'t TypeS<'t>;
 
+#[derive(Hash, Debug)]
 pub enum TypeS<'t> {
     Primitive(Primitive),
     Ptr {
         pointee: Type<'t>,
-        uniqs: TyUniq<'t>,
+	size_align: SizeAlign,
     },
     Array {
         elem: Type<'t>,
@@ -34,7 +36,7 @@ macro_rules! primitives {
             $(,)*
         }
     ) => {
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
         pub enum Primitive {
             $($member),*
         }
@@ -67,24 +69,69 @@ primitives! {
         I8 => { size: 8, align: 8, integral: true },
         F4 => { size: 4, align: 4, integral: false },
         F8 => { size: 8, align: 8, integral: false },
-        Flarge => { size: 16, align: 16, integral: false },
+        FLarge => { size: 16, align: 16, integral: false },
     }
 }
 
-impl TypeS<'_> {
-    fn resolve(mut self: &Self) -> &Self {
+pub trait TypeQueries<'t>: Sized {
+    fn array_elem(self) -> Option<Type<'t>>;
+    fn called(self) -> Option<Type<'t>>;
+
+    fn as_primitive(self) -> Option<Primitive>;
+
+    fn is_fn(self) -> bool;
+}
+
+impl<'t> TypeS<'t> {
+    fn resolve(mut self: &'t Self) -> &'t Self {
         while let TypeS::Alias { actual, .. } = self {
             self = actual;
         }
         self
     }
+}
 
-    fn primitive(&self) -> Option<Primitive> {
+impl<'t> TypeQueries<'t> for Type<'t> {
+    fn array_elem(self) -> Option<Self> {
+        todo!()
+    }
+
+    fn called(self) -> Option<Self> {
+        todo!()
+    }
+
+    fn as_primitive(self) -> Option<Primitive> {
         if let TypeS::Primitive(p) = self.resolve() {
             Some(*p)
         } else {
             None
         }
+    }
+
+    fn is_fn(self) -> bool {
+	matches!(self, TypeS::Func { .. })
+    }
+}
+
+macro_rules! forward {
+    ($(fn $name:ident($self:ident) -> $ret:ty;)*) => {
+	$(
+	    fn $name($self) -> $ret {
+		$self.and_then(TypeQueries::$name)
+	    }
+	)*
+    }
+}
+
+impl<'t> TypeQueries<'t> for Option<Type<'t>> {
+    forward! {
+	fn array_elem(self) -> Option<Type<'t>>;
+	fn called(self) -> Option<Type<'t>>;
+	fn as_primitive(self) -> Option<Primitive>;
+    }
+
+    fn is_fn(self) -> bool {
+	self.map(TypeQueries::is_fn).unwrap_or(false)
     }
 }
 
@@ -92,7 +139,7 @@ impl PartialEq for TypeS<'_> {
     fn eq(&self, other: &Self) -> bool {
         let a = self.resolve();
         let b = other.resolve();
-        a as *const _ == b as *const _
+	ptr::eq(a, b)
     }
 }
 

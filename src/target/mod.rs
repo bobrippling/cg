@@ -14,7 +14,7 @@ pub struct Target {
 
 #[derive(Debug)]
 pub struct Arch {
-    ptr: SizeAlign,
+    pub ptr: SizeAlign,
     // instructions: ...
     op_isn_is_destructive: bool,
 }

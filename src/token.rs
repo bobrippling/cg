@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::enum_string;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -11,6 +13,12 @@ pub enum Token {
     Keyword(Keyword),
     Op(Op),
     Cmp(Cmp),
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 enum_string! {
@@ -58,7 +66,7 @@ enum_string! {
         I8 = "i8",
         F4 = "f4",
         F8 = "f8",
-        Flarge = "flarge",
+        FLarge = "flarge",
         Void = "void",
         Undef = "undef",
         Global = "global",

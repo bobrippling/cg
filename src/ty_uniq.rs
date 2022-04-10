@@ -1,10 +1,15 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
-use crate::{ty::{Primitive, TypeS}, size_align::SizeAlign};
+use crate::{
+    size_align::SizeAlign,
+    ty::{Primitive, Type, TypeS},
+};
 
-pub struct TyUniq<'t> {
-    primitives: [Box<TypeS<'t>>; Primitive::len()],
-    void: Box<TypeS<'t>>,
+pub struct TyUniq<'t>(RefCell<Inner<'t>>);
+
+struct Inner<'t> {
+    primitives: HashMap<Primitive, TypeS<'t>>,
+    void: Option<Box<TypeS<'t>>>,
 
     structs: Vec<TypeS<'t>>,
     aliases: HashMap<String, TypeS<'t>>,
@@ -12,34 +17,73 @@ pub struct TyUniq<'t> {
     ptr: SizeAlign,
 }
 
-/*
-void uniq_type_list_init(
-		struct uniq_type_list *us, unsigned ptrsz, unsigned ptralign)
-{
-	us->ptrsz = ptrsz;
-	us->ptralign = ptralign;
+impl<'t> TyUniq<'t> {
+    pub fn new(ptr: SizeAlign) -> Self {
+        Self(RefCell::new(Inner {
+            primitives: HashMap::new(),
+            void: None,
+
+            structs: vec![],
+            aliases: HashMap::new(),
+
+            ptr,
+        }))
+    }
+
+    pub fn primitive(&mut self, p: Primitive) -> Type<'t> {
+	todo!()
+	/*
+        let t = self
+            .0
+            .borrow_mut()
+            .primitives
+            .entry(p)
+            .or_insert_with(|| TypeS::Primitive(p));
+
+        t
+	*/
+    }
+
+    pub fn void(&mut self) -> Type<'t> {
+	todo!()
+    }
+
+    pub fn struct_of(&mut self, types: Vec<Type<'t>>) -> Type<'t> {
+	todo!()
+    }
+
+    pub fn resolve_alias(&mut self, spel: &str) -> Option<Type<'t>> {
+	todo!()
+    }
+
+    pub fn default(&mut self) -> Type<'t> {
+	todo!()
+    }
+
+    pub fn array_of(&mut self, elemty: Type<'t>, n: usize) -> Type<'t> {
+        todo!()
+    }
+
+    pub fn ptr_to(&self, pointee: Type<'t>) -> Type<'t> {
+        todo!()
+    }
+
+    pub fn func_of(&self, ret: Type<'t>, types: Vec<Type<'t>>, variadic: bool) -> Type<'t> {
+        todo!()
+    }
 }
 
-void uniq_type_list_free(uniq_type_list *utl)
-{
-	type *t;
-	size_t i;
+#[cfg(test)]
+mod test {
+    use super::*;
 
-	/* free everything but the top levels - those
-	 * in uniq_type_list */
-	for(i = 0; i < countof(utl->primitives); i++)
-		type_free_r(utl->primitives[i]);
-	type_free_r(utl->tvoid);
-	type_free_dynarray_r(&utl->structs);
+    #[test]
+    fn memory() {
+        let mut ut = TyUniq::new(SizeAlign { size: 8, align: 8 });
 
-	for(i = 0; i < countof(utl->primitives); i++)
-		type_free_1(utl->primitives[i]);
-	type_free_1(utl->tvoid);
-	type_free_dynarray_1(&utl->structs);
+        let i4_a = ut.primitive(Primitive::I4);
+        let i4_b = ut.primitive(Primitive::I4);
 
-	for(i = 0; (t = dynmap_value(type *, utl->aliases, i)); i++)
-		type_free_1(t); /* this frees 'spel' */
-
-	dynmap_free(utl->aliases);
+	assert_eq!(i4_a, i4_b);
+    }
 }
-*/
