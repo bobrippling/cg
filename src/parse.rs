@@ -431,9 +431,11 @@ mod test {
 
     use super::*;
 
+    type Parser<'s, 'cb> = super::Parser<'s, 's, &'s [u8], &'cb mut dyn FnMut(String)>;
+
     fn parse_str<F>(s: &[u8], f: F)
     where
-        F: FnOnce(Parser<&[u8], &mut dyn FnMut(String)>, &mut dyn FnMut()),
+        F: FnOnce(Parser, &mut dyn FnMut()),
     {
         let target = Target::dummy();
         let arena = Arena::new();
