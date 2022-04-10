@@ -2,7 +2,7 @@ use std::io::Read;
 
 use thiserror::Error;
 
-use crate::func::Func;
+use crate::func::{Func, FuncAttr};
 use crate::global::Global;
 use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
@@ -30,18 +30,18 @@ pub enum ParseError {
     Overflow,
 }
 
-pub struct Parser<'a, 't, R, F> {
+pub struct Parser<'a, 't, R, SemaErr> {
     // 'a: Target, fname
     // 't: types
     pub tok: Tokeniser<'a, R>,
     pub unit: Unit<'a, 't>,
-    pub sema_error: F,
+    pub sema_error: SemaErr,
 }
 
-impl<'a, 't, R, F> Parser<'a, 't, R, F>
+impl<'a, 't, R, SemaErr> Parser<'a, 't, R, SemaErr>
 where
     R: Read,
-    F: FnMut(String),
+    SemaErr: FnMut(String),
 {
     pub fn parse(mut self) -> PResult<Unit<'a, 't>> {
         while !self.parse_finished() {
@@ -72,13 +72,21 @@ where
     }
 
     fn accept(&mut self, token: Token) -> PResult<bool> {
+        Ok(self.accept_with(|got| Ok(token == got))?.unwrap_or(false))
+    }
+
+    fn accept_with<T, F>(&mut self, f: F) -> PResult<Option<T>>
+    where
+        F: FnOnce(Token) -> Result<T, Token>,
+    {
         let got = self.next()?;
 
-        Ok(if got == token {
-            true
-        } else {
-            self.tok.unget(got);
-            false
+        Ok(match f(got) {
+            Ok(t) => Some(t),
+            Err(tok) => {
+                self.tok.unget(tok);
+                None
+            }
         })
     }
 
@@ -100,7 +108,7 @@ where
         let new = if is_type {
             Global::Type { name, ty }
         } else if matches!(ty, TypeS::Func { .. }) {
-            Global::Func(self.parse_function(name, ty, toplvl_args))
+            Global::Func(self.parse_function(name, ty, toplvl_args)?)
         } else {
             Global::Var(self.parse_variable(name, ty))
         };
@@ -331,14 +339,79 @@ where
 
     fn parse_function(
         &mut self,
-        _name: String,
-        _ty: Type<'t>,
-        _toplvl_args: Vec<String>,
-    ) -> Func<'t> {
-        todo!()
+        name: String,
+        ty: Type<'t>,
+        toplvl_args: Vec<String>,
+    ) -> PResult<Func<'t>> {
+        match ty {
+            TypeS::Func {
+                ret: _,
+                args,
+                variadic: _,
+            } => {
+                if !toplvl_args.is_empty() {
+                    assert_eq!(args.len(), toplvl_args.len());
+                }
+            }
+            _ => unreachable!(),
+        }
+
+        let mut f = Func::new(name, ty, toplvl_args);
+        let mut attr = FuncAttr::default();
+
+        // look for weak (and other attributes)
+        loop {
+            if self.accept(Token::Keyword(Keyword::Internal))? {
+                attr |= FuncAttr::INTERNAL;
+            } else if let Some(bareword) = self.accept_with(|tok| {
+                if let Token::Bareword(bw) = tok {
+                    Ok(bw)
+                } else {
+                    Err(tok)
+                }
+            })? {
+                if bareword == "weak" {
+                    attr |= FuncAttr::WEAK;
+                } else {
+                    return Err(ParseError::Generic(format!(
+                        "unknown function modifier '{}'",
+                        bareword
+                    )));
+                }
+            } else {
+                break;
+            }
+        }
+        f.add_attr(attr);
+
+        if self.accept(Token::Punctuation(Punctuation::LBrace))? {
+            let mut blocks = vec![];
+
+            loop {
+                if self.parse_finished() {
+                    return Err(ParseError::Generic(format!(
+                        "No closing bracket for function body"
+                    )));
+                }
+                if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                    break;
+                }
+
+                let b = self.parse_block()?;
+                blocks.push(b);
+            }
+        }
+
+        // TODO: function_finalize(fn);
+        // TODO: p->names2vals = NULL;
+        Ok(f)
     }
 
     fn parse_variable(&mut self, _name: String, _ty: Type<'t>) -> Var {
+        todo!()
+    }
+
+    fn parse_block(&mut self) -> PResult<()> {
         todo!()
     }
 }
@@ -353,58 +426,78 @@ mod test {
 
     use super::*;
 
-    #[test]
-    fn parse_type() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_str<F>(s: &[u8], f: F)
+    where
+        F: FnOnce(Parser<&[u8], &mut dyn FnMut(String)>, &mut dyn FnMut()),
+    {
         let target = Target::dummy();
         let arena = Arena::new();
 
-        let s: &[u8] = b"i4";
-
         let error = Cell::new(false);
-        let mut parser = Parser {
+        let parser = Parser {
             tok: Tokeniser::new(s, "fname"),
             unit: Unit::new(&target, &arena),
-            sema_error: |_| error.set(true),
+            sema_error: (&mut |_| error.set(true)) as _,
         };
-        let t = parser.parse_type()?;
-        assert!(!error.get(), "sema error during parse");
 
-        assert_eq!(t, parser.unit.types.primitive(Primitive::I4));
-        assert!(matches!(t, TypeS::Primitive(Primitive::I4)));
-
-        Ok(())
+        let mut done = false;
+        f(parser, &mut || {
+            assert!(!error.get(), "sema error during parse");
+            done = true;
+        });
+        assert!(done);
     }
 
     #[test]
-    fn parse_alias() -> Result<(), Box<dyn std::error::Error>> {
-        let target = Target::dummy();
-        let arena = Arena::new();
+    fn parse_type() {
+        parse_str(b"i4", |mut parser, done| {
+            let t = parser.parse_type().unwrap();
+            done();
 
-        let s: &[u8] = b"$size_t";
+            assert_eq!(t, parser.unit.types.primitive(Primitive::I4));
+            assert!(matches!(t, TypeS::Primitive(Primitive::I4)));
+        })
+    }
 
-        let mut unit = Unit::new(&target, &arena);
-        let i4 = unit.types.primitive(Primitive::I4);
-        unit.types.add_alias("size_t", i4);
+    #[test]
+    fn parse_alias() {
+        parse_str(b"$size_t", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            parser.unit.types.add_alias("size_t", i4);
 
-        let error = Cell::new(false);
-        let mut parser = Parser {
-            tok: Tokeniser::new(s, "fname"),
-            unit,
-            sema_error: |_| error.set(true),
-        };
-        let t = parser.parse_type()?;
-        assert!(!error.get(), "sema error during parse");
+            let t = parser.parse_type().unwrap();
+            done();
 
-        assert_eq!(t, i4); // resolve(), etc
-        match t {
-            &TypeS::Alias { ref name, actual } => {
-                assert_eq!(name, "size_t");
-                assert_eq!(actual, i4);
+            assert_eq!(t, i4); // resolve(), etc
+            match t {
+                &TypeS::Alias { ref name, actual } => {
+                    assert_eq!(name, "size_t");
+                    assert_eq!(actual, i4);
+                }
+                got => panic!("expected Alias, got {:?}", got),
             }
-            got => panic!("expected Alias, got {:?}", got),
-        }
+        })
+    }
 
-        Ok(())
+    #[test]
+    fn parse_empty_func() {
+        parse_str(b"internal {}", |mut parser, done| {
+            let types = &mut parser.unit.types;
+            let i4 = types.primitive(Primitive::I4);
+            let i1 = types.primitive(Primitive::I1);
+            let fnty = types.func_of(i4, vec![i1, i4], false);
+
+            let arg_names = vec!["arg1".into(), "arg2".into()];
+            let f = parser
+                .parse_function("f".into(), fnty, arg_names.clone())
+                .unwrap();
+            done();
+
+            let mut expected = Func::new("f".into(), fnty, arg_names);
+            expected.add_attr(FuncAttr::INTERNAL);
+
+            assert_eq!(f, expected);
+        });
     }
 }
 
@@ -1300,55 +1393,6 @@ static void parse_block(parse *p)
             parse_memcpy(p);
             break;
     }
-}
-
-static void parse_function(
-        parse *p,
-        char *name, type *ty,
-        dynarray *toplvl_args)
-{
-    function *fn = unit_function_new(p->unit, name, ty, toplvl_args);
-    toplvl_args = NULL; /* consumed */
-    enum function_attributes attr = 0;
-
-    /* look for weak (and other attributes) */
-    for(;;){
-        if(token_accept(p->tok, tok_internal)){
-            attr |= function_attribute_internal;
-        }else if(token_accept(p->tok, tok_bareword)){
-            char *bareword = token_last_bareword(p->tok);
-
-            if(!strcmp(bareword, "weak"))
-                attr |= function_attribute_weak;
-            else
-                parse_error(p, "unknown function modifier '%s'", bareword);
-
-            free(bareword);
-        }else{
-            break;
-        }
-    }
-
-    function_add_attributes(fn, attr);
-
-    if(!token_accept(p->tok, tok_lbrace)){
-        /* declaration */
-        return;
-    }
-
-    p->func = fn;
-    p->entry = function_entry_block(fn, true);
-
-    while(token_peek(p->tok) != tok_rbrace && !parse_finished(p->tok)){
-        parse_block(p);
-    }
-
-    eat(p, "function close brace", tok_rbrace);
-
-    function_finalize(fn);
-
-    dynmap_free(p->names2vals);
-    p->names2vals = NULL;
 }
 
 static void parse_init_ptr(parse *p, type *ty, struct init *init)

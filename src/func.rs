@@ -1,22 +1,39 @@
+use bitflags::bitflags;
+
 use crate::ty::Type;
 
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Func<'t> {
-    _name: String,
-    _mangled: Option<String>,
+    name: String,
+    mangled: Option<String>,
 
-    _ty: Type<'t>,
-    _arg_names: Vec<String>,
+    ty: Type<'t>,
+    arg_names: Vec<String>,
+    attr: FuncAttr,
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct FuncAttr: u8 {
+        const INTERNAL = 1 << 0;
+        const WEAK = 1 << 1;
+    }
 }
 
 impl<'t> Func<'t> {
-    #[allow(dead_code)]
-    pub fn new(name: String, ty: Type<'t>) -> Self {
+    pub fn new(name: String, ty: Type<'t>, arg_names: Vec<String>) -> Self {
         Self {
-            _name: name,
-            _mangled: None,
-            _ty: ty,
-            _arg_names: vec![],
+            name,
+            mangled: None,
+            ty,
+            arg_names,
+            attr: Default::default(),
         }
+    }
+
+    pub fn add_attr(&mut self, attr: FuncAttr) {
+        self.attr |= attr;
     }
 }
 
