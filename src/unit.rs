@@ -16,7 +16,7 @@ pub struct Unit<'a, 't> {
 }
 
 impl<'a, 't> Unit<'a, 't> {
-    fn new(target: &'a Target, arena: &'t Arena<TypeS<'t>>) -> Self {
+    pub fn new(target: &'a Target, arena: &'t Arena<TypeS<'t>>) -> Self {
         Self {
             target,
             types: TyUniq::new(target.arch.ptr, arena),

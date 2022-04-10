@@ -6,7 +6,7 @@ use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 
 type IoResult<T> = std::io::Result<T>;
-type LexResult = std::result::Result<Option<Token>, Error>;
+pub type LexResult = std::result::Result<Token, Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -51,10 +51,10 @@ where
     }
 
     pub fn loc(&self) -> SrcLoc {
-	SrcLoc {
-	    line: self.line_no,
-	    col: self.offset as u32,
-	}
+        SrcLoc {
+            line: self.line_no,
+            col: self.offset as u32,
+        }
     }
 
     pub fn eof(&self) -> bool {
@@ -62,8 +62,8 @@ where
     }
 
     pub fn unget(&mut self, tok: Token) {
-	let old = self.unget.replace(tok);
-	assert!(old.is_none());
+        let old = self.unget.replace(tok);
+        assert!(old.is_none());
     }
 
     fn next_line(&mut self) -> IoResult<()> {
@@ -74,7 +74,7 @@ where
         if n == 0 {
             self.eof = true;
         }
-	self.line_no += 1;
+        self.line_no += 1;
 
         Ok(())
     }
@@ -106,16 +106,13 @@ where
         }
     }
 
-    /// Ok(Some(t)) - token
-    /// Ok(None) - eof
-    /// Err(_) - lex or i/o error
     pub fn next(&mut self) -> LexResult {
-        if let unget @ Some(_) = self.unget.take() {
+        if let Some(unget) = self.unget.take() {
             return Ok(unget);
         }
 
         if self.eof {
-            return Ok(None);
+            return Ok(Token::Eof);
         }
 
         self.skip_space()?;
@@ -124,7 +121,7 @@ where
 
         let ch = match line.bytes().next() {
             Some(ch) => ch,
-            None => return Ok(None),
+            None => return Ok(Token::Eof),
         };
 
         if ch == b'#' {
@@ -134,7 +131,7 @@ where
 
         if let Ok(p) = Punctuation::try_from(line) {
             self.offset += p.len();
-            return Ok(Some(Token::Punctuation(p)));
+            return Ok(Token::Punctuation(p));
         }
 
         if ch.is_ascii_digit() || ch == b'-' {
@@ -149,25 +146,25 @@ where
 
             self.offset += count;
 
-            return Ok(Some(Token::Integer(if neg { -n } else { n })));
+            return Ok(Token::Integer(if neg { -n } else { n }));
         }
 
         if let Ok(kw) = Keyword::try_from(line) {
             self.offset += kw.len();
-            return Ok(Some(Token::Keyword(kw)));
+            return Ok(Token::Keyword(kw));
         }
 
         if ch == b'$' {
             self.offset += 1;
             if let Some(ident) = self.parse_ident() {
-                return Ok(Some(Token::Identifier(ident.into())));
+                return Ok(Token::Identifier(ident.into()));
             }
             self.offset -= 1;
         }
 
         if ch.is_ident(false) {
             if let Some(bare) = self.parse_ident() {
-                return Ok(Some(Token::Bareword(bare.into())));
+                return Ok(Token::Bareword(bare.into()));
             }
         }
 
@@ -178,7 +175,7 @@ where
 
             self.offset += bytelen;
 
-            return Ok(Some(Token::String(s)));
+            return Ok(Token::String(s));
         }
 
         return Err(Error::UnknownToken(self.line_remaining().into()));
@@ -208,13 +205,16 @@ where
     }
 }
 
-#[cfg(test)]
 impl<'a, R> Tokeniser<'a, R>
 where
     R: Read + 'a,
 {
-    fn into_iter(mut self) -> impl Iterator<Item = Result<Token, Error>> + 'a {
-        std::iter::from_fn(move || self.next().transpose())
+    pub fn into_iter(mut self) -> impl Iterator<Item = Result<Token, Error>> + 'a {
+        std::iter::from_fn(move || match self.next() {
+            Ok(Token::Eof) => None,
+            o @ Ok(_) => Some(o),
+            e @ Err(_) => Some(e),
+        })
     }
 }
 

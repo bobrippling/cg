@@ -4,6 +4,10 @@ use crate::enum_string;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Token {
+    // this isn't an error, allowing us to parse "i4" without needing
+    // another token to look at afterwards (for '*', '()', ...)
+    Eof,
+
     Integer(i32),
     Identifier(String),
     Bareword(String),

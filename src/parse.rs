@@ -8,15 +8,12 @@ use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 use crate::ty::{Primitive, Type, TypeQueries, TypeS};
 use crate::variable::Var;
-use crate::{tokenise::Tokeniser, unit::Unit};
+use crate::{tokenise::{self, Tokeniser}, unit::Unit};
 
 type PResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
-    #[error("early eof")]
-    EarlyEof,
-
     #[error("{1:?}: expected {0:?}")]
     Expected(Token, SrcLoc),
 
@@ -24,7 +21,7 @@ pub enum ParseError {
     Generic(String),
 
     #[error(transparent)]
-    LexError(#[from] crate::tokenise::Error),
+    LexError(#[from] tokenise::Error),
 
     #[error("overflow parsing number")]
     Overflow,
@@ -55,8 +52,8 @@ where
         self.tok.eof()
     }
 
-    fn next(&mut self) -> PResult<Token> {
-        self.tok.next()?.ok_or(ParseError::EarlyEof)
+    fn next(&mut self) -> tokenise::LexResult {
+        self.tok.next()
     }
 
     fn expect<T, Check>(&mut self, f: Check) -> PResult<T>
@@ -113,7 +110,7 @@ where
         Ok(())
     }
 
-    fn parse_type_maybe_func<'s>(&mut self) -> PResult<(Type<'t>, Vec<()>)> {
+    fn parse_type_maybe_func<'s>(&mut self) -> PResult<(Type<'t>, Vec<String>)> {
         let (ty, toplvl_args) = self.parse_type_maybe_func_nochk()?;
 
         if ty.array_elem().is_fn() {
@@ -128,10 +125,10 @@ where
             // return default_type(p);
         }
 
-        todo!()
+        Ok((ty, toplvl_args))
     }
 
-    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Option<Vec<String>>)> {
+    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Vec<String>)> {
         /*
          * void
          * i1, i2, i4, i8
@@ -142,7 +139,7 @@ where
          * f4 (i2)
          * $typename
          */
-        let mut arg_names = None;
+        let mut arg_names = vec![];
 
         let t = match self.next()? {
             Token::Identifier(spel) => match self.unit.types.resolve_alias(&spel) {
@@ -169,10 +166,7 @@ where
                 let (types, variadic, names) =
                     self.parse_type_list(Token::Punctuation(Punctuation::RBrace), false)?;
 
-                assert!(match names {
-                    Some(names) => names.is_empty(),
-                    None => true,
-                });
+                assert!(names.is_empty());
 
                 if variadic {
                     todo!("error");
@@ -232,9 +226,10 @@ where
                 let (types, variadic, names) =
                     self.parse_type_list(Token::Punctuation(Punctuation::RParen), true)?;
 
-                if let Some(names) = names {
-                    let old = arg_names.replace(names);
-                    if old.is_some() {
+                if !names.is_empty() {
+                    let old = arg_names;
+                    arg_names = names;
+                    if !old.is_empty() {
                         todo!("error: multiple top-level argument names")
                     }
                 }
@@ -253,53 +248,68 @@ where
         &mut self,
         closer: Token,
         toplvl_args: bool,
-    ) -> PResult<(Vec<Type<'t>>, bool, Option<Vec<String>>)> {
-        todo!()
-        /*
-        if(variadic)
-            *variadic = false;
+    ) -> PResult<(Vec<Type<'t>>, bool, Vec<String>)> {
+        let mut types = vec![];
+        let mut variadic = false;
+        let mut names = vec![];
 
+        if self.accept(Token::Punctuation(Punctuation::Ellipses))? {
+            variadic = true;
+        } else if self.accept(closer)? {
+            // done
+        } else {
+            let mut have_idents = false;
 
-        if(token_accept(p->tok, tok_ellipses)){
-            *variadic = true;
+            loop {
+                let mut memb = self.parse_type()?;
 
-        }else if(token_peek(p->tok) != lasttok){
-            bool have_idents = false;
-
-            for(;;){
-                type *memb = parse_type(p);
-
-                if(type_is_fn(memb)){
-                    sema_error(p, "function in aggregate");
-                    memb = default_type(p);
+                if memb.is_fn() {
+                    (self.sema_error)("function in aggregate".into());
+                    memb = self.unit.types.default();
                 }
 
-                if(toplvl_args){
-                    if(dynarray_is_empty(types)){
-                        /* first time, decide whether to have arg names */
-                        if(token_peek(p->tok) == tok_ident){
-                            have_idents = true;
-                        }else{
-                            have_idents = false;
+                let mut skip_comma = false;
+                if toplvl_args {
+                    if types.is_empty() {
+                        // first time, decide whether to have arg names
+                        let maybe_ident = self.next()?;
+
+                        match maybe_ident {
+                            Token::Identifier(id) => {
+                                have_idents = true;
+                                names.push(id);
+                            }
+                            Token::Punctuation(Punctuation::Comma) => {
+                                have_idents = false;
+                                skip_comma = true;
+                            }
+                            tok => {
+                                return Err(ParseError::Generic(format!(
+                                    "expected identifier or comma, got {}",
+                                    tok
+                                )));
+                            }
                         }
-                    }
-
-                    if(have_idents){
-                        char *ident;
-
-                        eat(p, "argument name", tok_ident);
-
-                        ident = token_last_ident(p->tok);
-                        dynarray_add(toplvl_args, ident);
+                    } else if have_idents {
+                        let id = self.expect(|tok| {
+                            if let Token::Identifier(id) = tok {
+                                Ok(id)
+                            } else {
+                                Err(tok)
+                            }
+                        })?;
+                        names.push(id);
                     }
                 }
 
-                dynarray_add(types, memb);
+                types.push(memb);
 
-                if(token_accept(p->tok, tok_comma)){
-                    if(variadic && token_accept(p->tok, tok_ellipses)){
-                        *variadic = true;
-                    }else{
+                if skip_comma {
+                    continue;
+                } else if self.accept(Token::Punctuation(Punctuation::Comma))? {
+                    if self.accept(Token::Punctuation(Punctuation::Ellipses))? {
+                        variadic = true;
+                    } else {
                         /* , xyz */
                         continue;
                     }
@@ -308,21 +318,49 @@ where
             }
         }
 
-        eat(p, NULL, lasttok);
-        */
+        Ok((types, variadic, names))
     }
 
     fn parse_type(&mut self) -> PResult<Type<'t>> {
-        let (ty, args) = self.parse_type_maybe_func()?;
+        let (ty, _args) = self.parse_type_maybe_func()?;
         Ok(ty)
     }
 
-    fn parse_function(&mut self, _name: String, _ty: Type<'t>, _toplvl_args: Vec<()>) -> Func<'t> {
+    fn parse_function(&mut self, _name: String, _ty: Type<'t>, _toplvl_args: Vec<String>) -> Func<'t> {
         todo!()
     }
 
     fn parse_variable(&mut self, _name: String, _ty: Type<'t>) -> Var {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use typed_arena::Arena;
+
+    use crate::target::Target;
+
+    use super::*;
+
+    #[test]
+    fn parse_type() -> Result<(), Box<dyn std::error::Error>> {
+        let target = Target::dummy();
+        let arena = Arena::new();
+
+        let s: &[u8] = b"i4";
+
+        let mut parser = Parser {
+            tok: Tokeniser::new(s, "fname"),
+            unit: Unit::new(&target, &arena),
+            sema_error: |_| {},
+        };
+        let t = parser.parse_type()?;
+
+        assert_eq!(t, parser.unit.types.primitive(Primitive::I4));
+        assert!(matches!(t, TypeS::Primitive(Primitive::I4)));
+
+        Ok(())
     }
 }
 

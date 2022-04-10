@@ -135,3 +135,15 @@ impl FromStr for Sys {
         }
     }
 }
+
+#[cfg(test)]
+impl Target {
+    pub fn dummy() -> Self {
+        let (arch, abi) = Arch::parse("x86_64").unwrap();
+        Self {
+            sys: Sys::from_str("linux").unwrap(),
+            arch,
+            abi,
+        }
+    }
+}

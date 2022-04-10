@@ -93,11 +93,19 @@ impl<'t> TypeS<'t> {
 
 impl<'t> TypeQueries<'t> for Type<'t> {
     fn array_elem(self) -> Option<Self> {
-        todo!()
+	if let TypeS::Array { elem, n: _ } = self {
+	    Some(elem)
+	} else {
+	    None
+	}
     }
 
     fn called(self) -> Option<Self> {
-        todo!()
+	if let TypeS::Func { ret, args: _, variadic: _ } = self {
+	    Some(ret)
+	} else {
+	    None
+	}
     }
 
     fn as_primitive(self) -> Option<Primitive> {

@@ -61,10 +61,10 @@ fn read_and_parse<'a, 't>(
         }
     };
 
-    let mut tok = Tokeniser::new(reader, fname);
+    let tok = Tokeniser::new(reader, fname);
 
     if dump_tok {
-        while let Some(t) = tok.next()? {
+        for t in tok.into_iter() {
             println!("{:?}", t);
         }
         Ok(None)
