@@ -13,6 +13,7 @@ impl Global<'_> {
         todo!()
     }
 
+    #[allow(dead_code)]
     pub fn ty(&self) -> &Type {
         todo!()
     }

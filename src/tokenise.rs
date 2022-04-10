@@ -19,7 +19,7 @@ pub enum Error {
 }
 
 pub struct Tokeniser<'a, R> {
-    fname: &'a str,
+    _fname: &'a str,
     line_no: u32,
 
     reader: BufReader<R>,
@@ -38,7 +38,7 @@ where
         let reader = BufReader::new(reader);
 
         Self {
-            fname,
+            _fname: fname,
             line_no: 1,
 
             reader,

@@ -41,6 +41,7 @@ macro_rules! primitives {
             $($member),*
         }
 
+	#[allow(dead_code)]
         impl Primitive {
             pub fn is_integral(self) -> bool {
                 match self {
@@ -53,10 +54,6 @@ macro_rules! primitives {
                     $(Primitive::$member => SizeAlign { size: $size, align: $align }),*
                 }
             }
-
-	    pub const fn len() -> usize {
-		[$($int),*].len()
-	    }
         }
     }
 }

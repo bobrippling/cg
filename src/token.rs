@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::enum_string;
 
+#[allow(dead_code)]
 #[derive(PartialEq, Eq, Debug)]
 pub enum Token {
     // this isn't an error, allowing us to parse "i4" without needing
@@ -81,6 +82,7 @@ enum_string! {
     }
 }
 
+#[allow(dead_code)]
 #[derive(PartialEq, Eq, Debug)]
 pub enum Op {
     Add,
@@ -98,6 +100,7 @@ pub enum Op {
     ShiftRArith,
 }
 
+#[allow(dead_code)]
 #[derive(PartialEq, Eq, Debug)]
 pub enum Cmp {
     Eq,

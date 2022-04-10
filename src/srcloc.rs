@@ -5,6 +5,7 @@ pub struct SrcLoc {
 }
 
 impl SrcLoc {
+    #[allow(dead_code)]
     pub fn start() -> Self {
         Self { line: 1, col: 1 }
     }

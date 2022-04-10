@@ -8,7 +8,10 @@ use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 use crate::ty::{Primitive, Type, TypeQueries, TypeS};
 use crate::variable::Var;
-use crate::{tokenise::{self, Tokeniser}, unit::Unit};
+use crate::{
+    tokenise::{self, Tokeniser},
+    unit::Unit,
+};
 
 type PResult<T> = std::result::Result<T, ParseError>;
 
@@ -326,7 +329,12 @@ where
         Ok(ty)
     }
 
-    fn parse_function(&mut self, _name: String, _ty: Type<'t>, _toplvl_args: Vec<String>) -> Func<'t> {
+    fn parse_function(
+        &mut self,
+        _name: String,
+        _ty: Type<'t>,
+        _toplvl_args: Vec<String>,
+    ) -> Func<'t> {
         todo!()
     }
 

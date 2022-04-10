@@ -53,7 +53,7 @@ impl Unit<'_, '_> {
         todo!()
     }
 
-    pub fn add_global(&self, g: Global) -> (Option<Global>, &Global) {
+    pub fn add_global(&self, _g: Global) -> (Option<Global>, &Global) {
         todo!()
     }
 }

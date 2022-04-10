@@ -20,12 +20,10 @@ pub struct TyUniq<'t> {
     pointers: HashMap<Type<'t>, Type<'t>>,
     funcs: HashMap<FuncKey<'t>, Type<'t>>,
     aliases: HashMap<String, Type<'t>>,
-
-    ptr: SizeAlign,
 }
 
 impl<'t> TyUniq<'t> {
-    pub fn new(ptr: SizeAlign, arena: &'t Arena<TypeS<'t>>) -> Self {
+    pub fn new(_ptr: SizeAlign, arena: &'t Arena<TypeS<'t>>) -> Self {
         Self {
             primitives: HashMap::new(),
             void: None,
@@ -36,7 +34,6 @@ impl<'t> TyUniq<'t> {
             funcs: HashMap::new(),
             aliases: HashMap::new(),
 
-            ptr,
             arena,
         }
     }

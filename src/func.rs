@@ -1,20 +1,21 @@
 use crate::ty::Type;
 
 pub struct Func<'t> {
-    name: String,
-    mangled: Option<String>,
+    _name: String,
+    _mangled: Option<String>,
 
-    ty: Type<'t>,
-    arg_names: Vec<String>,
+    _ty: Type<'t>,
+    _arg_names: Vec<String>,
 }
 
 impl<'t> Func<'t> {
+    #[allow(dead_code)]
     pub fn new(name: String, ty: Type<'t>) -> Self {
         Self {
-            name,
-            mangled: None,
-            ty,
-            arg_names: vec![],
+            _name: name,
+            _mangled: None,
+            _ty: ty,
+            _arg_names: vec![],
         }
     }
 }
