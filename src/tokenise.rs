@@ -229,7 +229,7 @@ impl IsIdent for u8 {
     where
         Self: Sized,
     {
-        self.is_ascii_alphabetic() || (inc_digit && self.is_ascii_digit())
+        self.is_ascii_alphabetic() || self == b'_' || (inc_digit && self.is_ascii_digit())
     }
 }
 
