@@ -1,3 +1,41 @@
+use std::rc::Weak;
+
+type Isn = ();
+
+pub struct Block {
+	isns: Vec<Isn>,
+	label: Option<String>, /* None if entry block */
+
+	// val_lifetimes: HashMap<Val, Lifetime>,
+	// predecessors: Vec<Weak<Block>>,
+
+	ty: BlockType,
+}
+
+pub enum BlockType {
+	Unknown,
+	Entry,
+	Exit,
+	Branch {
+		// cond: Val,
+		t: Weak<Block>,
+		f: Weak<Block>,
+	},
+	Jmp {
+		target: Weak<Block>,
+	},
+	JmpComp {
+		target: Weak<Block>,
+	},
+}
+
+impl Block {
+	pub fn tenative(&self) -> bool {
+		todo!()
+	}
+}
+
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -271,3 +309,4 @@ void block_dump1(block *blk, FILE *f)
 		fprintf(f, "$%s:\n", blk->lbl);
 	isn_dump(block_first_isn(blk), blk, f);
 }
+*/

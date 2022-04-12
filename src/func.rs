@@ -35,6 +35,10 @@ impl<'t> Func<'t> {
     pub fn add_attr(&mut self, attr: FuncAttr) {
         self.attr |= attr;
     }
+
+    pub fn find_block(&self, ident: &str) -> Option<&Block> {
+        todo!()
+    }
 }
 
 /*

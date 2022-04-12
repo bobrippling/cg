@@ -1,3 +1,6 @@
+pub struct Isn;
+
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -1208,3 +1211,4 @@ void isn_dump(isn *const head, block *blk, FILE *f)
 		dynmap_free(vals);
 	}
 }
+*/

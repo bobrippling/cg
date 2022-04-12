@@ -2,6 +2,7 @@ use std::io::Read;
 
 use thiserror::Error;
 
+use crate::block::Block;
 use crate::func::{Func, FuncAttr};
 use crate::global::Global;
 use crate::srcloc::SrcLoc;
@@ -416,9 +417,60 @@ where
         todo!()
     }
 
-    fn parse_block(&mut self) -> PResult<()> {
-        todo!()
+    fn parse_block(&mut self, func: &mut Func, block: &mut Block) -> PResult<()> {
+        match self.tok.next()? {
+            Token::Eof => {}
+
+            Token::Keyword(Keyword::Ret) => self.parse_ret()?,
+
+            Token::Identifier(ident) => {
+                if self.accept(Token::Punctuation(Punctuation::Colon))? {
+                    let from = block;
+
+                    let (this_block, created) = func.find_block(&ident);
+                    block = this_block;
+
+                    if !created && !block.tenative() {
+                        (self.sema_error)(format!("block '{}' already exists", ident));
+
+                        block = None; // in unreachable code
+                    }
+
+                    match (block, from, from.unknown_ending()) {
+                        (Some(block), Some(from), true) => {
+                            /* current block is fall-thru */
+                            from.add_isn(ISN::Jmp(block));
+                            from.set_jmp(block);
+                        }
+                    }
+                } else {
+                    self.parse_ident(ident)?;
+                }
+            }
+
+            Token::Keyword(Keyword::Jmp) => self.parse_jmp()?,
+            Token::Keyword(Keyword::Br) => self.parse_br()?,
+            Token::Keyword(Keyword::Store) => self.parse_store()?,
+            Token::Keyword(Keyword::Label) => self.parse_label()?,
+            Token::Keyword(Keyword::Asm) => self.parse_asm()?,
+            Token::Keyword(Keyword::Memcpy) => self.parse_memcpy()?,
+
+            tok => {
+                return Err(ParseError::Generic(format!("unexpected token {}", tok)));
+            }
+        }
+
+        Ok(())
     }
+
+    fn parse_ret(&mut self) -> PResult<()> { todo!() }
+    fn parse_ident(mut self) -> PResult<()> { todo!() }
+    fn parse_jmp(mut self) -> PResult<()> { todo!() }
+    fn parse_br(mut self) -> PResult<()> { todo!() }
+    fn parse_store(mut self) -> PResult<()> { todo!() }
+    fn parse_label(mut self) -> PResult<()> { todo!() }
+    fn parse_asm(mut self) -> PResult<()> { todo!() }
+    fn parse_memcpy(mut self) -> PResult<()> { todo!() }
 }
 
 #[cfg(test)]
@@ -493,6 +545,27 @@ mod test {
     #[test]
     fn parse_empty_func() {
         parse_str(b"internal {}", |mut parser, done| {
+            let types = &mut parser.unit.types;
+            let i4 = types.primitive(Primitive::I4);
+            let i1 = types.primitive(Primitive::I1);
+            let fnty = types.func_of(i4, vec![i1, i4], false);
+
+            let arg_names = vec!["arg1".into(), "arg2".into()];
+            let f = parser
+                .parse_function("f".into(), fnty, arg_names.clone())
+                .unwrap();
+            done(&mut parser);
+
+            let mut expected = Func::new("f".into(), fnty, arg_names);
+            expected.add_attr(FuncAttr::INTERNAL);
+
+            assert_eq!(f, expected);
+        });
+    }
+
+    #[test]
+    fn parse_func() {
+        parse_str(b"internal { ret $arg2 }", |mut parser, done| {
             let types = &mut parser.unit.types;
             let i4 = types.primitive(Primitive::I4);
             let i1 = types.primitive(Primitive::I1);
@@ -1329,81 +1402,6 @@ static void parse_memcpy(parse *p)
     }
 
     block_add_isn(p->entry, ISN(memcpy, dest, src));
-}
-
-static void parse_block(parse *p)
-{
-    enum token ct = token_next(p->tok);
-
-    switch(ct){
-        default:
-            parse_error(p, "unexpected token %s", token_to_str(ct));
-            break;
-
-        case tok_eof:
-            break;
-
-        case tok_ret:
-            parse_ret(p);
-            break;
-
-        case tok_ident:
-        {
-            char *ident = token_last_ident(p->tok);
-
-            if(token_peek(p->tok) == tok_colon){
-                int created;
-                block *from = p->entry;
-
-                eat(p, "label colon", tok_colon);
-
-                p->entry = function_block_find(p->func, p->unit, xstrdup(ident), &created);
-
-                if(!created && !block_tenative(p->entry)){
-                    parse_error(p, "block '%s' already exists", ident);
-
-                    /* use an anonymous block to prevent assertion failures
-                     * in the backend */
-                    enter_unreachable_code(p);
-                }
-
-                free(ident), ident = NULL;
-
-                if(p->entry && from && block_unknown_ending(from)){
-                    /* current block is fall-thru */
-                    block_add_isn(from, ISN(jmp, p->entry));
-                    block_set_jmp(from, p->entry);
-                }
-            }else{
-                parse_ident(p, ident);
-            }
-            break;
-        }
-
-        case tok_jmp:
-            parse_jmp(p);
-            break;
-
-        case tok_br:
-            parse_br(p);
-            break;
-
-        case tok_store:
-            parse_store(p);
-            break;
-
-        case tok_label:
-            parse_label(p);
-            break;
-
-        case tok_asm:
-            parse_asm(p);
-            break;
-
-        case tok_memcpy:
-            parse_memcpy(p);
-            break;
-    }
 }
 
 static void parse_init_ptr(parse *p, type *ty, struct init *init)

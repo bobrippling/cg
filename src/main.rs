@@ -18,6 +18,9 @@ mod func;
 mod variable;
 mod global;
 
+mod block;
+mod isn;
+
 mod pass;
 
 //mod opt_cprop;
