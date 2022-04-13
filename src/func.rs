@@ -1,16 +1,23 @@
+use std::collections::HashMap;
+
 use bitflags::bitflags;
+// use untyped_arena::Arena as UntypedArena;
 
-use crate::ty::Type;
+use crate::{blk_arena::BlkArena, block::Block, ty::Type};
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct Func<'t> {
+pub struct Func<'arena> {
     name: String,
     mangled: Option<String>,
 
-    ty: Type<'t>,
+    ty: Type<'arena>,
     arg_names: Vec<String>,
     attr: FuncAttr,
+
+    /// Contains an arena for both Blocks and Isns,
+    /// which form a graph between each other
+    arena: &'arena BlkArena<'arena>,
+    blocks: HashMap<String, &'arena Block<'arena>>,
+    entry: Option<&'arena Block<'arena>>,
 }
 
 bitflags! {
@@ -21,14 +28,41 @@ bitflags! {
     }
 }
 
-impl<'t> Func<'t> {
-    pub fn new(name: String, ty: Type<'t>, arg_names: Vec<String>) -> Self {
+#[allow(dead_code)]
+impl<'arena> Func<'arena> {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn mangled_name(&self) -> Option<&str> {
+        self.mangled.as_deref()
+    }
+    pub fn ty(&self) -> Type<'arena> {
+        self.ty
+    }
+    pub fn arg_names(&self) -> &[String] {
+        &self.arg_names
+    }
+    pub fn attr(&self) -> FuncAttr {
+        self.attr
+    }
+}
+
+impl<'arena> Func<'arena> {
+    pub fn new(
+        name: String,
+        ty: Type<'arena>,
+        arg_names: Vec<String>,
+        arena: &'arena BlkArena<'arena>,
+    ) -> Self {
         Self {
             name,
             mangled: None,
             ty,
             arg_names,
             attr: Default::default(),
+            arena,
+            blocks: HashMap::new(),
+            entry: None,
         }
     }
 
@@ -36,8 +70,23 @@ impl<'t> Func<'t> {
         self.attr |= attr;
     }
 
-    pub fn find_block(&self, ident: &str) -> Option<&Block> {
-        todo!()
+    pub fn get_block<'s>(&'s mut self, ident: String) -> (&'arena Block<'arena>, bool)
+    where
+        'arena: 's,
+    {
+        let mut inserted = false;
+
+        let b = self.blocks.entry(ident).or_insert_with(|| {
+            inserted = true;
+            self.arena.blks.alloc(Block::new())
+        });
+
+        (b, inserted)
+    }
+
+    pub fn set_entry(&mut self, entry: &'arena Block<'arena>) {
+        let old = self.entry.replace(entry);
+        assert!(old.is_none());
     }
 }
 

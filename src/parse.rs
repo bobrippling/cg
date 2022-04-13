@@ -5,6 +5,7 @@ use thiserror::Error;
 use crate::block::Block;
 use crate::func::{Func, FuncAttr};
 use crate::global::Global;
+use crate::isn::Isn;
 use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 use crate::ty::{Primitive, Type, TypeQueries, TypeS};
@@ -31,20 +32,18 @@ pub enum ParseError {
     Overflow,
 }
 
-pub struct Parser<'a, 't, R, SemaErr> {
-    // 'a: Target, fname
-    // 't: types
-    pub tok: Tokeniser<'a, R>,
-    pub unit: Unit<'a, 't>,
+pub struct Parser<'scope, R, SemaErr> {
+    pub tok: Tokeniser<'scope, R>,
+    pub unit: Unit<'scope>,
     pub sema_error: SemaErr,
 }
 
-impl<'a, 't, R, SemaErr> Parser<'a, 't, R, SemaErr>
+impl<'scope, R, SemaErr> Parser<'scope, R, SemaErr>
 where
     R: Read,
     SemaErr: FnMut(String),
 {
-    pub fn parse(mut self) -> PResult<Unit<'a, 't>> {
+    pub fn parse(mut self) -> PResult<Unit<'scope>> {
         while !self.eof() {
             self.global()?;
         }
@@ -127,7 +126,7 @@ where
         Ok(())
     }
 
-    fn parse_type_maybe_func<'s>(&mut self) -> PResult<(Type<'t>, Vec<String>)> {
+    fn parse_type_maybe_func<'s>(&mut self) -> PResult<(Type<'scope>, Vec<String>)> {
         let (ty, toplvl_args) = self.parse_type_maybe_func_nochk()?;
 
         if ty.array_elem().is_fn() {
@@ -145,7 +144,7 @@ where
         Ok((ty, toplvl_args))
     }
 
-    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'t>, Vec<String>)> {
+    fn parse_type_maybe_func_nochk(&mut self) -> PResult<(Type<'scope>, Vec<String>)> {
         /*
          * void
          * i1, i2, i4, i8
@@ -265,7 +264,7 @@ where
         &mut self,
         closer: Token,
         toplvl_args: bool,
-    ) -> PResult<(Vec<Type<'t>>, bool, Vec<String>)> {
+    ) -> PResult<(Vec<Type<'scope>>, bool, Vec<String>)> {
         let mut types = vec![];
         let mut variadic = false;
         let mut names = vec![];
@@ -338,17 +337,20 @@ where
         Ok((types, variadic, names))
     }
 
-    fn parse_type(&mut self) -> PResult<Type<'t>> {
+    fn parse_type(&mut self) -> PResult<Type<'scope>> {
         let (ty, _args) = self.parse_type_maybe_func()?;
         Ok(ty)
     }
 
-    fn parse_function(
-        &mut self,
+    fn parse_function<'s>(
+        &'s mut self,
         name: String,
-        ty: Type<'t>,
+        ty: Type<'scope>,
         toplvl_args: Vec<String>,
-    ) -> PResult<Func<'t>> {
+    ) -> PResult<Func<'scope>>
+    where
+        'scope: 's,
+    {
         match ty {
             TypeS::Func {
                 ret: _,
@@ -362,7 +364,7 @@ where
             _ => unreachable!(),
         }
 
-        let mut f = Func::new(name, ty, toplvl_args);
+        let mut f: Func = Func::new(name, ty, toplvl_args, self.unit.blk_arena);
         let mut attr = FuncAttr::default();
 
         // look for weak (and other attributes)
@@ -391,7 +393,8 @@ where
         f.add_attr(attr);
 
         if self.accept(Token::Punctuation(Punctuation::LBrace))? {
-            let mut blocks = vec![];
+            let mut cur_blk: &Block = self.unit.blk_arena.blks.alloc(Block::new_entry());
+            f.set_entry(cur_blk);
 
             loop {
                 if self.eof() {
@@ -403,8 +406,7 @@ where
                     break;
                 }
 
-                let b = self.parse_block()?;
-                blocks.push(b);
+                self.parse_block(&mut f, &mut cur_blk)?;
             }
         }
 
@@ -413,11 +415,15 @@ where
         Ok(f)
     }
 
-    fn parse_variable(&mut self, _name: String, _ty: Type<'t>) -> Var {
+    fn parse_variable(&mut self, _name: String, _ty: Type<'scope>) -> Var {
         todo!()
     }
 
-    fn parse_block(&mut self, func: &mut Func, block: &mut Block) -> PResult<()> {
+    fn parse_block(
+        &mut self,
+        func: &mut Func<'scope>,
+        block: &mut &'scope Block<'scope>,
+    ) -> PResult<()> {
         match self.tok.next()? {
             Token::Eof => {}
 
@@ -425,23 +431,22 @@ where
 
             Token::Identifier(ident) => {
                 if self.accept(Token::Punctuation(Punctuation::Colon))? {
-                    let from = block;
+                    let from = *block;
 
-                    let (this_block, created) = func.find_block(&ident);
-                    block = this_block;
+                    let (this_block, created) = func.get_block(ident);
+                    *block = this_block;
 
-                    if !created && !block.tenative() {
-                        (self.sema_error)(format!("block '{}' already exists", ident));
-
-                        block = None; // in unreachable code
+                    if !created && !this_block.tenative() {
+                        (self.sema_error)(format!(
+                            "block '{}' already exists",
+                            this_block.label().expect("entry block can't appear here")
+                        ));
                     }
 
-                    match (block, from, from.unknown_ending()) {
-                        (Some(block), Some(from), true) => {
-                            /* current block is fall-thru */
-                            from.add_isn(ISN::Jmp(block));
-                            from.set_jmp(block);
-                        }
+                    if from.is_unknown_ending() {
+                        /* current block is fall-thru */
+                        from.add_isn(Isn::Jmp(this_block));
+                        from.set_jmp(this_block);
                     }
                 } else {
                     self.parse_ident(ident)?;
@@ -463,14 +468,30 @@ where
         Ok(())
     }
 
-    fn parse_ret(&mut self) -> PResult<()> { todo!() }
-    fn parse_ident(mut self) -> PResult<()> { todo!() }
-    fn parse_jmp(mut self) -> PResult<()> { todo!() }
-    fn parse_br(mut self) -> PResult<()> { todo!() }
-    fn parse_store(mut self) -> PResult<()> { todo!() }
-    fn parse_label(mut self) -> PResult<()> { todo!() }
-    fn parse_asm(mut self) -> PResult<()> { todo!() }
-    fn parse_memcpy(mut self) -> PResult<()> { todo!() }
+    fn parse_ret(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_ident(&mut self, ident: String) -> PResult<()> {
+        todo!()
+    }
+    fn parse_jmp(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_br(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_store(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_label(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_asm(&mut self) -> PResult<()> {
+        todo!()
+    }
+    fn parse_memcpy(&mut self) -> PResult<()> {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -479,23 +500,24 @@ mod test {
 
     use typed_arena::Arena;
 
-    use crate::target::Target;
+    use crate::{blk_arena::BlkArena, target::Target};
 
     use super::*;
 
-    type Parser<'s, 'cb> = super::Parser<'s, 's, &'s [u8], &'cb mut dyn FnMut(String)>;
+    type Parser<'scope, 'cb> = super::Parser<'scope, &'scope [u8], &'scope mut dyn FnMut(String)>;
 
     fn parse_str<F>(s: &[u8], f: F)
     where
         F: FnOnce(Parser, &mut dyn FnMut(&mut Parser)),
     {
         let target = Target::dummy();
-        let arena = Arena::new();
+        let ty_arena = Arena::new();
+        let blk_arena = BlkArena::new();
 
         let error = Cell::new(false);
         let parser = Parser {
             tok: Tokeniser::new(s, "fname"),
-            unit: Unit::new(&target, &arena),
+            unit: Unit::new(&target, &ty_arena, &blk_arena),
             sema_error: (&mut |_| error.set(true)) as _,
         };
 
@@ -556,10 +578,11 @@ mod test {
                 .unwrap();
             done(&mut parser);
 
-            let mut expected = Func::new("f".into(), fnty, arg_names);
-            expected.add_attr(FuncAttr::INTERNAL);
-
-            assert_eq!(f, expected);
+            assert_eq!(f.mangled_name(), None);
+            assert_eq!(f.ty(), fnty);
+            assert_eq!(f.arg_names(), arg_names);
+            assert_eq!(f.attr(), FuncAttr::INTERNAL);
+            assert_eq!(f.name(), "f");
         });
     }
 
@@ -577,10 +600,11 @@ mod test {
                 .unwrap();
             done(&mut parser);
 
-            let mut expected = Func::new("f".into(), fnty, arg_names);
-            expected.add_attr(FuncAttr::INTERNAL);
-
-            assert_eq!(f, expected);
+            assert_eq!(f.mangled_name(), None);
+            assert_eq!(f.ty(), fnty);
+            assert_eq!(f.arg_names(), arg_names);
+            assert_eq!(f.attr(), FuncAttr::INTERNAL);
+            assert_eq!(f.name(), "f");
         });
     }
 }

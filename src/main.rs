@@ -1,9 +1,10 @@
 mod enum_string;
+mod blk_arena;
 
 mod parse;
+mod srcloc;
 mod token;
 mod tokenise;
-mod srcloc;
 
 mod size_align;
 mod target;
@@ -12,11 +13,11 @@ mod unit;
 mod reg;
 mod regset;
 
+mod func;
+mod global;
 mod ty;
 mod ty_uniq;
-mod func;
 mod variable;
-mod global;
 
 mod block;
 mod isn;
@@ -35,23 +36,25 @@ use std::{
     process,
 };
 
-use typed_arena::Arena;
 use clap::Parser;
+use typed_arena::Arena;
 
+use blk_arena::BlkArena;
 // use func::Func;
 use target::Target;
 use tokenise::Tokeniser;
-use unit::Unit;
 use ty::TypeS;
+use unit::Unit;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-fn read_and_parse<'a, 't>(
-    fname: Option<&'a str>,
+fn read_and_parse<'scope>(
+    fname: Option<&'scope str>,
     dump_tok: bool,
-    target: &'a Target,
-    arena: &'t Arena<TypeS<'t>>,
-) -> Result<Option<Unit<'a, 't>>> {
+    target: &'scope Target,
+    ty_arena: &'scope Arena<TypeS<'scope>>,
+    blk_arena: &'scope BlkArena<'scope>,
+) -> Result<Option<Unit<'scope>>> {
     let (file, stdin);
     let (reader, fname): (Box<dyn BufRead>, _) = match fname {
         Some(fname) => {
@@ -73,7 +76,7 @@ fn read_and_parse<'a, 't>(
         Ok(None)
     } else {
         let mut had_err = false;
-        let unit = Unit::parse(tok, target, arena, |err| {
+        let unit = Unit::parse(tok, target, ty_arena, blk_arena, |err| {
             eprintln!("sema error: {}", err);
             had_err = true;
         })?;
@@ -161,8 +164,9 @@ fn main() -> Result<()> {
         None => None,
     };
 
-    let arena = Arena::new();
-    let mut unit = match read_and_parse(fname, opts.dump_tokens, &target, &arena)? {
+    let ty_arena = Arena::new();
+    let blk_arena = BlkArena::new();
+    let mut unit = match read_and_parse(fname, opts.dump_tokens, &target, &ty_arena, &blk_arena)? {
         Some(u) => u,
         None => process::exit(0),
     };

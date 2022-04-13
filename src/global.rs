@@ -2,19 +2,19 @@ use std::io::Write;
 
 use crate::{target::Target, ty::Type, func::Func, variable::Var};
 
-pub enum Global<'t> {
-    Type { name: String, ty: Type<'t> },
-    Func(Func<'t>),
+pub enum Global<'arena> {
+    Type { name: String, ty: Type<'arena> },
+    Func(Func<'arena>),
     Var(Var),
 }
 
-impl Global<'_> {
+impl<'arena> Global<'arena> {
     pub fn emit(&self, _target: &Target, _out: &dyn Write) {
         todo!()
     }
 
     #[allow(dead_code)]
-    pub fn ty(&self) -> &Type {
+    pub fn ty(&self) -> &'arena Type {
         todo!()
     }
 

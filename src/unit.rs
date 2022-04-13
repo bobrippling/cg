@@ -2,37 +2,49 @@ use std::io::Read;
 
 use typed_arena::Arena;
 
+use crate::blk_arena::BlkArena;
+use crate::func::Func;
 use crate::global::Global;
-use crate::parse::{Parser, ParseError};
+use crate::parse::{ParseError, Parser};
 use crate::pass::Pass;
 use crate::target::Target;
 use crate::tokenise::Tokeniser;
 use crate::ty::TypeS;
 use crate::ty_uniq::TyUniq;
 
-pub struct Unit<'a, 't> {
-    pub target: &'a Target,
-    pub types: TyUniq<'t>,
+pub struct Unit<'scope> {
+    pub target: &'scope Target,
+    pub types: TyUniq<'scope>,
+    pub blk_arena: &'scope BlkArena<'scope>,
+    funcs: Vec<Func<'scope>>,
 }
 
-impl<'a, 't> Unit<'a, 't> {
-    pub fn new(target: &'a Target, arena: &'t Arena<TypeS<'t>>) -> Self {
+impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
+    pub fn new(
+        target: &'scope Target,
+        ty_arena: &'scope Arena<TypeS<'scope>>,
+        blk_arena: &'scope BlkArena<'scope>,
+    ) -> Self {
         Self {
             target,
-            types: TyUniq::new(target.arch.ptr, arena),
+            types: TyUniq::new(target.arch.ptr, ty_arena),
+            blk_arena,
+            funcs: vec![],
         }
     }
 
     pub fn parse<F>(
-        tok: Tokeniser<'a, impl Read>, target: &'a Target,
-        arena: &'t Arena<TypeS<'t>>,
+        tok: Tokeniser<'scope, impl Read>,
+        target: &'scope Target,
+        ty_arena: &'scope Arena<TypeS<'scope>>,
+        blk_arena: &'scope BlkArena<'scope>,
         sema_error: F,
     ) -> Result<Self, ParseError>
     where
         F: FnMut(String),
     {
         let parser = Parser {
-            unit: Self::new(target, arena),
+            unit: Self::new(target, ty_arena, blk_arena),
             tok,
             sema_error,
         };
@@ -45,7 +57,7 @@ impl<'a, 't> Unit<'a, 't> {
     }
 }
 
-impl Unit<'_, '_> {
+impl<'scope> Unit<'scope> {
     pub fn for_globals<F>(&self, _f: F)
     where
         F: FnMut(&Global),
@@ -53,7 +65,7 @@ impl Unit<'_, '_> {
         todo!()
     }
 
-    pub fn add_global(&self, _g: Global) -> (Option<Global>, &Global) {
+    pub fn add_global(&self, _g: Global<'scope>) -> (Option<Global<'scope>>, &Global<'scope>) {
         todo!()
     }
 }
