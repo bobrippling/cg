@@ -1,8 +1,9 @@
-use crate::block::Block;
+use crate::{block::Block, val::Val};
 
 #[derive(Debug)]
-pub enum Isn<'b> {
-    Jmp(&'b Block<'b>),
+pub enum Isn<'a> {
+    Jmp(&'a Block<'a>),
+    Ret(Val<'a>),
 }
 
 /*

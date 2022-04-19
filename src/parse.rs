@@ -9,6 +9,7 @@ use crate::isn::Isn;
 use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
 use crate::ty::{Primitive, Type, TypeQueries, TypeS};
+use crate::val::Val;
 use crate::variable::Var;
 use crate::{
     tokenise::{self, Tokeniser},
@@ -427,7 +428,7 @@ where
         match self.tok.next()? {
             Token::Eof => {}
 
-            Token::Keyword(Keyword::Ret) => self.parse_ret()?,
+            Token::Keyword(Keyword::Ret) => self.parse_ret(func, block)?,
 
             Token::Identifier(ident) => {
                 if self.accept(Token::Punctuation(Punctuation::Colon))? {
@@ -468,10 +469,29 @@ where
         Ok(())
     }
 
-    fn parse_ret(&mut self) -> PResult<()> {
-        todo!()
+    fn parse_ret(
+        &mut self,
+        func: &mut Func<'scope>,
+        block: &mut &'scope Block<'scope>,
+    ) -> PResult<()> {
+        let expected_ty = func.ty().called().unwrap();
+        let v = self.parse_val()?;
+
+        if !v.ty().can_return_to(expected_ty) {
+            (self.sema_error)(format!(
+                "mismatching return type (returning {:?} to {:?})",
+                v.ty(),
+                expected_ty
+            ));
+        }
+
+        block.add_isn(Isn::Ret(v));
+        block.set_exit();
+
+        Ok(())
     }
-    fn parse_ident(&mut self, ident: String) -> PResult<()> {
+
+    fn parse_ident(&mut self, _ident: String) -> PResult<()> {
         todo!()
     }
     fn parse_jmp(&mut self) -> PResult<()> {
@@ -490,6 +510,10 @@ where
         todo!()
     }
     fn parse_memcpy(&mut self) -> PResult<()> {
+        todo!()
+    }
+
+    fn parse_val(&mut self) -> PResult<Val<'scope>> {
         todo!()
     }
 }

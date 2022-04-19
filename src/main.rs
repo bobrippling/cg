@@ -13,6 +13,7 @@ mod unit;
 mod reg;
 mod regset;
 
+mod val;
 mod func;
 mod global;
 mod ty;

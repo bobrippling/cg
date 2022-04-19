@@ -70,6 +70,10 @@ impl<'arena> Block<'arena> {
     pub fn set_jmp(&self, block: &Block) {
         todo!()
     }
+
+    pub fn set_exit(&self) {
+        todo!()
+    }
 }
 
 /*
