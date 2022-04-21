@@ -79,6 +79,7 @@ pub trait TypeQueries<'t>: Sized {
 
     fn is_fn(self) -> bool;
     fn is_struct(self) -> bool;
+    fn is_void(self) -> bool;
 
     fn can_return_to(self, to: Type<'t>) -> bool;
 }
@@ -138,6 +139,10 @@ impl<'t> TypeQueries<'t> for Type<'t> {
         matches!(self, TypeS::Struct { .. })
     }
 
+    fn is_void(self) -> bool {
+        matches!(self, TypeS::Void { .. })
+    }
+
     fn can_return_to(self, to: Type<'t>) -> bool {
         if to.is_struct() {
             self.deref().map(|pointee| pointee == to).unwrap_or(false)
@@ -171,6 +176,10 @@ impl<'t> TypeQueries<'t> for Option<Type<'t>> {
 
     fn is_struct(self) -> bool {
         self.map(TypeQueries::is_struct).unwrap_or(false)
+    }
+
+    fn is_void(self) -> bool {
+        self.map(TypeQueries::is_void).unwrap_or(false)
     }
 
     fn can_return_to(self, to: Type<'t>) -> bool {

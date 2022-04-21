@@ -1,5 +1,7 @@
 use std::io::Read;
+use std::rc::Rc;
 
+use bitflags::bitflags;
 use thiserror::Error;
 
 use crate::block::Block;
@@ -31,6 +33,12 @@ pub enum ParseError {
 
     #[error("overflow parsing number")]
     Overflow,
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct ValOpts: u8 {
+    }
 }
 
 pub struct Parser<'scope, R, SemaErr> {
@@ -513,8 +521,104 @@ where
         todo!()
     }
 
-    fn parse_val(&mut self) -> PResult<Val<'scope>> {
+    fn parse_val(&mut self) -> PResult<Rc<Val<'scope>>> {
+        if let Some(ident) = self.accept_with(|tok| {
+            if let Token::Identifier(ident) = tok {
+                Ok(ident)
+            } else {
+                Err(tok)
+            }
+        })? {
+            if self.unit.types.resolve_alias(&ident).is_some() {
+                // we're at the beginning of a type, not an identifier
+            } else {
+                return Ok(self.uniq_val(&ident, None, ValOpts::default()));
+            }
+        }
+
+        // need a type and a literal, e.g. i32 5
+        let ty = self.parse_type()?;
+
+        let v = if ty.is_void() {
+            Val::new_void(self.unit.types.void())
+        } else if let Some(n) = self.accept_with(|tok| {
+            if let Token::Integer(n) = tok {
+                Ok(n)
+            } else {
+                Err(tok)
+            }
+        })? {
+            Val::new_i(n, ty)
+        } else if self.accept(Token::Keyword(Keyword::Undef))? {
+            Val::new_undef(ty)
+        } else {
+            return Err(ParseError::Generic("value operand expected".into()));
+        };
+
+        Ok(Rc::new(v))
+    }
+
+    fn uniq_val(&mut self, name: &str, ty: Option<Type<'scope>>, opts: ValOpts) -> Rc<Val<'scope>> {
         todo!()
+        /*
+            val *v;
+            global *glob;
+            type *arg_ty;
+            size_t arg_idx;
+            const char *const name_to_print = name;
+
+            if(ty){
+                assert(opts & VAL_CREATE);
+            }else{
+                assert(!(opts & VAL_CREATE));
+            }
+
+            if(p->names2vals){
+                v = dynmap_get(char *, val *, p->names2vals, name);
+                if(v){
+        found:
+                    if(opts & VAL_CREATE)
+                        parse_error(p, "pre-existing identifier '%s'", name_to_print);
+
+                    free(name);
+
+                    return v;
+                }
+            }
+
+            /* check args */
+            if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
+                v = val_new_argument(name, arg_ty);
+
+                function_register_arg_val(p->func, arg_idx, v);
+
+                map_val(p, name, v);
+
+                name = NULL;
+
+                goto found;
+            }
+
+            /* check globals */
+            glob = unit_global_find(p->unit, name);
+
+            if(glob){
+                v = val_new_global(unit_uniqtypes(p->unit), glob);
+                goto found;
+            }
+
+            if((opts & VAL_CREATE) == 0){
+                parse_error(p, "undeclared identifier '%s'", name_to_print);
+                ty = default_type(p);
+            }
+
+            if(opts & VAL_LABEL)
+                v = val_new_label(name, ty);
+            else
+                v = val_new_local(name, ty, opts & VAL_ALLOCA);
+
+            return map_val(p, name, v);
+            */
     }
 }
 
@@ -753,71 +857,6 @@ static val *map_val(parse *p, char *name, val *v)
     return v;
 }
 
-static val *uniq_val(
-        parse *p,
-        char *name,
-        type *ty,
-        enum val_opts opts)
-{
-    val *v;
-    global *glob;
-    type *arg_ty;
-    size_t arg_idx;
-    const char *const name_to_print = name;
-
-    if(ty){
-        assert(opts & VAL_CREATE);
-    }else{
-        assert(!(opts & VAL_CREATE));
-    }
-
-    if(p->names2vals){
-        v = dynmap_get(char *, val *, p->names2vals, name);
-        if(v){
-found:
-            if(opts & VAL_CREATE)
-                parse_error(p, "pre-existing identifier '%s'", name_to_print);
-
-            free(name);
-
-            return v;
-        }
-    }
-
-    /* check args */
-    if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
-        v = val_new_argument(name, arg_ty);
-
-        function_register_arg_val(p->func, arg_idx, v);
-
-        map_val(p, name, v);
-
-        name = NULL;
-
-        goto found;
-    }
-
-    /* check globals */
-    glob = unit_global_find(p->unit, name);
-
-    if(glob){
-        v = val_new_global(unit_uniqtypes(p->unit), glob);
-        goto found;
-    }
-
-    if((opts & VAL_CREATE) == 0){
-        parse_error(p, "undeclared identifier '%s'", name_to_print);
-        ty = default_type(p);
-    }
-
-    if(opts & VAL_LABEL)
-        v = val_new_label(name, ty);
-    else
-        v = val_new_local(name, ty, opts & VAL_ALLOCA);
-
-    return map_val(p, name, v);
-}
-
 static void sema_error_if_no_global_ident(parse *p, const char *ident, type **const tout)
 {
     global *glob = unit_global_find(p->unit, ident);
@@ -850,52 +889,6 @@ static int parse_finished(tokeniser *tok)
     return token_peek(tok) == tok_eof || token_peek(tok) == tok_unknown;
 }
 
-
-static val *parse_val(parse *p)
-{
-    type *ty;
-
-    if(token_peek(p->tok) == tok_ident){
-        const char *peek_ident = token_last_ident_peek(p->tok);
-
-        if(type_alias_find(unit_uniqtypes(p->unit), peek_ident)){
-            /* we're at the beginning of a type, not an identifier */
-        }else{
-            val *v = uniq_val(p, token_last_ident(p->tok), NULL, 0);
-
-            eat(p, "ident", tok_ident);
-
-            return v;
-        }
-    }
-
-    /* need a type and a literal, e.g. i32 5 */
-    ty = parse_type(p);
-
-    if(!ty){
-        parse_error(p, "value type expected, got %s",
-                token_to_str(token_peek(p->tok)));
-
-        ty = default_type(p);
-    }
-
-    if(type_is_void(ty))
-        return val_new_void(unit_uniqtypes(p->unit));
-
-    if(token_accept(p->tok, tok_int)){
-        int i = token_last_int(p->tok);
-
-        return val_new_i(i, ty);
-    }
-
-    if(token_accept(p->tok, tok_undef))
-        return val_new_undef(ty);
-
-    parse_error(p, "value operand expected, got %s",
-            token_to_str(token_peek(p->tok)));
-
-    return val_new_i(0, ty);
-}
 
 static void parse_call(parse *p, char *ident)
 {

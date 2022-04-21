@@ -1,4 +1,4 @@
-use crate::{ty::Type, global::Global};
+use crate::ty::Type;
 
 type Location = ();
 
@@ -17,6 +17,18 @@ pub enum ValKind /*<'arena>*/ {
     Undef,
     Local { loc: Location, name: String },
     Alloca { loc: Location, name: String },
+}
+
+impl<'a> Val<'a> {
+    pub fn new_void(tvoid: Type<'a>) -> Val {
+        todo!()
+    }
+    pub fn new_i(n: i32, ty: Type<'a>) -> Self {
+        todo!()
+    }
+    pub fn new_undef(ty: Type<'a>) -> Self {
+        todo!()
+    }
 }
 
 impl<'a> Val<'a> {
