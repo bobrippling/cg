@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -38,6 +39,9 @@ pub enum ParseError {
 bitflags! {
     #[derive(Default)]
     pub struct ValOpts: u8 {
+        const CREATE = 1 << 0;
+        const ALLOCA = 1 << 1;
+        const LABEL = 1 << 2;
     }
 }
 
@@ -45,6 +49,7 @@ pub struct Parser<'scope, R, SemaErr> {
     pub tok: Tokeniser<'scope, R>,
     pub unit: Unit<'scope>,
     pub sema_error: SemaErr,
+    pub names2vals: HashMap<String, Rc<Val<'scope>>>,
 }
 
 impl<'scope, R, SemaErr> Parser<'scope, R, SemaErr>
@@ -127,7 +132,7 @@ where
             Global::Var(self.parse_variable(name, ty))
         };
 
-        let (old, _new) = self.unit.add_global(new);
+        let (old, _new) = self.unit.globals.add(new);
         if let Some(old) = old {
             (self.sema_error)(format!("global '{}' already defined", old.name()));
         }
@@ -360,19 +365,6 @@ where
     where
         'scope: 's,
     {
-        match ty {
-            TypeS::Func {
-                ret: _,
-                args,
-                variadic: _,
-            } => {
-                if !toplvl_args.is_empty() {
-                    assert_eq!(args.len(), toplvl_args.len());
-                }
-            }
-            _ => unreachable!(),
-        }
-
         let mut f: Func = Func::new(name, ty, toplvl_args, self.unit.blk_arena);
         let mut attr = FuncAttr::default();
 
@@ -445,10 +437,13 @@ where
                     let (this_block, created) = func.get_block(ident);
                     *block = this_block;
 
-                    if !created && !this_block.tenative() {
+                    if !created && !this_block.is_tenative() {
                         (self.sema_error)(format!(
                             "block '{}' already exists",
-                            this_block.label().expect("entry block can't appear here")
+                            this_block
+                                .label()
+                                .as_ref()
+                                .expect("entry block can't appear here")
                         ));
                     }
 
@@ -483,7 +478,7 @@ where
         block: &mut &'scope Block<'scope>,
     ) -> PResult<()> {
         let expected_ty = func.ty().called().unwrap();
-        let v = self.parse_val()?;
+        let v = self.parse_val(func)?;
 
         if !v.ty().can_return_to(expected_ty) {
             (self.sema_error)(format!(
@@ -521,7 +516,10 @@ where
         todo!()
     }
 
-    fn parse_val(&mut self) -> PResult<Rc<Val<'scope>>> {
+    fn parse_val(
+        &mut self,
+        func: &mut Func<'scope>,
+    ) -> PResult<Rc<Val<'scope>>> {
         if let Some(ident) = self.accept_with(|tok| {
             if let Token::Identifier(ident) = tok {
                 Ok(ident)
@@ -532,7 +530,7 @@ where
             if self.unit.types.resolve_alias(&ident).is_some() {
                 // we're at the beginning of a type, not an identifier
             } else {
-                return Ok(self.uniq_val(&ident, None, ValOpts::default()));
+                return Ok(self.uniq_val(func, ident, None, ValOpts::default())?);
             }
         }
 
@@ -558,67 +556,71 @@ where
         Ok(Rc::new(v))
     }
 
-    fn uniq_val(&mut self, name: &str, ty: Option<Type<'scope>>, opts: ValOpts) -> Rc<Val<'scope>> {
-        todo!()
-        /*
-            val *v;
-            global *glob;
-            type *arg_ty;
-            size_t arg_idx;
-            const char *const name_to_print = name;
+    fn uniq_val(
+        &mut self,
+        func: &mut Func<'scope>,
+        name: String,
+        ty: Option<Type<'scope>>,
+        opts: ValOpts,
+    ) -> PResult<Rc<Val<'scope>>> {
+        if ty.is_some() {
+            assert!(opts.contains(ValOpts::CREATE));
+        } else {
+            assert!(!opts.contains(ValOpts::CREATE));
+        }
 
-            if(ty){
-                assert(opts & VAL_CREATE);
-            }else{
-                assert(!(opts & VAL_CREATE));
+        let mut emit_existing_check = || {
+            if opts.contains(ValOpts::CREATE) {
+                (self.sema_error)(format!("pre-existing identifier '{}'", name));
+            }
+        };
+
+        if let Some(v) = self.names2vals.get(&name) {
+            emit_existing_check();
+            return Ok(Rc::clone(v));
+        }
+
+        if let Some((idx, arg_ty)) = func.arg_by_name(&name) {
+            emit_existing_check();
+
+            if let Some(ty) = ty {
+                assert_eq!(arg_ty, ty);
             }
 
-            if(p->names2vals){
-                v = dynmap_get(char *, val *, p->names2vals, name);
-                if(v){
-        found:
-                    if(opts & VAL_CREATE)
-                        parse_error(p, "pre-existing identifier '%s'", name_to_print);
+            let v = Val::new_argument(name.clone(), arg_ty);
 
-                    free(name);
+            let v = self.map_val(name, v);
+            func.register_arg_val(idx, Rc::clone(&v));
 
-                    return v;
-                }
-            }
+            return Ok(v);
+        }
 
-            /* check args */
-            if(function_arg_find(p->func, name, &arg_idx, &arg_ty)){
-                v = val_new_argument(name, arg_ty);
+        if let Some(glob) = self.unit.globals.by_name(&name) {
+            emit_existing_check();
+            let v = Rc::new(Val::new_global(&mut self.unit.types, glob));
+            return Ok(v);
+        }
 
-                function_register_arg_val(p->func, arg_idx, v);
+        let ty = if opts.contains(ValOpts::CREATE) {
+            ty.expect("CREATE without ty")
+        } else {
+            return Err(ParseError::Generic(format!(
+                "undeclared identifier '{}'",
+                name
+            )));
+        };
 
-                map_val(p, name, v);
+        let v = if opts.contains(ValOpts::LABEL) {
+            Val::new_label(name.clone(), ty)
+        } else {
+            Val::new_local(name.clone(), ty, opts.contains(ValOpts::ALLOCA))
+        };
 
-                name = NULL;
+        Ok(self.map_val(name, v))
+    }
 
-                goto found;
-            }
-
-            /* check globals */
-            glob = unit_global_find(p->unit, name);
-
-            if(glob){
-                v = val_new_global(unit_uniqtypes(p->unit), glob);
-                goto found;
-            }
-
-            if((opts & VAL_CREATE) == 0){
-                parse_error(p, "undeclared identifier '%s'", name_to_print);
-                ty = default_type(p);
-            }
-
-            if(opts & VAL_LABEL)
-                v = val_new_label(name, ty);
-            else
-                v = val_new_local(name, ty, opts & VAL_ALLOCA);
-
-            return map_val(p, name, v);
-            */
+    fn map_val(&mut self, name: String, v: Val<'scope>) -> Rc<Val<'scope>> {
+        Rc::clone(self.names2vals.entry(name).or_insert_with(|| Rc::new(v)))
     }
 }
 
@@ -628,7 +630,7 @@ mod test {
 
     use typed_arena::Arena;
 
-    use crate::{blk_arena::BlkArena, target::Target};
+    use crate::{blk_arena::BlkArena, block::BlockKind, target::Target, val::{ValKind, Location}};
 
     use super::*;
 
@@ -647,6 +649,7 @@ mod test {
             tok: Tokeniser::new(s, "fname"),
             unit: Unit::new(&target, &ty_arena, &blk_arena),
             sema_error: (&mut |_| error.set(true)) as _,
+            names2vals: Default::default(),
         };
 
         let mut done = false;
@@ -733,6 +736,24 @@ mod test {
             assert_eq!(f.arg_names(), arg_names);
             assert_eq!(f.attr(), FuncAttr::INTERNAL);
             assert_eq!(f.name(), "f");
+
+            assert_eq!(f.arg_by_name("arg3"), None);
+            assert_eq!(f.arg_by_name("arg1"), Some((0, i1)));
+            assert_eq!(f.arg_by_name("arg2"), Some((1, i4)));
+
+            let block = f.entry().unwrap();
+            assert_eq!(*block.label(), None);
+            assert!(matches!(*block.kind(), BlockKind::EntryExit));
+
+            match block.isns()[..] {
+                [Isn::Ret(ref retval)] => {
+                    let val = retval.as_ref();
+
+                    assert_eq!(val.ty(), i4);
+                    assert_eq!(val.location(), Some(&Location));
+                }
+                _ => panic!(),
+            }
         });
     }
 }

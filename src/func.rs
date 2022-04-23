@@ -1,9 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use bitflags::bitflags;
 // use untyped_arena::Arena as UntypedArena;
 
-use crate::{blk_arena::BlkArena, block::Block, ty::Type};
+use crate::{
+    blk_arena::BlkArena,
+    block::Block,
+    ty::{Type, TypeS},
+    val::Val,
+};
 
 pub struct Func<'arena> {
     name: String,
@@ -18,6 +23,7 @@ pub struct Func<'arena> {
     arena: &'arena BlkArena<'arena>,
     blocks: HashMap<String, &'arena Block<'arena>>,
     entry: Option<&'arena Block<'arena>>,
+    arg_vals: HashMap<usize, Rc<Val<'arena>>>,
 }
 
 bitflags! {
@@ -45,6 +51,33 @@ impl<'arena> Func<'arena> {
     pub fn attr(&self) -> FuncAttr {
         self.attr
     }
+    pub fn entry(&self) -> Option<&'arena Block<'arena>> {
+        self.entry
+    }
+}
+
+impl<'arena> Func<'arena> {
+    pub fn arg_by_name(&self, name: &str) -> Option<(usize, Type<'arena>)> {
+        self.arg_names
+            .iter()
+            .zip(self.arg_types())
+            .enumerate()
+            .find(|(_, (arg_name, _))| arg_name.as_str() == name)
+            .map(|(i, (_, ty))| (i, ty))
+    }
+
+    fn arg_types(&self) -> impl Iterator<Item = Type<'arena>> {
+        if let TypeS::Func { args, .. } = self.ty {
+            args.iter().copied()
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn register_arg_val(&mut self, idx: usize, v: Rc<Val<'arena>>) {
+        let old = self.arg_vals.insert(idx, v);
+        assert!(old.is_none());
+    }
 }
 
 impl<'arena> Func<'arena> {
@@ -54,6 +87,19 @@ impl<'arena> Func<'arena> {
         arg_names: Vec<String>,
         arena: &'arena BlkArena<'arena>,
     ) -> Self {
+        match ty {
+            TypeS::Func {
+                ret: _,
+                args,
+                variadic: _,
+            } => {
+                if !arg_names.is_empty() {
+                    assert_eq!(args.len(), arg_names.len());
+                }
+            }
+            _ => unreachable!(),
+        }
+
         Self {
             name,
             mangled: None,
@@ -63,6 +109,7 @@ impl<'arena> Func<'arena> {
             arena,
             blocks: HashMap::new(),
             entry: None,
+            arg_vals: Default::default(),
         }
     }
 

@@ -16,7 +16,12 @@ pub struct Unit<'scope> {
     pub target: &'scope Target,
     pub types: TyUniq<'scope>,
     pub blk_arena: &'scope BlkArena<'scope>,
+    pub globals: Globals<'scope>,
     funcs: Vec<Func<'scope>>,
+}
+
+pub struct Globals<'scope> {
+    _boo: std::marker::PhantomData<&'scope ()>,
 }
 
 impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
@@ -30,6 +35,7 @@ impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
             types: TyUniq::new(target.arch.ptr, ty_arena),
             blk_arena,
             funcs: vec![],
+            globals: Globals { _boo: std::marker::PhantomData }
         }
     }
 
@@ -47,6 +53,7 @@ impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
             unit: Self::new(target, ty_arena, blk_arena),
             tok,
             sema_error,
+            names2vals: Default::default(),
         };
 
         parser.parse()
@@ -57,15 +64,19 @@ impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
     }
 }
 
-impl<'scope> Unit<'scope> {
-    pub fn for_globals<F>(&self, _f: F)
+impl<'scope> Globals<'scope> {
+    pub fn for_each<F>(&self, _f: F)
     where
         F: FnMut(&Global),
     {
         todo!()
     }
 
-    pub fn add_global(&self, _g: Global<'scope>) -> (Option<Global<'scope>>, &Global<'scope>) {
+    pub fn add(&self, _g: Global<'scope>) -> (Option<Global<'scope>>, &Global<'scope>) {
+        todo!()
+    }
+
+    pub fn by_name(&self, _name: &str) -> Option<&Global<'scope>> {
         todo!()
     }
 }

@@ -1,12 +1,13 @@
-use crate::ty::Type;
+use crate::{global::Global, ty::Type, ty_uniq::TyUniq};
 
-type Location = ();
+#[derive(Debug, PartialEq, Eq)]
+pub struct Location;
 
 #[derive(Debug)]
 pub struct Val<'arena> {
     ty: Type<'arena>,
 
-    kind: ValKind/*<'arena>*/,
+    kind: ValKind, /*<'arena>*/
 }
 
 #[derive(Debug)]
@@ -23,10 +24,34 @@ impl<'a> Val<'a> {
     pub fn new_void(tvoid: Type<'a>) -> Val {
         todo!()
     }
+
     pub fn new_i(n: i32, ty: Type<'a>) -> Self {
         todo!()
     }
+
     pub fn new_undef(ty: Type<'a>) -> Self {
+        todo!()
+    }
+
+    pub fn new_argument(name: String, ty: Type<'a>) -> Self {
+        Self {
+            ty,
+            kind: ValKind::Local {
+                loc: Location,
+                name,
+            },
+        }
+    }
+
+    pub fn new_global(ut: &mut TyUniq, glob: &Global) -> Self {
+        todo!()
+    }
+
+    pub fn new_label(name: String, ty: Type<'a>) -> Self {
+        todo!()
+    }
+
+    pub fn new_local(name: String, ty: Type<'a>, alloca: bool) -> Self {
         todo!()
     }
 }
@@ -34,6 +59,13 @@ impl<'a> Val<'a> {
 impl<'a> Val<'a> {
     pub fn ty(&self) -> Type<'a> {
         self.ty
+    }
+
+    pub fn location(&self) -> Option<&Location> {
+        match &self.kind {
+            ValKind::Local { loc, .. } | ValKind::Alloca { loc, .. } => Some(loc),
+            _ => None,
+        }
     }
 }
 

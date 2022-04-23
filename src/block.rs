@@ -1,9 +1,17 @@
-use std::rc::Weak;
+use std::{
+    cell::{Ref, RefCell},
+    rc::Weak,
+};
 
 use crate::isn::Isn;
 
 #[derive(Debug)]
 pub struct Block<'arena> {
+    inner: RefCell<BlockInner<'arena>>,
+}
+
+#[derive(Debug)]
+struct BlockInner<'arena> {
     isns: Vec<Isn<'arena>>,
     label: Option<String>, /* None if entry block */
 
@@ -17,6 +25,7 @@ pub enum BlockKind<'arena> {
     Unknown,
     Entry,
     Exit,
+    EntryExit,
     Branch {
         // cond: Val,
         t: Weak<Block<'arena>>,
@@ -33,46 +42,74 @@ pub enum BlockKind<'arena> {
 impl<'arena> Block<'arena> {
     pub fn new() -> Self {
         Block {
-            isns: vec![],
-            label: None,
-            kind: BlockKind::Unknown,
+            inner: RefCell::new(BlockInner {
+                isns: vec![],
+                label: None,
+                kind: BlockKind::Unknown,
+            }),
         }
     }
 
     pub fn new_entry() -> Self {
         Block {
-            isns: vec![],
-            label: None,
-            kind: BlockKind::Entry,
+            inner: RefCell::new(BlockInner {
+                isns: vec![],
+                label: None,
+                kind: BlockKind::Entry,
+            }),
         }
     }
 
-    pub fn set_label(&mut self, label: String) {
-        self.label = Some(label);
+    fn from_inner<F, R>(&self, f: F) -> Ref<R>
+    where
+        F: for<'a> FnOnce(&'a BlockInner<'arena>) -> &'a R,
+    {
+        let r = self.inner.borrow();
+        Ref::map(r, f)
     }
 
-    pub fn label(&self) -> Option<&str> {
-        self.label.as_ref().map(|s| &s[..])
+    // pub fn set_label(&mut self, label: String) {
+    //     self.inner.borrow_mut().label = Some(label);
+    // }
+
+    pub fn label(&self) -> Ref<Option<String>> {
+        self.from_inner(|inner| &inner.label)
     }
 
-    pub fn tenative(&self) -> bool {
+    #[cfg(test)]
+    pub fn kind(&self) -> Ref<BlockKind<'arena>> {
+        self.from_inner(|inner| &inner.kind)
+    }
+
+    pub fn is_tenative(&self) -> bool {
         todo!()
     }
 
     pub fn is_unknown_ending(&self) -> bool {
-        matches!(self.kind, BlockKind::Unknown)
+        matches!(self.inner.borrow().kind, BlockKind::Unknown)
     }
 
-    pub fn add_isn(&self, block: Isn) {
-        todo!()
+    pub fn add_isn(&self, isn: Isn<'arena>) {
+        self.inner.borrow_mut().isns.push(isn);
     }
 
-    pub fn set_jmp(&self, block: &Block) {
+    #[cfg(test)]
+    pub fn isns(&self) -> Ref<Vec<Isn<'arena>>> {
+        self.from_inner(|inner| &inner.isns)
+    }
+
+    pub fn set_jmp(&self, _block: &Block) {
         todo!()
     }
 
     pub fn set_exit(&self) {
-        todo!()
+        let mut inner = self.inner.borrow_mut();
+
+        inner.kind = if matches!(inner.kind, BlockKind::Entry) {
+            BlockKind::EntryExit
+        } else {
+            BlockKind::Exit
+        };
     }
 }
 
