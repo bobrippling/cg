@@ -20,6 +20,8 @@ mod ty;
 mod ty_uniq;
 mod variable;
 
+mod init;
+
 mod block;
 mod isn;
 

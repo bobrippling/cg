@@ -5,7 +5,7 @@ use crate::{target::Target, ty::Type, func::Func, variable::Var};
 pub enum Global<'arena> {
     Type { name: String, ty: Type<'arena> },
     Func(Func<'arena>),
-    Var(Var),
+    Var(Var<'arena>),
 }
 
 impl<'arena> Global<'arena> {

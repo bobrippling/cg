@@ -8,6 +8,7 @@ use thiserror::Error;
 use crate::block::Block;
 use crate::func::{Func, FuncAttr};
 use crate::global::Global;
+use crate::init::{Init, InitFlags, InitTopLevel};
 use crate::isn::Isn;
 use crate::srcloc::SrcLoc;
 use crate::token::{Keyword, Punctuation, Token};
@@ -109,6 +110,16 @@ where
         })
     }
 
+    fn accept_bareword(&mut self) -> PResult<Option<String>> {
+        self.accept_with(|tok| {
+            if let Token::Bareword(bw) = tok {
+                Ok(bw)
+            } else {
+                Err(tok)
+            }
+        })
+    }
+
     fn global(&mut self) -> PResult<()> {
         let is_type = self.accept(Token::Keyword(Keyword::Type))?;
 
@@ -129,7 +140,7 @@ where
         } else if matches!(ty, TypeS::Func { .. }) {
             Global::Func(self.parse_function(name, ty, toplvl_args)?)
         } else {
-            Global::Var(self.parse_variable(name, ty))
+            Global::Var(self.parse_variable(name, ty)?)
         };
 
         let (old, _new) = self.unit.globals.add(new);
@@ -372,13 +383,7 @@ where
         loop {
             if self.accept(Token::Keyword(Keyword::Internal))? {
                 attr |= FuncAttr::INTERNAL;
-            } else if let Some(bareword) = self.accept_with(|tok| {
-                if let Token::Bareword(bw) = tok {
-                    Ok(bw)
-                } else {
-                    Err(tok)
-                }
-            })? {
+            } else if let Some(bareword) = self.accept_bareword()? {
                 if bareword == "weak" {
                     attr |= FuncAttr::WEAK;
                 } else {
@@ -416,8 +421,149 @@ where
         Ok(f)
     }
 
-    fn parse_variable(&mut self, _name: String, _ty: Type<'scope>) -> Var {
+    fn parse_variable(&mut self, name: String, ty: Type<'scope>) -> PResult<Var<'scope>> {
+        let mut flags = InitFlags::default();
+
+        if self.accept(Token::Keyword(Keyword::Global))? {
+            // ok
+        } else if self.accept(Token::Keyword(Keyword::Internal))? {
+            flags |= InitFlags::INTERNAL;
+        }
+
+        while let Some(bareword) = self.accept_bareword()? {
+            match bareword.as_str() {
+                "const" => flags |= InitFlags::CONSTANT,
+                "weak" => flags |= InitFlags::WEAK,
+                other => {
+                    return Err(ParseError::Generic(format!(
+                        "unknown variable modifier '{}'",
+                        other
+                    )));
+                }
+            }
+        }
+
+        let init = self.parse_init(ty)?;
+        let init = InitTopLevel { init, flags };
+
+        Ok(Var { name, ty, init })
+    }
+
+    fn parse_init(&mut self, ty: Type<'scope>) -> PResult<Init<'scope>> {
         todo!()
+        /*
+        struct init *init;
+        type *subty;
+
+        init = xmalloc(sizeof *init);
+
+        if(token_accept(p->tok, tok_aliasinit)){
+            /* aliasinit <type> <init>
+             * (useful for unions) */
+            init->type = init_alias;
+            init->u.alias.as = parse_type(p);
+
+            if(type_size(init->u.alias.as) > type_size(ty))
+                sema_error(p, "aliasinit type size > actual type size");
+
+            init->u.alias.init = parse_init(p, init->u.alias.as);
+
+            return init;
+        }
+
+        if((subty = type_array_element(ty))){
+            const bool is_string = token_accept(p->tok, tok_string);
+
+            if(!is_string)
+                eat(p, "array init open brace", tok_lbrace);
+
+            if(is_string){
+                struct string str;
+                type *elem = type_array_element(ty);
+
+                token_last_string(p->tok, &str);
+
+                if(!elem || !type_is_primitive(elem, i1)){
+                    sema_error(p, "init not an i1 array");
+                }
+
+                init->type = init_str;
+                init->u.str = str;
+            }else{
+                size_t array_count;
+
+                init->type = init_array;
+                dynarray_init(&init->u.elem_inits);
+
+                while(!token_accept(p->tok, tok_eof)){
+                    struct init *elem = parse_init(p, subty);
+
+                    dynarray_add(&init->u.elem_inits, elem);
+
+                    if(token_accept(p->tok, tok_rbrace))
+                        break;
+
+                    eat(p, "init comma", tok_comma);
+
+                    /* trailing comma: */
+                    if(token_accept(p->tok, tok_rbrace))
+                        break;
+                }
+
+                /* zero-sized arrays aren't specially handled here */
+                array_count = type_array_count(ty);
+                if(array_count != dynarray_count(&init->u.elem_inits)){
+                    sema_error(p, "init count mismatch: %ld vs %ld",
+                            (long)array_count, (long)dynarray_count(&init->u.elem_inits));
+                }
+            }
+
+        }else if(type_is_struct(ty)){
+            size_t i = 0;
+
+            init->type = init_struct;
+            dynarray_init(&init->u.elem_inits);
+
+            eat(p, "init open brace", tok_lbrace);
+
+            for(; !token_accept(p->tok, tok_eof); i++){
+                struct init *elem;
+
+                subty = type_struct_element(ty, i);
+                if(!subty){
+                    parse_error(p, "excess struct init");
+                    break;
+                }
+                elem = parse_init(p, subty);
+
+                dynarray_add(&init->u.elem_inits, elem);
+
+                if(token_accept(p->tok, tok_rbrace))
+                    break;
+
+                eat(p, "init comma", tok_comma);
+
+                /* trailing comma: */
+                if(token_accept(p->tok, tok_rbrace))
+                    break;
+            }
+
+            if(type_struct_element(ty, i + 1))
+                parse_error(p, "too few members for struct init");
+
+        }else if(type_deref(ty)){
+            parse_init_ptr(p, ty, init);
+
+        }else{
+            /* number */
+            eat(p, "int initialiser", tok_int);
+
+            init->type = init_int;
+            init->u.i = token_last_int(p->tok);
+        }
+
+        return init;
+        */
     }
 
     fn parse_block(
@@ -516,10 +662,7 @@ where
         todo!()
     }
 
-    fn parse_val(
-        &mut self,
-        func: &mut Func<'scope>,
-    ) -> PResult<Rc<Val<'scope>>> {
+    fn parse_val(&mut self, func: &mut Func<'scope>) -> PResult<Rc<Val<'scope>>> {
         if let Some(ident) = self.accept_with(|tok| {
             if let Token::Identifier(ident) = tok {
                 Ok(ident)
@@ -630,7 +773,7 @@ mod test {
 
     use typed_arena::Arena;
 
-    use crate::{blk_arena::BlkArena, block::BlockKind, target::Target, val::{ValKind, Location}};
+    use crate::{blk_arena::BlkArena, block::BlockKind, target::Target, val::Location};
 
     use super::*;
 
@@ -754,6 +897,21 @@ mod test {
                 }
                 _ => panic!(),
             }
+        });
+    }
+
+    #[test]
+    fn parse_variable() {
+        parse_str(b"global const weak 5", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            let v = parser.parse_variable("var1".into(), i4).unwrap();
+            done(&mut parser);
+
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            assert_eq!(&v.name, "var1");
+            assert_eq!(v.ty, parser.unit.types.ptr_to(i4));
+            assert_eq!(v.init.flags,InitFlags::CONSTANT | InitFlags::WEAK);
+            assert!(matches!(v.init.init, Init::Int(5)));
         });
     }
 }
@@ -1544,163 +1702,5 @@ static void parse_init_ptr(parse *p, type *ty, struct init *init)
             memset(&init->u.ptr, 0, sizeof init->u.ptr);
             return;
     }
-}
-
-static struct init *parse_init(parse *p, type *ty)
-{
-    struct init *init;
-    type *subty;
-
-    init = xmalloc(sizeof *init);
-
-    if(token_accept(p->tok, tok_aliasinit)){
-        /* aliasinit <type> <init>
-         * (useful for unions) */
-        init->type = init_alias;
-        init->u.alias.as = parse_type(p);
-
-        if(type_size(init->u.alias.as) > type_size(ty))
-            sema_error(p, "aliasinit type size > actual type size");
-
-        init->u.alias.init = parse_init(p, init->u.alias.as);
-
-        return init;
-    }
-
-    if((subty = type_array_element(ty))){
-        const bool is_string = token_accept(p->tok, tok_string);
-
-        if(!is_string)
-            eat(p, "array init open brace", tok_lbrace);
-
-        if(is_string){
-            struct string str;
-            type *elem = type_array_element(ty);
-
-            token_last_string(p->tok, &str);
-
-            if(!elem || !type_is_primitive(elem, i1)){
-                sema_error(p, "init not an i1 array");
-            }
-
-            init->type = init_str;
-            init->u.str = str;
-        }else{
-            size_t array_count;
-
-            init->type = init_array;
-            dynarray_init(&init->u.elem_inits);
-
-            while(!token_accept(p->tok, tok_eof)){
-                struct init *elem = parse_init(p, subty);
-
-                dynarray_add(&init->u.elem_inits, elem);
-
-                if(token_accept(p->tok, tok_rbrace))
-                    break;
-
-                eat(p, "init comma", tok_comma);
-
-                /* trailing comma: */
-                if(token_accept(p->tok, tok_rbrace))
-                    break;
-            }
-
-            /* zero-sized arrays aren't specially handled here */
-            array_count = type_array_count(ty);
-            if(array_count != dynarray_count(&init->u.elem_inits)){
-                sema_error(p, "init count mismatch: %ld vs %ld",
-                        (long)array_count, (long)dynarray_count(&init->u.elem_inits));
-            }
-        }
-
-    }else if(type_is_struct(ty)){
-        size_t i = 0;
-
-        init->type = init_struct;
-        dynarray_init(&init->u.elem_inits);
-
-        eat(p, "init open brace", tok_lbrace);
-
-        for(; !token_accept(p->tok, tok_eof); i++){
-            struct init *elem;
-
-            subty = type_struct_element(ty, i);
-            if(!subty){
-                parse_error(p, "excess struct init");
-                break;
-            }
-            elem = parse_init(p, subty);
-
-            dynarray_add(&init->u.elem_inits, elem);
-
-            if(token_accept(p->tok, tok_rbrace))
-                break;
-
-            eat(p, "init comma", tok_comma);
-
-            /* trailing comma: */
-            if(token_accept(p->tok, tok_rbrace))
-                break;
-        }
-
-        if(type_struct_element(ty, i + 1))
-            parse_error(p, "too few members for struct init");
-
-    }else if(type_deref(ty)){
-        parse_init_ptr(p, ty, init);
-
-    }else{
-        /* number */
-        eat(p, "int initialiser", tok_int);
-
-        init->type = init_int;
-        init->u.i = token_last_int(p->tok);
-    }
-
-    return init;
-}
-
-static void parse_variable(parse *p, char *name, type *ty)
-{
-    variable_global *v = unit_variable_new(p->unit, name, ty);
-    struct init_toplvl *init_top = NULL;
-    struct {
-        bool internal, constant, weak;
-    } properties = { 0 };
-
-    if(token_accept(p->tok, tok_global)
-    || (properties.internal = token_accept(p->tok, tok_internal)))
-    {
-        /* accept either "global" or "internal" for linkage and init */
-    }
-    else
-    {
-        return;
-    }
-
-    /* optional additions */
-    while(token_accept(p->tok, tok_bareword)){
-        char *bareword = token_last_bareword(p->tok);
-
-        /**/if(!strcmp(bareword, "const"))
-            properties.constant = true;
-        else if(!strcmp(bareword, "weak"))
-            properties.weak = true;
-        else
-            parse_error(p, "unknown variable modifier '%s'", bareword);
-
-        free(bareword);
-    }
-
-    init_top = xmalloc(sizeof *init_top);
-    init_top->init = parse_init(p, ty);
-
-    init_top->internal = properties.internal;
-    init_top->constant = properties.constant;
-    init_top->weak = properties.weak;
-
-    if(init_top)
-        variable_global_init_set(v, init_top);
 }
 */
