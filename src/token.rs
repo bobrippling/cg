@@ -34,14 +34,14 @@ enum_string! {
         RBrace = "}",
         LSquare = "<",
         RSquare = ">",
+        Arrow = "->",
+        Ellipses = "...", // make sure we mention ellipsis before dot, for parsing
         Dot = ".",
         Comma = ",",
         Equal = "=",
         Colon = ":",
         Semi = ";",
         Star = "*",
-        Arrow = "->",
-        Ellipses = "...",
     }
 }
 

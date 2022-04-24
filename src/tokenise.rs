@@ -239,9 +239,12 @@ mod test {
     #[test]
     fn tokenisation() {
         let s: &[u8] = b"
-	    $main = i4() { ret i4 0 }
-	    $i = i8* external $l
-	";
+        $main = i4() { ret i4 0 }
+        $i = i8* external $l add 1
+        ...
+        .
+        ,
+        ";
 
         let tok = Tokeniser::new(s, "");
 
@@ -268,7 +271,10 @@ mod test {
                 Token::Bareword("external".into()),
                 Token::Identifier("l".into()),
                 Token::Op(Op::Add),
-                Token::Integer(1)
+                Token::Integer(1),
+                Token::Punctuation(Punctuation::Ellipses),
+                Token::Punctuation(Punctuation::Dot),
+                Token::Punctuation(Punctuation::Comma),
             ]
         );
     }
