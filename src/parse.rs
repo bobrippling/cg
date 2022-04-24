@@ -450,120 +450,118 @@ where
     }
 
     fn parse_init(&mut self, ty: Type<'scope>) -> PResult<Init<'scope>> {
-        todo!()
-        /*
-        struct init *init;
-        type *subty;
-
-        init = xmalloc(sizeof *init);
-
-        if(token_accept(p->tok, tok_aliasinit)){
+        if self.accept(Token::Keyword(Keyword::Aliasinit))? {
             /* aliasinit <type> <init>
              * (useful for unions) */
-            init->type = init_alias;
-            init->u.alias.as = parse_type(p);
+            let as_ = self.parse_type()?;
 
-            if(type_size(init->u.alias.as) > type_size(ty))
-                sema_error(p, "aliasinit type size > actual type size");
-
-            init->u.alias.init = parse_init(p, init->u.alias.as);
-
-            return init;
-        }
-
-        if((subty = type_array_element(ty))){
-            const bool is_string = token_accept(p->tok, tok_string);
-
-            if(!is_string)
-                eat(p, "array init open brace", tok_lbrace);
-
-            if(is_string){
-                struct string str;
-                type *elem = type_array_element(ty);
-
-                token_last_string(p->tok, &str);
-
-                if(!elem || !type_is_primitive(elem, i1)){
-                    sema_error(p, "init not an i1 array");
-                }
-
-                init->type = init_str;
-                init->u.str = str;
-            }else{
-                size_t array_count;
-
-                init->type = init_array;
-                dynarray_init(&init->u.elem_inits);
-
-                while(!token_accept(p->tok, tok_eof)){
-                    struct init *elem = parse_init(p, subty);
-
-                    dynarray_add(&init->u.elem_inits, elem);
-
-                    if(token_accept(p->tok, tok_rbrace))
-                        break;
-
-                    eat(p, "init comma", tok_comma);
-
-                    /* trailing comma: */
-                    if(token_accept(p->tok, tok_rbrace))
-                        break;
-                }
-
-                /* zero-sized arrays aren't specially handled here */
-                array_count = type_array_count(ty);
-                if(array_count != dynarray_count(&init->u.elem_inits)){
-                    sema_error(p, "init count mismatch: %ld vs %ld",
-                            (long)array_count, (long)dynarray_count(&init->u.elem_inits));
-                }
+            if as_.size() > ty.size() {
+                (self.sema_error)("aliasinit type size > actual type size".into());
             }
 
-        }else if(type_is_struct(ty)){
-            size_t i = 0;
-
-            init->type = init_struct;
-            dynarray_init(&init->u.elem_inits);
-
-            eat(p, "init open brace", tok_lbrace);
-
-            for(; !token_accept(p->tok, tok_eof); i++){
-                struct init *elem;
-
-                subty = type_struct_element(ty, i);
-                if(!subty){
-                    parse_error(p, "excess struct init");
-                    break;
-                }
-                elem = parse_init(p, subty);
-
-                dynarray_add(&init->u.elem_inits, elem);
-
-                if(token_accept(p->tok, tok_rbrace))
-                    break;
-
-                eat(p, "init comma", tok_comma);
-
-                /* trailing comma: */
-                if(token_accept(p->tok, tok_rbrace))
-                    break;
-            }
-
-            if(type_struct_element(ty, i + 1))
-                parse_error(p, "too few members for struct init");
-
-        }else if(type_deref(ty)){
-            parse_init_ptr(p, ty, init);
-
-        }else{
-            /* number */
-            eat(p, "int initialiser", tok_int);
-
-            init->type = init_int;
-            init->u.i = token_last_int(p->tok);
+            return Ok(Init::Alias {
+                as_,
+                init: Box::new(self.parse_init(as_)?),
+            });
         }
 
-        return init;
-        */
+        let init = match ty.resolve() {
+            TypeS::Void | TypeS::Alias { .. } => unimplemented!(),
+            TypeS::Ptr { .. } => {
+                todo!() // parse_init_ptr(p, ty, init);
+            }
+            TypeS::Func { .. } => unreachable!(),
+            TypeS::Primitive(_) => {
+                let i = self.expect(|tok| {
+                    if let Token::Integer(i) = tok {
+                        Ok(i)
+                    } else {
+                        Err(tok)
+                    }
+                })?;
+
+                Init::Int(i.try_into().unwrap())
+            }
+            &TypeS::Array { elem, n } => {
+                let string = self.accept_with(|tok| {
+                    if let Token::String(s) = tok {
+                        Ok(s)
+                    } else {
+                        Err(tok)
+                    }
+                })?;
+
+                match string {
+                    Some(s) => {
+                        if !matches!(elem.as_primitive(), Some(Primitive::I1)) {
+                            (self.sema_error)("string init not an i1 array".into());
+                        }
+
+                        Init::Str(s.into())
+                    }
+                    None => {
+                        self.eat(Token::Punctuation(Punctuation::LBrace))?;
+
+                        let mut elem_inits = vec![];
+
+                        while !self.eof() {
+                            let elem = self.parse_init(elem)?;
+
+                            elem_inits.push(elem);
+
+                            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                                break;
+                            }
+
+                            self.eat(Token::Punctuation(Punctuation::Comma))?;
+
+                            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                                break;
+                            }
+                        }
+
+                        /* zero-sized arrays aren't specially handled here */
+                        if n != elem_inits.len() {
+                            (self.sema_error)(format!(
+                                "init count mismatch: {} vs {}",
+                                n,
+                                elem_inits.len()
+                            ));
+                        }
+
+                        Init::Array(elem_inits)
+                    }
+                }
+            }
+            TypeS::Struct { membs } => {
+                self.eat(Token::Punctuation(Punctuation::LBrace))?;
+
+                let mut elem_inits = vec![];
+
+                for subty in membs {
+                    if self.accept(Token::Eof)? {
+                        (self.sema_error)("too few inits for struct type".into());
+                    }
+
+                    let elem = self.parse_init(subty)?;
+                    elem_inits.push(elem);
+
+                    if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                        break;
+                    }
+
+                    self.eat(Token::Punctuation(Punctuation::Comma))?;
+
+                    if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                        break;
+                    }
+                }
+
+                Init::Struct(elem_inits)
+            }
+        };
+
+        Ok(init)
     }
 
     fn parse_block(
@@ -777,7 +775,7 @@ mod test {
 
     use super::*;
 
-    type Parser<'scope, 'cb> = super::Parser<'scope, &'scope [u8], &'scope mut dyn FnMut(String)>;
+    type Parser<'scope> = super::Parser<'scope, &'scope [u8], &'scope mut dyn FnMut(String)>;
 
     fn parse_str<F>(s: &[u8], f: F)
     where
@@ -907,11 +905,40 @@ mod test {
             let v = parser.parse_variable("var1".into(), i4).unwrap();
             done(&mut parser);
 
-            let i4 = parser.unit.types.primitive(Primitive::I4);
             assert_eq!(&v.name, "var1");
-            assert_eq!(v.ty, parser.unit.types.ptr_to(i4));
-            assert_eq!(v.init.flags,InitFlags::CONSTANT | InitFlags::WEAK);
+            assert_eq!(v.ty, i4);
+            assert_eq!(v.init.flags, InitFlags::CONSTANT | InitFlags::WEAK);
             assert!(matches!(v.init.init, Init::Int(5)));
+        });
+    }
+
+    #[test]
+    fn parse_aggregate_init() {
+        parse_str(b"internal { 1, 2 }", |mut parser, done| {
+            let i1 = parser.unit.types.primitive(Primitive::I1);
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            let struct_ty = parser.unit.types.struct_of(vec![i4, i1]);
+
+            let v = parser.parse_variable("var1".into(), struct_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(&v.name, "var1");
+            assert_eq!(v.ty, struct_ty);
+            assert_eq!(v.init.flags, InitFlags::INTERNAL);
+            assert_eq!(v.init.init, Init::Struct(vec![Init::Int(1), Init::Int(2)]));
+        });
+
+        parse_str(b"{ 1, 2, 3 }", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            let array_ty = parser.unit.types.array_of(i4, 3);
+
+            let v = parser.parse_variable("var1".into(), array_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(&v.name, "var1");
+            assert_eq!(v.ty, array_ty);
+            assert_eq!(v.init.flags, InitFlags::default());
+            assert_eq!(v.init.init, Init::Array(vec![Init::Int(1), Init::Int(2), Init::Int(3)]));
         });
     }
 }

@@ -1,15 +1,16 @@
 use std::ptr;
 
-use crate::size_align::SizeAlign;
+use crate::size_align::{self, Size, SizeAlign};
 
 pub type Type<'t> = &'t TypeS<'t>;
 
-#[derive(Hash, Debug)]
+#[derive(Debug, Hash)]
 pub enum TypeS<'t> {
     Void,
     Primitive(Primitive),
     Ptr {
         pointee: Type<'t>,
+        sz: Size,
     },
     Array {
         elem: Type<'t>,
@@ -77,6 +78,12 @@ pub trait TypeQueries<'t>: Sized {
 
     fn as_primitive(self) -> Option<Primitive>;
 
+    fn size(self) -> usize {
+        self.size_align().size
+    }
+
+    fn size_align(self) -> SizeAlign;
+
     fn is_fn(self) -> bool;
     fn is_struct(self) -> bool;
     fn is_void(self) -> bool;
@@ -85,7 +92,7 @@ pub trait TypeQueries<'t>: Sized {
 }
 
 impl<'t> TypeS<'t> {
-    fn resolve(mut self: &'t Self) -> &'t Self {
+    pub fn resolve(mut self: &'t Self) -> &'t Self {
         while let TypeS::Alias { actual, .. } = self {
             self = actual;
         }
@@ -116,7 +123,7 @@ impl<'t> TypeQueries<'t> for Type<'t> {
     }
 
     fn deref(self) -> Option<Self> {
-        if let TypeS::Ptr { pointee } = self.resolve() {
+        if let TypeS::Ptr { pointee, sz: _ } = self.resolve() {
             Some(pointee)
         } else {
             None
@@ -128,6 +135,31 @@ impl<'t> TypeQueries<'t> for Type<'t> {
             Some(*p)
         } else {
             None
+        }
+    }
+
+    fn size_align(self) -> SizeAlign {
+        match self {
+            TypeS::Void => SizeAlign::default(),
+            TypeS::Primitive(p) => p.size_align(),
+            &TypeS::Ptr { sz, .. } => SizeAlign::from_size(sz),
+            &TypeS::Array { elem, n } => elem.size_align() * n,
+            TypeS::Func { .. } => unreachable!(),
+            TypeS::Struct { membs } => {
+                let mut sz_align = SizeAlign::default();
+
+                for memb in membs {
+                    let elem = memb.size_align();
+
+                    let gap = size_align::gap_for_alignment(elem.size as _, elem.align);
+
+                    sz_align.size += gap + elem.size;
+                    sz_align.align = sz_align.align.max(elem.align);
+                }
+
+                sz_align
+            }
+            TypeS::Alias { actual, .. } => actual.size_align(),
         }
     }
 
@@ -164,10 +196,14 @@ macro_rules! forward {
 
 impl<'t> TypeQueries<'t> for Option<Type<'t>> {
     forward! {
-	fn array_elem(self) -> Option<Type<'t>>;
-	fn called(self) -> Option<Type<'t>>;
-	fn as_primitive(self) -> Option<Primitive>;
-	fn deref(self) -> Option<Type<'t>>;
+    fn array_elem(self) -> Option<Type<'t>>;
+    fn called(self) -> Option<Type<'t>>;
+    fn as_primitive(self) -> Option<Primitive>;
+    fn deref(self) -> Option<Type<'t>>;
+    }
+
+    fn size_align(self) -> SizeAlign {
+        self.map(TypeQueries::size_align).unwrap_or_default()
     }
 
     fn is_fn(self) -> bool {

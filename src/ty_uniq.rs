@@ -20,10 +20,12 @@ pub struct TyUniq<'t> {
     pointers: HashMap<Type<'t>, Type<'t>>,
     funcs: HashMap<FuncKey<'t>, Type<'t>>,
     aliases: HashMap<String, Type<'t>>,
+
+    ptr: SizeAlign,
 }
 
 impl<'t> TyUniq<'t> {
-    pub fn new(_ptr: SizeAlign, arena: &'t Arena<TypeS<'t>>) -> Self {
+    pub fn new(ptr: SizeAlign, arena: &'t Arena<TypeS<'t>>) -> Self {
         Self {
             primitives: HashMap::new(),
             void: None,
@@ -34,13 +36,17 @@ impl<'t> TyUniq<'t> {
             funcs: HashMap::new(),
             aliases: HashMap::new(),
 
+            ptr,
+
             arena,
         }
     }
 
-    pub fn primitive<'s>(&'s mut self, p: Primitive) -> Type<'t>
-    where
-        't: 's,
+    pub fn ptr(&self) -> SizeAlign {
+        self.ptr
+    }
+
+    pub fn primitive(&mut self, p: Primitive) -> Type<'t>
     {
         if let Some(&t) = self.primitives.get(&p) {
             return t;
@@ -78,9 +84,12 @@ impl<'t> TyUniq<'t> {
     }
 
     pub fn ptr_to(&mut self, pointee: Type<'t>) -> Type<'t> {
-        self.pointers
-            .entry(pointee)
-            .or_insert_with(|| self.arena.alloc(TypeS::Ptr { pointee }))
+        self.pointers.entry(pointee).or_insert_with(|| {
+            self.arena.alloc(TypeS::Ptr {
+                pointee,
+                sz: self.ptr.size,
+            })
+        })
     }
 
     pub fn func_of(&mut self, ret: Type<'t>, args: Vec<Type<'t>>, variadic: bool) -> Type<'t> {

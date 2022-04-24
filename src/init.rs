@@ -2,6 +2,7 @@ use bitflags::bitflags;
 
 use crate::ty::Type;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Init<'arena> {
     Str(Vec<u8>),
     Array(Vec<Init<'arena>>),
@@ -11,6 +12,7 @@ pub enum Init<'arena> {
     Alias { as_: Type<'arena>, init: Box<Init<'arena>> },
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum PtrInit {
     Int(usize),
     Label {
@@ -29,6 +31,7 @@ bitflags! {
     }
 }
 
+#[derive(Debug)]
 pub struct InitTopLevel<'arena> {
     pub init: Init<'arena>,
     pub flags: InitFlags,
