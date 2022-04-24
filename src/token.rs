@@ -12,7 +12,7 @@ pub enum Token {
     Integer(i32),
     Identifier(String),
     Bareword(String),
-    String(Box<[u8]>),
+    String(Vec<u8>),
 
     Punctuation(Punctuation),
     Keyword(Keyword),

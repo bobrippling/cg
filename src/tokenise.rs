@@ -199,7 +199,7 @@ where
             })
     }
 
-    fn parse_string(&mut self) -> Option<(Box<[u8]>, usize)> {
+    fn parse_string(&mut self) -> Option<(Vec<u8>, usize)> {
         todo!()
     }
 }
@@ -276,6 +276,27 @@ mod test {
                 Token::Punctuation(Punctuation::Dot),
                 Token::Punctuation(Punctuation::Comma),
             ]
+        );
+    }
+
+    #[ignore]
+    #[test]
+    fn string_parsing() {
+        let s: &[u8] = b"
+        \n#comment\n\"hi\"\"\"\"\\n\"
+        ";
+
+        let tok = Tokeniser::new(s, "");
+
+        let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::String("hi".to_string().into_bytes()),
+                Token::String("".to_string().into_bytes()),
+                Token::String("\\n".to_string().into_bytes()),
+            ],
         );
     }
 }
