@@ -1,10 +1,10 @@
 use crate::{ty::Type, init::InitTopLevel};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Var<'arena> {
     pub name: String,
     pub ty: Type<'arena>,
-    pub init: InitTopLevel<'arena>,
+    pub init: Option<InitTopLevel<'arena>>,
 }
 
 /*

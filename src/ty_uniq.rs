@@ -72,10 +72,6 @@ impl<'t> TyUniq<'t> {
             .or_insert_with_key(|key| self.arena.alloc(TypeS::Struct { membs: key.clone() }))
     }
 
-    pub fn default(&mut self) -> Type<'t> {
-        self.primitive(Primitive::I4)
-    }
-
     pub fn array_of(&mut self, elem: Type<'t>, n: usize) -> Type<'t> {
         self.arrays
             .entry((elem, n))

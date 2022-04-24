@@ -73,7 +73,13 @@ impl<'scope> Globals<'scope> {
     where
         F: FnMut(&Global),
     {
+        // need to preserve insertion order?
         todo!()
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.map.len()
     }
 
     pub fn add(&mut self, g: Global<'scope>) -> Option<Global<'scope>> {

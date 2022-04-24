@@ -31,7 +31,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct InitTopLevel<'arena> {
     pub init: Init<'arena>,
     pub flags: InitFlags,

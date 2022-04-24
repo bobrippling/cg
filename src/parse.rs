@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::Read;
+use std::iter;
 use std::rc::Rc;
 
 use bitflags::bitflags;
@@ -35,6 +36,9 @@ pub enum ParseError {
 
     #[error("overflow parsing number")]
     Overflow,
+
+    #[error("unexpected eof")]
+    UnexpectedEof,
 }
 
 bitflags! {
@@ -59,15 +63,27 @@ where
     SemaErr: FnMut(String),
 {
     pub fn parse(mut self) -> Result<Unit<'scope>, (ParseError, SrcLoc)> {
-        while !self.eof() {
-            self.global().map_err(|e| (e, self.tok.loc()))?;
+        match self.parse_no_loc() {
+            Ok(()) => Ok(self.unit),
+            Err(e) => Err((e, self.tok.loc())),
         }
-
-        Ok(self.unit)
     }
 
-    fn eof(&self) -> bool {
-        self.tok.eof()
+    fn parse_no_loc(&mut self) -> Result<(), ParseError> {
+        while !self.eof()? {
+            self.global()?;
+        }
+        Ok(())
+    }
+
+    fn eof(&mut self) -> PResult<bool> {
+        Ok({
+            if self.tok.eof() {
+                true
+            } else {
+                self.accept(Token::Eof)?
+            }
+        })
     }
 
     fn next(&mut self) -> tokenise::LexResult {
@@ -148,7 +164,7 @@ where
             if let Token::Identifier(ident) = tok {
                 Ok(ident)
             } else {
-                Err((tok, Token::Identifier("".into()).desc()))
+                Err((tok, "identifier for global"))
             }
         })?;
 
@@ -157,6 +173,7 @@ where
         let (ty, toplvl_args) = self.parse_type_maybe_func()?;
 
         let new = if is_type {
+            self.unit.types.add_alias(&name, ty);
             Global::Type { name, ty }
         } else if matches!(ty, TypeS::Func { .. }) {
             Global::Func(self.parse_function(name, ty, toplvl_args)?)
@@ -208,7 +225,7 @@ where
                 Some(ty) => ty,
                 None => {
                     (self.sema_error)(format!("no such type '{}'", spel));
-                    self.unit.types.default()
+                    self.unit.types.void()
                 }
             },
 
@@ -231,7 +248,7 @@ where
                 assert!(names.is_empty());
 
                 if variadic {
-                    todo!("error");
+                    return Err(ParseError::Generic("structs can't be variadic".into()));
                 }
 
                 self.unit.types.struct_of(types)
@@ -244,7 +261,7 @@ where
                     if let Token::Bareword(ident) = tok {
                         Ok(ident)
                     } else {
-                        Err((tok, Token::Bareword("".into()).desc()))
+                        Err((tok, "\"x\" for array multiplier"))
                     }
                 })?;
 
@@ -310,17 +327,20 @@ where
 
         if self.accept(Token::Punctuation(Punctuation::Ellipses))? {
             variadic = true;
-        } else if self.accept(closer)? {
-            // done
         } else {
             let mut have_idents = false;
+            let mut seen_closer = false;
 
             loop {
+                if self.accept(closer.clone())? {
+                    seen_closer = true;
+                    break;
+                }
                 let mut memb = self.parse_type()?;
 
                 if memb.is_fn() {
                     (self.sema_error)("function in aggregate".into());
-                    memb = self.unit.types.default();
+                    memb = self.unit.types.void();
                 }
 
                 let mut skip_comma = false;
@@ -350,7 +370,7 @@ where
                             if let Token::Identifier(id) = tok {
                                 Ok(id)
                             } else {
-                                Err((tok, Token::Identifier("".into()).desc()))
+                                Err((tok, "identifier for argument name"))
                             }
                         })?;
                         names.push(id);
@@ -370,6 +390,10 @@ where
                     }
                 }
                 break;
+            }
+
+            if !seen_closer {
+                self.eat(closer)?;
             }
         }
 
@@ -417,7 +441,7 @@ where
             f.set_entry(cur_blk);
 
             loop {
-                if self.eof() {
+                if self.eof()? {
                     return Err(ParseError::Generic(format!(
                         "No closing bracket for function body"
                     )));
@@ -442,6 +466,12 @@ where
             // ok
         } else if self.accept(Token::Keyword(Keyword::Internal))? {
             flags |= InitFlags::INTERNAL;
+        } else {
+            return Ok(Var {
+                name,
+                ty,
+                init: None,
+            });
         }
 
         while let Some(bareword) = self.accept_bareword()? {
@@ -460,7 +490,48 @@ where
         let init = self.parse_init(ty)?;
         let init = InitTopLevel { init, flags };
 
-        Ok(Var { name, ty, init })
+        Ok(Var {
+            name,
+            ty,
+            init: Some(init),
+        })
+    }
+
+    fn parse_elem_inits(
+        &mut self,
+        types: impl Iterator<Item = Type<'scope>>,
+    ) -> PResult<Vec<Init<'scope>>> {
+        self.eat(Token::Punctuation(Punctuation::LBrace))?;
+
+        let mut elem_inits = vec![];
+        let mut seen_rbrace = false;
+
+        for ty in types {
+            let elem = self.parse_init(ty)?;
+            elem_inits.push(elem);
+
+            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                seen_rbrace = true;
+                break;
+            }
+
+            self.eat(Token::Punctuation(Punctuation::Comma))?;
+
+            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
+                seen_rbrace = true;
+                break;
+            }
+
+            if self.eof()? {
+                return Err(ParseError::UnexpectedEof);
+            }
+        }
+
+        if !seen_rbrace {
+            self.eat(Token::Punctuation(Punctuation::RBrace))?;
+        }
+
+        Ok(elem_inits)
     }
 
     fn parse_init(&mut self, ty: Type<'scope>) -> PResult<Init<'scope>> {
@@ -507,25 +578,7 @@ where
                         Init::Str(s.into())
                     }
                     None => {
-                        self.eat(Token::Punctuation(Punctuation::LBrace))?;
-
-                        let mut elem_inits = vec![];
-
-                        while !self.eof() {
-                            let elem = self.parse_init(elem)?;
-
-                            elem_inits.push(elem);
-
-                            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
-                                break;
-                            }
-
-                            self.eat(Token::Punctuation(Punctuation::Comma))?;
-
-                            if self.accept(Token::Punctuation(Punctuation::RBrace))? {
-                                break;
-                            }
-                        }
+                        let elem_inits = self.parse_elem_inits(iter::repeat(elem))?;
 
                         /* zero-sized arrays aren't specially handled here */
                         if n != elem_inits.len() {
@@ -541,27 +594,14 @@ where
                 }
             }
             TypeS::Struct { membs } => {
-                self.eat(Token::Punctuation(Punctuation::LBrace))?;
+                let elem_inits = self.parse_elem_inits(membs.iter().copied())?;
 
-                let mut elem_inits = vec![];
-
-                for subty in membs {
-                    if self.accept(Token::Eof)? {
-                        (self.sema_error)("too few inits for struct type".into());
-                    }
-
-                    let elem = self.parse_init(subty)?;
-                    elem_inits.push(elem);
-
-                    if self.accept(Token::Punctuation(Punctuation::RBrace))? {
-                        break;
-                    }
-
-                    self.eat(Token::Punctuation(Punctuation::Comma))?;
-
-                    if self.accept(Token::Punctuation(Punctuation::RBrace))? {
-                        break;
-                    }
+                if membs.len() != elem_inits.len() {
+                    (self.sema_error)(format!(
+                        "init count mismatch: {} vs {}",
+                        membs.len(),
+                        elem_inits.len()
+                    ));
                 }
 
                 Init::Struct(elem_inits)
@@ -574,7 +614,7 @@ where
     fn parse_init_ptr(&mut self, ty: Type<'scope>) -> PResult<PtrInit> {
         Ok(match self.next()? {
             Token::Identifier(label) => {
-                let mut lookup_global = || match self.unit.globals.by_name(&label) {
+                let lookup_global = || match self.unit.globals.by_name(&label) {
                     Some(glob) => {
                         return Ok(glob.ty());
                     }
@@ -869,11 +909,36 @@ mod test {
             }
 
             parser.eat(Token::Eof).unwrap(); // needed to bump us onto eof()
-            assert!(parser.eof());
+            assert!(parser.eof().unwrap());
 
             done = true;
         });
         assert!(done);
+    }
+
+    fn with_unit<F>(s: &[u8], f: F)
+    where
+        F: FnOnce(Unit),
+    {
+        let target = Target::dummy();
+        let ty_arena = Arena::new();
+        let blk_arena = BlkArena::new();
+
+        let error = Cell::new(None);
+        let parser = Parser {
+            tok: Tokeniser::new(s, "fname"),
+            unit: Unit::new(&target, &ty_arena, &blk_arena),
+            sema_error: (&mut |s| error.set(Some(s))) as _,
+            names2vals: Default::default(),
+        };
+
+        let unit = parser.parse().unwrap();
+
+        if let Some(e) = error.take() {
+            panic!("sema error during parse: {}", e);
+        }
+
+        f(unit)
     }
 
     #[test]
@@ -978,8 +1043,19 @@ mod test {
 
             assert_eq!(&v.name, "var1");
             assert_eq!(v.ty, i4);
-            assert_eq!(v.init.flags, InitFlags::CONSTANT | InitFlags::WEAK);
-            assert!(matches!(v.init.init, Init::Int(5)));
+            let init = v.init.unwrap();
+            assert_eq!(init.flags, InitFlags::CONSTANT | InitFlags::WEAK);
+            assert!(matches!(init.init, Init::Int(5)));
+        });
+
+        parse_str(b"", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            let v = parser.parse_variable("var1".into(), i4).unwrap();
+            done(&mut parser);
+
+            assert_eq!(&v.name, "var1");
+            assert_eq!(v.ty, i4);
+            assert_eq!(v.init, None);
         });
     }
 
@@ -995,11 +1071,12 @@ mod test {
 
             assert_eq!(&v.name, "var1");
             assert_eq!(v.ty, struct_ty);
-            assert_eq!(v.init.flags, InitFlags::INTERNAL);
-            assert_eq!(v.init.init, Init::Struct(vec![Init::Int(1), Init::Int(2)]));
+            let init = v.init.unwrap();
+            assert_eq!(init.flags, InitFlags::INTERNAL);
+            assert_eq!(init.init, Init::Struct(vec![Init::Int(1), Init::Int(2)]));
         });
 
-        parse_str(b"{ 1, 2, 3 }", |mut parser, done| {
+        parse_str(b"global { 1, 2, 3 }", |mut parser, done| {
             let i4 = parser.unit.types.primitive(Primitive::I4);
             let array_ty = parser.unit.types.array_of(i4, 3);
 
@@ -1008,9 +1085,10 @@ mod test {
 
             assert_eq!(&v.name, "var1");
             assert_eq!(v.ty, array_ty);
-            assert_eq!(v.init.flags, InitFlags::default());
+            let init = v.init.unwrap();
+            assert_eq!(init.flags, InitFlags::default());
             assert_eq!(
-                v.init.init,
+                init.init,
                 Init::Array(vec![Init::Int(1), Init::Int(2), Init::Int(3)])
             );
         });
@@ -1035,10 +1113,10 @@ mod test {
             let old = parser.unit.globals.add(Global::Var(Var {
                 name: "label".into(),
                 ty: i8,
-                init: InitTopLevel {
+                init: Some(InitTopLevel {
                     init: Init::Int(0), // dummy
                     flags: Default::default(),
-                },
+                }),
             }));
             assert!(old.is_none());
 
@@ -1062,10 +1140,10 @@ mod test {
             let old = parser.unit.globals.add(Global::Var(Var {
                 name: "label".into(),
                 ty: i8,
-                init: InitTopLevel {
+                init: Some(InitTopLevel {
                     init: Init::Int(0), // dummy
                     flags: Default::default(),
-                },
+                }),
             }));
             assert!(old.is_none());
 
@@ -1089,10 +1167,10 @@ mod test {
             let old = parser.unit.globals.add(Global::Var(Var {
                 name: "label".into(),
                 ty: i8,
-                init: InitTopLevel {
+                init: Some(InitTopLevel {
                     init: Init::Int(0), // dummy
                     flags: Default::default(),
-                },
+                }),
             }));
             assert!(old.is_none());
 
@@ -1116,10 +1194,10 @@ mod test {
             let old = parser.unit.globals.add(Global::Var(Var {
                 name: "label".into(),
                 ty: i8,
-                init: InitTopLevel {
+                init: Some(InitTopLevel {
                     init: Init::Int(0), // dummy
                     flags: Default::default(),
-                },
+                }),
             }));
             assert!(old.is_none());
 
@@ -1153,6 +1231,94 @@ mod test {
                 }
             );
         });
+    }
+
+    #[test]
+    fn parse_init_with_types() {
+        let s = b"
+            $lbl = i1 internal 3
+            $y = { i1* } internal { $lbl }
+            type $t = { i4, { i1* }* }
+            $x = $t internal { 3, $y }
+        ";
+
+        with_unit(s, |mut unit| {
+            let types = &mut unit.types;
+            let globals = &mut unit.globals;
+
+            let i4 = types.primitive(Primitive::I4);
+            let i1 = types.primitive(Primitive::I1);
+            let i1p = types.ptr_to(i1);
+            let i1p_struct = types.struct_of(vec![i1p]);
+            let i1p_structp = types.ptr_to(i1p_struct);
+            let t_ty = types.struct_of(vec![i4, i1p_structp]);
+
+            match globals.by_name("lbl").unwrap() {
+                Global::Var(v) => assert_eq!(
+                    *v,
+                    Var {
+                        name: "lbl".into(),
+                        ty: types.primitive(Primitive::I1),
+                        init: Some(InitTopLevel {
+                            init: Init::Int(3),
+                            flags: InitFlags::INTERNAL,
+                        }),
+                    }
+                ),
+                _ => unreachable!(),
+            }
+
+            match globals.by_name("y").unwrap() {
+                Global::Var(v) => assert_eq!(
+                    *v,
+                    Var {
+                        name: "y".into(),
+                        ty: i1p_struct,
+                        init: Some(InitTopLevel {
+                            init: Init::Struct(vec![Init::Ptr(PtrInit::Label {
+                                label: "lbl".into(),
+                                offset: 0,
+                                is_anyptr: false,
+                            })]),
+                            flags: InitFlags::INTERNAL,
+                        }),
+                    }
+                ),
+                _ => unreachable!(),
+            }
+
+            match globals.by_name("t").unwrap() {
+                &Global::Type { ref name, ty } => {
+                    assert_eq!(name, "t");
+                    assert_eq!(ty, t_ty);
+                }
+                _ => unreachable!(),
+            }
+
+            match globals.by_name("x").unwrap() {
+                Global::Var(v) => assert_eq!(
+                    *v,
+                    Var {
+                        name: "x".into(),
+                        ty: t_ty,
+                        init: Some(InitTopLevel {
+                            flags: InitFlags::INTERNAL,
+                            init: Init::Struct(vec![
+                                Init::Int(3),
+                                Init::Ptr(PtrInit::Label {
+                                    label: "y".into(),
+                                    offset: 0,
+                                    is_anyptr: false,
+                                })
+                            ]),
+                        }),
+                    }
+                ),
+                _ => unreachable!(),
+            }
+
+            assert_eq!(globals.len(), 4);
+        })
     }
 }
 

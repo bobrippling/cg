@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::enum_string;
 
 #[allow(dead_code)]
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Token {
     // this isn't an error, allowing us to parse "i4" without needing
     // another token to look at afterwards (for '*', '()', ...)
