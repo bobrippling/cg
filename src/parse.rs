@@ -8,10 +8,10 @@ use thiserror::Error;
 use crate::block::Block;
 use crate::func::{Func, FuncAttr};
 use crate::global::Global;
-use crate::init::{Init, InitFlags, InitTopLevel};
+use crate::init::{Init, InitFlags, InitTopLevel, PtrInit};
 use crate::isn::Isn;
 use crate::srcloc::SrcLoc;
-use crate::token::{Keyword, Punctuation, Token};
+use crate::token::{Keyword, Op, Punctuation, Token};
 use crate::ty::{Primitive, Type, TypeQueries, TypeS};
 use crate::val::Val;
 use crate::variable::Var;
@@ -86,6 +86,11 @@ where
         self.expect(|tok| if tok == expected { Ok(()) } else { Err(tok) })
     }
 
+    fn expect_integer(&mut self) -> PResult<i32> {
+        self.accept_integer()
+            .and_then(|i| i.ok_or_else(|| ParseError::Generic("integer expected".into())))
+    }
+
     fn accept(&mut self, expected: Token) -> PResult<bool> {
         let res = self.accept_with(|got| if got == expected { Ok(()) } else { Err(got) })?;
 
@@ -120,6 +125,16 @@ where
         })
     }
 
+    fn accept_integer(&mut self) -> PResult<Option<i32>> {
+        self.accept_with(|tok| {
+            if let Token::Integer(n) = tok {
+                Ok(n)
+            } else {
+                Err(tok)
+            }
+        })
+    }
+
     fn global(&mut self) -> PResult<()> {
         let is_type = self.accept(Token::Keyword(Keyword::Type))?;
 
@@ -143,7 +158,7 @@ where
             Global::Var(self.parse_variable(name, ty)?)
         };
 
-        let (old, _new) = self.unit.globals.add(new);
+        let old = self.unit.globals.add(new);
         if let Some(old) = old {
             (self.sema_error)(format!("global '{}' already defined", old.name()));
         }
@@ -234,14 +249,7 @@ where
                     )));
                 }
 
-                let nelems = self.expect(|tok| {
-                    if let Token::Integer(i) = tok {
-                        Ok(i)
-                    } else {
-                        Err(tok)
-                    }
-                })?;
-
+                let nelems = self.expect_integer()?;
                 let nelems = nelems.try_into().map_err(|_| ParseError::Overflow)?;
 
                 let t = self.unit.types.array_of(elemty, nelems);
@@ -467,18 +475,11 @@ where
 
         let init = match ty.resolve() {
             TypeS::Void | TypeS::Alias { .. } => unimplemented!(),
-            TypeS::Ptr { .. } => {
-                todo!() // parse_init_ptr(p, ty, init);
-            }
             TypeS::Func { .. } => unreachable!(),
+
+            TypeS::Ptr { pointee, sz: _ } => Init::Ptr(self.parse_init_ptr(pointee)?),
             TypeS::Primitive(_) => {
-                let i = self.expect(|tok| {
-                    if let Token::Integer(i) = tok {
-                        Ok(i)
-                    } else {
-                        Err(tok)
-                    }
-                })?;
+                let i = self.expect_integer()?;
 
                 Init::Int(i.try_into().unwrap())
             }
@@ -562,6 +563,72 @@ where
         };
 
         Ok(init)
+    }
+
+    fn parse_init_ptr(&mut self, ty: Type<'scope>) -> PResult<PtrInit> {
+        Ok(match self.next()? {
+            Token::Identifier(label) => {
+                let mut lookup_global = || match self.unit.globals.by_name(&label) {
+                    Some(glob) => {
+                        return Ok(glob.ty());
+                    }
+                    None => {
+                        return Err(ParseError::Generic(format!(
+                            "no such (global) identifier \"{}\"",
+                            label
+                        )))
+                    }
+                };
+                let ty_global = lookup_global()?;
+
+                let mul = self.accept_with(|tok| {
+                    Ok(match tok {
+                        Token::Op(Op::Add) => 1,
+                        Token::Op(Op::Sub) => -1,
+                        _ => return Err(tok),
+                    })
+                })?;
+
+                let offset = if let Some(mul) = mul {
+                    let i = self.expect_integer()?;
+                    i * mul
+                } else {
+                    0
+                };
+
+                let is_anyptr = if let Some(bw) = self.accept_bareword()? {
+                    if bw == "anyptr" {
+                        true
+                    } else {
+                        return Err(ParseError::Generic(format!("unexpected \"{}\"", bw)));
+                    }
+                } else {
+                    false
+                };
+
+                if !is_anyptr && ty != ty_global {
+                    (self.sema_error)(format!(
+                        "initialisation type mismatch: init {:?} with {:?}",
+                        ty, ty_global
+                    ));
+                }
+
+                PtrInit::Label {
+                    label,
+                    offset: offset as _,
+                    is_anyptr,
+                }
+            }
+
+            Token::Integer(i) => PtrInit::Int(i as usize),
+
+            tok => {
+                return Err(ParseError::Generic(format!(
+                    "pointer initialiser expected, got {}",
+                    tok
+                )));
+            }
+        })
     }
 
     fn parse_block(
@@ -680,13 +747,7 @@ where
 
         let v = if ty.is_void() {
             Val::new_void(self.unit.types.void())
-        } else if let Some(n) = self.accept_with(|tok| {
-            if let Token::Integer(n) = tok {
-                Ok(n)
-            } else {
-                Err(tok)
-            }
-        })? {
+        } else if let Some(n) = self.accept_integer()? {
             Val::new_i(n, ty)
         } else if self.accept(Token::Keyword(Keyword::Undef))? {
             Val::new_undef(ty)
@@ -771,7 +832,9 @@ mod test {
 
     use typed_arena::Arena;
 
-    use crate::{blk_arena::BlkArena, block::BlockKind, target::Target, val::Location};
+    use crate::{
+        blk_arena::BlkArena, block::BlockKind, init::PtrInit, target::Target, val::Location,
+    };
 
     use super::*;
 
@@ -785,17 +848,19 @@ mod test {
         let ty_arena = Arena::new();
         let blk_arena = BlkArena::new();
 
-        let error = Cell::new(false);
+        let error = Cell::new(None);
         let parser = Parser {
             tok: Tokeniser::new(s, "fname"),
             unit: Unit::new(&target, &ty_arena, &blk_arena),
-            sema_error: (&mut |_| error.set(true)) as _,
+            sema_error: (&mut |s| error.set(Some(s))) as _,
             names2vals: Default::default(),
         };
 
         let mut done = false;
         f(parser, &mut |parser| {
-            assert!(!error.get(), "sema error during parse");
+            if let Some(e) = error.take() {
+                panic!("sema error during parse: {}", e);
+            }
 
             parser.eat(Token::Eof).unwrap(); // needed to bump us onto eof()
             assert!(parser.eof());
@@ -938,7 +1003,131 @@ mod test {
             assert_eq!(&v.name, "var1");
             assert_eq!(v.ty, array_ty);
             assert_eq!(v.init.flags, InitFlags::default());
-            assert_eq!(v.init.init, Init::Array(vec![Init::Int(1), Init::Int(2), Init::Int(3)]));
+            assert_eq!(
+                v.init.init,
+                Init::Array(vec![Init::Int(1), Init::Int(2), Init::Int(3)])
+            );
+        });
+    }
+
+    #[test]
+    fn parse_ptr_init() {
+        parse_str(b"8", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+            let ptr_ty = parser.unit.types.ptr_to(i4);
+
+            let init = parser.parse_init(ptr_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(init, Init::Ptr(PtrInit::Int(8)));
+        });
+
+        parse_str(b"$label", |mut parser, done| {
+            let i8 = parser.unit.types.primitive(Primitive::I8);
+            let ptr_ty = parser.unit.types.ptr_to(i8);
+
+            let old = parser.unit.globals.add(Global::Var(Var {
+                name: "label".into(),
+                ty: i8,
+                init: InitTopLevel {
+                    init: Init::Int(0), // dummy
+                    flags: Default::default(),
+                },
+            }));
+            assert!(old.is_none());
+
+            let init = parser.parse_init(ptr_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(
+                init,
+                Init::Ptr(PtrInit::Label {
+                    label: "label".into(),
+                    offset: 0,
+                    is_anyptr: false,
+                })
+            );
+        });
+
+        parse_str(b"$label add 7", |mut parser, done| {
+            let i8 = parser.unit.types.primitive(Primitive::I8);
+            let ptr_ty = parser.unit.types.ptr_to(i8);
+
+            let old = parser.unit.globals.add(Global::Var(Var {
+                name: "label".into(),
+                ty: i8,
+                init: InitTopLevel {
+                    init: Init::Int(0), // dummy
+                    flags: Default::default(),
+                },
+            }));
+            assert!(old.is_none());
+
+            let init = parser.parse_init(ptr_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(
+                init,
+                Init::Ptr(PtrInit::Label {
+                    label: "label".into(),
+                    offset: 7,
+                    is_anyptr: false,
+                })
+            );
+        });
+
+        parse_str(b"$label sub 1", |mut parser, done| {
+            let i8 = parser.unit.types.primitive(Primitive::I8);
+            let ptr_ty = parser.unit.types.ptr_to(i8);
+
+            let old = parser.unit.globals.add(Global::Var(Var {
+                name: "label".into(),
+                ty: i8,
+                init: InitTopLevel {
+                    init: Init::Int(0), // dummy
+                    flags: Default::default(),
+                },
+            }));
+            assert!(old.is_none());
+
+            let init = parser.parse_init(ptr_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(
+                init,
+                Init::Ptr(PtrInit::Label {
+                    label: "label".into(),
+                    offset: -1,
+                    is_anyptr: false,
+                })
+            );
+        });
+
+        parse_str(b"$label add 13 anyptr", |mut parser, done| {
+            let i8 = parser.unit.types.primitive(Primitive::I8);
+            let ptr_ty = parser.unit.types.ptr_to(i8);
+
+            let old = parser.unit.globals.add(Global::Var(Var {
+                name: "label".into(),
+                ty: i8,
+                init: InitTopLevel {
+                    init: Init::Int(0), // dummy
+                    flags: Default::default(),
+                },
+            }));
+            assert!(old.is_none());
+
+            let init = parser.parse_init(ptr_ty).unwrap();
+            done(&mut parser);
+
+            assert_eq!(
+                init,
+                Init::Ptr(PtrInit::Label {
+                    label: "label".into(),
+                    offset: 13,
+                    is_anyptr: true,
+                })
+            );
         });
     }
 }
@@ -1061,20 +1250,6 @@ static val *map_val(parse *p, char *name, val *v)
     assert(!old);
 
     return v;
-}
-
-static void sema_error_if_no_global_ident(parse *p, const char *ident, type **const tout)
-{
-    global *glob = unit_global_find(p->unit, ident);
-
-    *tout = NULL;
-
-    if(glob){
-        *tout = global_type_as_ptr(unit_uniqtypes(p->unit), glob);
-    }else{
-        sema_error(p, "no such (global) identifier \"%s\"", ident);
-        *tout = default_type(p);
-    }
 }
 
 static void eat(parse *p, const char *desc, enum token expect)
@@ -1649,85 +1824,5 @@ static void parse_memcpy(parse *p)
     }
 
     block_add_isn(p->entry, ISN(memcpy, dest, src));
-}
-
-static void parse_init_ptr(parse *p, type *ty, struct init *init)
-{
-    /* $ident [+/- value]
-     * integer literal */
-    init->type = init_ptr;
-
-    switch(token_peek(p->tok)){
-        case tok_ident:
-        {
-            char *ident;
-            enum op op;
-            long offset = 0;
-            type *ident_ty;
-            int anyptr = 0;
-
-            eat(p, "pointer initialiser", tok_ident);
-            ident = token_last_ident(p->tok);
-
-            sema_error_if_no_global_ident(p, ident, &ident_ty);
-
-            if(token_is_op(token_peek(p->tok), &op)){
-                switch(op){
-                    case op_add: offset =  1; break;
-                    case op_sub: offset = -1; break;
-                    default:
-                        parse_error(
-                                p,
-                                "invalid pointer initialiser extra: %s",
-                                op_to_str(op));
-                }
-
-                if(offset){
-                    /* accept add/sub: */
-                    token_next(p->tok);
-
-                    eat(p, "int offset", tok_int);
-                    offset *= token_last_int(p->tok);
-                }
-            }
-
-            if(token_accept(p->tok, tok_bareword)){
-                char *bareword = token_last_bareword(p->tok);
-
-                if(!strcmp(bareword, "anyptr"))
-                    anyptr = 1;
-                else
-                    parse_error(p, "unexpected \"%s\"", bareword);
-
-                free(bareword);
-            }
-
-            if(!anyptr && ty != ident_ty){
-                char buf[128];
-
-                sema_error(p,
-                        "initialisation type mismatch: init %s with %s",
-                        type_to_str_r(buf, sizeof(buf), ty),
-                        type_to_str(ident_ty));
-            }
-
-            init->u.ptr.is_label = true;
-            init->u.ptr.u.ident.label.ident = ident;
-            init->u.ptr.u.ident.label.offset = offset;
-            init->u.ptr.u.ident.is_anyptr = anyptr;
-            break;
-        }
-
-        case tok_int:
-            init->u.ptr.is_label = false;
-            init->u.ptr.u.integral = token_last_int(p->tok);
-            token_next(p->tok);
-            break;
-
-        default:
-            parse_error(p, "pointer initialiser expected");
-            memset(&init->u.ptr, 0, sizeof init->u.ptr);
-            return;
-    }
 }
 */

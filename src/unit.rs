@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Read;
 
 use typed_arena::Arena;
@@ -21,10 +22,10 @@ pub struct Unit<'scope> {
 }
 
 pub struct Globals<'scope> {
-    _boo: std::marker::PhantomData<&'scope ()>,
+    map: HashMap<String, Global<'scope>>,
 }
 
-impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
+impl<'scope> Unit<'scope> {
     pub fn new(
         target: &'scope Target,
         ty_arena: &'scope Arena<TypeS<'scope>>,
@@ -35,7 +36,9 @@ impl<'scope /*, 'arena*/> Unit<'scope /*, 'arena*/> {
             types: TyUniq::new(target.arch.ptr, ty_arena),
             blk_arena,
             funcs: vec![],
-            globals: Globals { _boo: std::marker::PhantomData }
+            globals: Globals {
+                map: Default::default(),
+            },
         }
     }
 
@@ -72,12 +75,12 @@ impl<'scope> Globals<'scope> {
         todo!()
     }
 
-    pub fn add(&self, _g: Global<'scope>) -> (Option<Global<'scope>>, &Global<'scope>) {
-        todo!()
+    pub fn add(&mut self, g: Global<'scope>) -> Option<Global<'scope>> {
+        self.map.insert(g.name().to_string(), g)
     }
 
-    pub fn by_name(&self, _name: &str) -> Option<&Global<'scope>> {
-        todo!()
+    pub fn by_name(&self, name: &str) -> Option<&Global<'scope>> {
+        self.map.get(name)
     }
 }
 

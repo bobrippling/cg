@@ -1,4 +1,8 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::HashMap,
+    fmt::{self, Debug},
+    rc::Rc,
+};
 
 use bitflags::bitflags;
 // use untyped_arena::Arena as UntypedArena;
@@ -134,6 +138,21 @@ impl<'arena> Func<'arena> {
     pub fn set_entry(&mut self, entry: &'arena Block<'arena>) {
         let old = self.entry.replace(entry);
         assert!(old.is_none());
+    }
+}
+
+impl Debug for Func<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Func")
+            .field("name", &self.name)
+            .field("mangled", &self.mangled)
+            .field("ty", &self.ty)
+            .field("arg_names", &self.arg_names)
+            .field("attr", &self.attr)
+            .field("<block count>", &self.blocks.len())
+            .field("<entry>", &self.entry.is_some())
+            .field("<arg vals>", &self.arg_vals.len())
+            .finish_non_exhaustive()
     }
 }
 

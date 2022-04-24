@@ -1,7 +1,8 @@
 use std::io::Write;
 
-use crate::{target::Target, ty::Type, func::Func, variable::Var};
+use crate::{target::Target, ty::Type, func::Func, variable::Var, ty_uniq::TyUniq};
 
+#[derive(Debug)]
 pub enum Global<'arena> {
     Type { name: String, ty: Type<'arena> },
     Func(Func<'arena>),
@@ -13,13 +14,24 @@ impl<'arena> Global<'arena> {
         todo!()
     }
 
-    #[allow(dead_code)]
-    pub fn ty(&self) -> &'arena Type {
-        todo!()
+    pub fn ty(&self) -> Type<'arena> {
+        match self {
+            &Global::Type {ty,..} => ty,
+            Global::Func(f) => f.ty(),
+            Global::Var(v) => v.ty,
+        }
     }
 
     pub fn name(&self) -> &str {
-        todo!()
+        match self {
+            Global::Type { name, .. } => name.as_str(),
+            Global::Func(f) => f.name(),
+            Global::Var(v) => &v.name,
+        }
+    }
+
+    pub fn ty_as_ptr(&self, ut: &mut TyUniq<'arena>) -> Type<'arena> {
+        ut.ptr_to(self.ty())
     }
 }
 

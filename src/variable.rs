@@ -1,5 +1,6 @@
 use crate::{ty::Type, init::InitTopLevel};
 
+#[derive(Debug)]
 pub struct Var<'arena> {
     pub name: String,
     pub ty: Type<'arena>,

@@ -17,7 +17,7 @@ pub enum PtrInit {
     Int(usize),
     Label {
         label: String,
-        offset: usize,
+        offset: isize,
         is_anyptr: bool,
     },
 }
