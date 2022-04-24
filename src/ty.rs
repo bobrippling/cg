@@ -1,6 +1,6 @@
-use std::ptr;
+use std::{ptr, num::NonZeroU32};
 
-use crate::size_align::{self, Size, SizeAlign};
+use crate::size_align::{self, SizeAlign, Align};
 
 pub type Type<'t> = &'t TypeS<'t>;
 
@@ -10,7 +10,7 @@ pub enum TypeS<'t> {
     Primitive(Primitive),
     Ptr {
         pointee: Type<'t>,
-        sz: Size,
+        sz: NonZeroU32,
     },
     Array {
         elem: Type<'t>,
@@ -52,7 +52,10 @@ macro_rules! primitives {
 
             pub fn size_align(self) -> SizeAlign {
                 match self {
-                    $(Primitive::$member => SizeAlign { size: $size, align: $align }),*
+                    $(Primitive::$member => SizeAlign {
+			size: $size,
+			align: Align::new($align).unwrap(),
+                    }),*
                 }
             }
         }

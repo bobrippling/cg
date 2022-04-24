@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use crate::{regset::RegSet, size_align::SizeAlign};
+use crate::{regset::RegSet, size_align::{SizeAlign, Align}};
 mod x86;
 
 #[derive(Debug)]
@@ -92,7 +92,7 @@ impl Arch {
         match s {
             "x86_64" => Some((
                 Arch {
-                    ptr: SizeAlign { size: 8, align: 8 },
+                    ptr: SizeAlign { size: 8, align: Align::new(8).unwrap() },
                     op_isn_is_destructive: true,
                 },
                 x86::ABI.clone(),

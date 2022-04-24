@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroU32};
 
 use typed_arena::Arena;
 
@@ -46,8 +46,7 @@ impl<'t> TyUniq<'t> {
         self.ptr
     }
 
-    pub fn primitive(&mut self, p: Primitive) -> Type<'t>
-    {
+    pub fn primitive(&mut self, p: Primitive) -> Type<'t> {
         if let Some(&t) = self.primitives.get(&p) {
             return t;
         }
@@ -87,7 +86,13 @@ impl<'t> TyUniq<'t> {
         self.pointers.entry(pointee).or_insert_with(|| {
             self.arena.alloc(TypeS::Ptr {
                 pointee,
-                sz: self.ptr.size,
+                sz: self
+                    .ptr
+                    .size
+                    .try_into()
+                    .ok()
+                    .and_then(NonZeroU32::new)
+                    .unwrap(),
             })
         })
     }
@@ -120,12 +125,20 @@ impl<'t> TyUniq<'t> {
 
 #[cfg(test)]
 mod test {
+    use crate::size_align::Align;
+
     use super::*;
 
     #[test]
     fn memory() {
         let arena = Arena::new();
-        let mut ut = TyUniq::new(SizeAlign { size: 8, align: 8 }, &arena);
+        let mut ut = TyUniq::new(
+            SizeAlign {
+                size: 8,
+                align: Align::new(8).unwrap(),
+            },
+            &arena,
+        );
 
         let i4_a = ut.primitive(Primitive::I4);
         let i4_b = ut.primitive(Primitive::I4);
@@ -136,7 +149,13 @@ mod test {
     #[test]
     fn aliases() {
         let arena = Arena::new();
-        let mut ut = TyUniq::new(SizeAlign { size: 8, align: 8 }, &arena);
+        let mut ut = TyUniq::new(
+            SizeAlign {
+                size: 8,
+                align: Align::new(8).unwrap(),
+            },
+            &arena,
+        );
 
         assert!(ut.resolve_alias("size_t").is_none());
         assert_eq!(ut.arena.len(), 0);
@@ -157,7 +176,13 @@ mod test {
     #[test]
     fn structs() {
         let arena = Arena::new();
-        let mut ut = TyUniq::new(SizeAlign { size: 8, align: 8 }, &arena);
+        let mut ut = TyUniq::new(
+            SizeAlign {
+                size: 8,
+                align: Align::new(8).unwrap(),
+            },
+            &arena,
+        );
 
         let usz = ut.primitive(Primitive::I8);
         let int = ut.primitive(Primitive::I4);

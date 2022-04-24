@@ -1,7 +1,8 @@
-use std::ops::Mul;
+use std::{num::NonZeroU32, ops::Mul};
 
 pub type Size = usize;
-pub type Align = u32;
+pub type Align = NonZeroU32;
+pub type Offset = usize;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct SizeAlign {
@@ -11,7 +12,10 @@ pub struct SizeAlign {
 
 impl Default for SizeAlign {
     fn default() -> Self {
-        Self { size: 0, align: 1 }
+        Self {
+            size: 0,
+            align: NonZeroU32::new(1).unwrap(),
+        }
     }
 }
 
@@ -26,28 +30,29 @@ impl Mul<Size> for SizeAlign {
     }
 }
 
-pub fn gap_for_alignment(current: Align, align: Align) -> Size {
+pub fn gap_for_alignment(current: Size, align: Align) -> Size {
     if current == 0 {
         return 0;
     }
 
-    if current < align {
-        return (align - current) as _;
+    let align: u32 = align.get();
+    if current < align as _ {
+        return align as Size - current;
     }
 
-    let bitsover = current % align;
+    let bitsover = current % align as usize;
     if bitsover == 0 {
         return 0;
     }
 
-    (align - bitsover) as _
+    align as usize - bitsover
 }
 
 impl SizeAlign {
-    pub fn from_size(sz: usize) -> SizeAlign {
+    pub fn from_size(sz: NonZeroU32) -> SizeAlign {
         Self {
-            size: sz,
-            align: sz.try_into().unwrap(),
+            size: sz.get() as usize,
+            align: sz,
         }
     }
 }
