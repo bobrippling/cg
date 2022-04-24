@@ -1130,6 +1130,24 @@ mod test {
             );
         });
     }
+
+    #[test]
+    fn parse_alias_init() {
+        parse_str(b"aliasinit i2 3", |mut parser, done| {
+            let i4 = parser.unit.types.primitive(Primitive::I4);
+
+            let init = parser.parse_init(i4).unwrap();
+            done(&mut parser);
+
+            assert_eq!(
+                init,
+                Init::Alias {
+                    as_: parser.unit.types.primitive(Primitive::I2),
+                    init: Box::new(Init::Int(3)),
+                }
+            );
+        });
+    }
 }
 
 /*
