@@ -192,7 +192,6 @@ where
             .enumerate()
             .take_while(|&(i, b)| b.is_ident(i > 0))
             .last()
-            .filter(|&(i, _)| i > 0)
             .map(|(i, _)| {
                 let slice = &self.line[self.offset..][..i + 1];
                 self.offset += i + 1;
@@ -238,12 +237,15 @@ mod test {
     use super::*;
 
     #[test]
-    fn tokenisation() -> std::result::Result<(), Error> {
-        let s: &[u8] = b"$main = i4() { ret i4 0 }";
+    fn tokenisation() {
+        let s: &[u8] = b"
+	    $main = i4() { ret i4 0 }
+	    $i = i8* external $l
+	";
 
         let tok = Tokeniser::new(s, "");
 
-        let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let tokens = tok.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
         assert_eq!(
             tokens,
@@ -258,10 +260,17 @@ mod test {
                 Token::Keyword(Keyword::I4),
                 Token::Integer(0),
                 Token::Punctuation(Punctuation::RBrace),
+                //
+                Token::Identifier("i".into()),
+                Token::Punctuation(Punctuation::Equal),
+                Token::Keyword(Keyword::I8),
+                Token::Punctuation(Punctuation::Star),
+                Token::Bareword("external".into()),
+                Token::Identifier("l".into()),
+                Token::Op(Op::Add),
+                Token::Integer(1)
             ]
         );
-
-        Ok(())
     }
 }
 
