@@ -82,33 +82,33 @@ enum_string! {
     }
 }
 
-#[allow(dead_code)]
-#[derive(PartialEq, Eq, Debug)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Sdiv,
-    Smod,
-    Udiv,
-    Umod,
-    Xor,
-    Or,
-    And,
-    Shiftl,
-    ShiftRLogic,
-    ShiftRArith,
+enum_string! {
+    pub enum Op {
+        Add = "add",
+        Sub = "sub",
+        Mul = "mul",
+        Sdiv = "sdiv",
+        Smod = "smod",
+        Udiv = "udiv",
+        Umod = "umod",
+        Xor = "xor",
+        Or = "or",
+        And = "and",
+        Shiftl = "shiftl",
+        ShiftRLogic = "shiftr_u",
+        ShiftRArith = "shiftr_s",
+    }
 }
 
-#[allow(dead_code)]
-#[derive(PartialEq, Eq, Debug)]
-pub enum Cmp {
-    Eq,
-    Ne,
-    Gt,
-    Ge,
-    Lt,
-    Le,
+enum_string! {
+    pub enum Cmp {
+        Eq = "eq",
+        Ne = "ne",
+        Gt = "gt",
+        Ge = "ge",
+        Lt = "lt",
+        Le = "le",
+    }
 }
 
 /*

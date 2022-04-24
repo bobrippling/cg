@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader, Read};
 use thiserror::Error;
 
 use crate::srcloc::SrcLoc;
-use crate::token::{Keyword, Punctuation, Token};
+use crate::token::{Cmp, Keyword, Op, Punctuation, Token};
 
 type IoResult<T> = std::io::Result<T>;
 pub type LexResult = std::result::Result<Token, Error>;
@@ -152,6 +152,14 @@ where
         if let Ok(kw) = Keyword::try_from(line) {
             self.offset += kw.len();
             return Ok(Token::Keyword(kw));
+        }
+        if let Ok(op) = Op::try_from(line) {
+            self.offset += op.len();
+            return Ok(Token::Op(op));
+        }
+        if let Ok(cmp) = Cmp::try_from(line) {
+            self.offset += cmp.len();
+            return Ok(Token::Cmp(cmp));
         }
 
         if ch == b'$' {
