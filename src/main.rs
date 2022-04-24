@@ -82,6 +82,8 @@ fn read_and_parse<'scope>(
         let unit = Unit::parse(tok, target, ty_arena, blk_arena, |err| {
             eprintln!("sema error: {}", err);
             had_err = true;
+        }).map_err(|(parse_err, location)| {
+            format!("{:?}: {}", location, parse_err)
         })?;
 
         if had_err {

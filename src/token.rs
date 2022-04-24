@@ -26,6 +26,22 @@ impl Display for Token {
     }
 }
 
+impl Token {
+    pub fn desc(&self) -> &'static str {
+        match self {
+            Token::Eof => "eof",
+            Token::Integer(_) => "integer",
+            Token::Identifier(_) => "identifier",
+            Token::Bareword(_) => "bareword",
+            Token::String(_) => "string",
+            Token::Punctuation(p) => p.str(),
+            Token::Keyword(k) => k.str(),
+            Token::Op(op) => op.str(),
+            Token::Cmp(cmp) => cmp.str(),
+        }
+    }
+}
+
 enum_string! {
     pub enum Punctuation {
         LParen = "(",

@@ -8,6 +8,7 @@ use crate::func::Func;
 use crate::global::Global;
 use crate::parse::{ParseError, Parser};
 use crate::pass::Pass;
+use crate::srcloc::SrcLoc;
 use crate::target::Target;
 use crate::tokenise::Tokeniser;
 use crate::ty::TypeS;
@@ -48,7 +49,7 @@ impl<'scope> Unit<'scope> {
         ty_arena: &'scope Arena<TypeS<'scope>>,
         blk_arena: &'scope BlkArena<'scope>,
         sema_error: F,
-    ) -> Result<Self, ParseError>
+    ) -> Result<Self, (ParseError, SrcLoc)>
     where
         F: FnMut(String),
     {

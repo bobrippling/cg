@@ -24,8 +24,8 @@ type PResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
-    #[error("{1:?}: expected {0:?}")]
-    Expected(Token, SrcLoc),
+    #[error("expected {0}, got {1:?}")]
+    Expected(&'static str, Token),
 
     #[error("parse error, expected {0}")]
     Generic(String),
@@ -58,9 +58,9 @@ where
     R: Read,
     SemaErr: FnMut(String),
 {
-    pub fn parse(mut self) -> PResult<Unit<'scope>> {
+    pub fn parse(mut self) -> Result<Unit<'scope>, (ParseError, SrcLoc)> {
         while !self.eof() {
-            self.global()?;
+            self.global().map_err(|e| (e, self.tok.loc()))?;
         }
 
         Ok(self.unit)
@@ -76,14 +76,20 @@ where
 
     fn expect<T, Check>(&mut self, f: Check) -> PResult<T>
     where
-        Check: FnOnce(Token) -> std::result::Result<T, Token>,
+        Check: FnOnce(Token) -> std::result::Result<T, (Token, &'static str)>,
     {
         let tok = self.next()?;
-        f(tok).map_err(|tok| ParseError::Expected(tok, self.tok.loc()))
+        f(tok).map_err(|(tok, desc)| ParseError::Expected(desc, tok))
     }
 
     fn eat(&mut self, expected: Token) -> PResult<()> {
-        self.expect(|tok| if tok == expected { Ok(()) } else { Err(tok) })
+        self.expect(|tok| {
+            if tok == expected {
+                Ok(())
+            } else {
+                Err((tok, expected.desc()))
+            }
+        })
     }
 
     fn expect_integer(&mut self) -> PResult<i32> {
@@ -142,7 +148,7 @@ where
             if let Token::Identifier(ident) = tok {
                 Ok(ident)
             } else {
-                Err(tok)
+                Err((tok, Token::Identifier("".into()).desc()))
             }
         })?;
 
@@ -238,7 +244,7 @@ where
                     if let Token::Bareword(ident) = tok {
                         Ok(ident)
                     } else {
-                        Err(tok)
+                        Err((tok, Token::Bareword("".into()).desc()))
                     }
                 })?;
 
@@ -344,7 +350,7 @@ where
                             if let Token::Identifier(id) = tok {
                                 Ok(id)
                             } else {
-                                Err(tok)
+                                Err((tok, Token::Identifier("".into()).desc()))
                             }
                         })?;
                         names.push(id);
