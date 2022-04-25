@@ -1,5 +1,5 @@
-mod enum_string;
 mod blk_arena;
+mod enum_string;
 
 mod parse;
 mod srcloc;
@@ -13,11 +13,11 @@ mod unit;
 mod reg;
 mod regset;
 
-mod val;
 mod func;
 mod global;
 mod ty;
 mod ty_uniq;
+mod val;
 mod variable;
 
 mod init;
@@ -78,17 +78,16 @@ fn read_and_parse<'scope>(
         }
         Ok(None)
     } else {
-        let mut had_err = false;
-        let unit = Unit::parse(tok, target, ty_arena, blk_arena, |err| {
-            eprintln!("sema error: {}", err);
-            had_err = true;
-        }).map_err(|(parse_err, location)| {
+        let mut sema_err = Ok(());
+        let unit = Unit::parse(tok, target, ty_arena, blk_arena, |e| {
+            sema_err = Err(e);
+        })
+        .map_err(|(parse_err, location)| {
+            // parse error
             format!("{:?}: {}", location, parse_err)
         })?;
 
-        if had_err {
-            todo!("error handling");
-        }
+        sema_err?;
 
         Ok(Some(unit))
     }
