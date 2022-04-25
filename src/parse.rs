@@ -193,15 +193,11 @@ where
         let (ty, toplvl_args) = self.parse_type_maybe_func_nochk()?;
 
         if ty.array_elem().is_fn() {
-            todo!("error");
-            // sema_error(p, "array of functions");
-            // return default_type(p);
+            (self.sema_error)("type is an array of functions".into());
         }
 
         if ty.called().array_elem().is_some() {
-            todo!("error");
-            // sema_error(p, "function returning array");
-            // return default_type(p);
+            (self.sema_error)("type is a function returning an array".into());
         }
 
         Ok((ty, toplvl_args))
@@ -302,7 +298,7 @@ where
                     let old = arg_names;
                     arg_names = names;
                     if !old.is_empty() {
-                        todo!("error: multiple top-level argument names")
+                        (self.sema_error)("multiple top-level argument names".into());
                     }
                 }
 
