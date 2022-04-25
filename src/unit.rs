@@ -4,7 +4,6 @@ use std::io::Read;
 use typed_arena::Arena;
 
 use crate::blk_arena::BlkArena;
-use crate::func::Func;
 use crate::global::Global;
 use crate::parse::{ParseError, Parser};
 use crate::pass::Pass;
@@ -19,7 +18,6 @@ pub struct Unit<'scope> {
     pub types: TyUniq<'scope>,
     pub blk_arena: &'scope BlkArena<'scope>,
     pub globals: Globals<'scope>,
-    funcs: Vec<Func<'scope>>,
 }
 
 pub struct Globals<'scope> {
@@ -36,7 +34,6 @@ impl<'scope> Unit<'scope> {
             target,
             types: TyUniq::new(target.arch.ptr, ty_arena),
             blk_arena,
-            funcs: vec![],
             globals: Globals {
                 map: Default::default(),
             },

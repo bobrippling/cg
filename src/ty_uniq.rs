@@ -42,10 +42,6 @@ impl<'t> TyUniq<'t> {
         }
     }
 
-    pub fn ptr(&self) -> SizeAlign {
-        self.ptr
-    }
-
     pub fn primitive(&mut self, p: Primitive) -> Type<'t> {
         if let Some(&t) = self.primitives.get(&p) {
             return t;

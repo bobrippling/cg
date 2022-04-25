@@ -2,7 +2,6 @@ use std::{num::NonZeroU32, ops::Mul};
 
 pub type Size = usize;
 pub type Align = NonZeroU32;
-pub type Offset = usize;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct SizeAlign {

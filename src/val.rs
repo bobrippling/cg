@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{global::Global, ty::Type, ty_uniq::TyUniq};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,15 +23,15 @@ pub enum ValKind /*<'arena>*/ {
 }
 
 impl<'a> Val<'a> {
-    pub fn new_void(tvoid: Type<'a>) -> Val {
+    pub fn new_void(_tvoid: Type<'a>) -> Val {
         todo!()
     }
 
-    pub fn new_i(n: i32, ty: Type<'a>) -> Self {
+    pub fn new_i(_n: i32, _ty: Type<'a>) -> Self {
         todo!()
     }
 
-    pub fn new_undef(ty: Type<'a>) -> Self {
+    pub fn new_undef(_ty: Type<'a>) -> Self {
         todo!()
     }
 
@@ -43,15 +45,15 @@ impl<'a> Val<'a> {
         }
     }
 
-    pub fn new_global(ut: &mut TyUniq, glob: &Global) -> Self {
+    pub fn new_global(_ut: &mut TyUniq, _glob: &Global) -> Self {
         todo!()
     }
 
-    pub fn new_label(name: String, ty: Type<'a>) -> Self {
+    pub fn new_label(_name: String, _ty: Type<'a>) -> Self {
         todo!()
     }
 
-    pub fn new_local(name: String, ty: Type<'a>, alloca: bool) -> Self {
+    pub fn new_local(_name: String, _ty: Type<'a>, _alloca: bool) -> Self {
         todo!()
     }
 }

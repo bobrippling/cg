@@ -20,6 +20,7 @@ struct BlockInner<'arena> {
     kind: BlockKind<'arena>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum BlockKind<'arena> {
     Unknown,

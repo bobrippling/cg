@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{target::Target, ty::Type, func::Func, variable::Var, ty_uniq::TyUniq};
+use crate::{target::Target, ty::Type, func::Func, variable::Var};
 
 #[derive(Debug)]
 pub enum Global<'arena> {
@@ -30,9 +30,9 @@ impl<'arena> Global<'arena> {
         }
     }
 
-    pub fn ty_as_ptr(&self, ut: &mut TyUniq<'arena>) -> Type<'arena> {
-        ut.ptr_to(self.ty())
-    }
+    // pub fn ty_as_ptr(&self, ut: &mut TyUniq<'arena>) -> Type<'arena> {
+    //     ut.ptr_to(self.ty())
+    // }
 }
 
 /*
