@@ -1,6 +1,12 @@
+use crate::unit::Unit;
+
 pub struct Pass;
 
-impl crate::pass::Pass for Pass {}
+impl super::Pass for Pass {
+    fn run(&mut self, _unit: &mut Unit) {
+        todo!()
+    }
+}
 
 /*
 #include <stdio.h>

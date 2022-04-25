@@ -60,8 +60,8 @@ impl<'scope> Unit<'scope> {
         parser.parse()
     }
 
-    pub fn run_pass(&mut self, _pass: &dyn Pass) {
-        todo!()
+    pub fn run_pass(&mut self, pass: &mut dyn Pass) {
+        pass.run(self);
     }
 }
 

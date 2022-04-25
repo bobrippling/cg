@@ -176,11 +176,11 @@ fn main() -> Result<()> {
     };
 
     /* ensure the final passes are: */
-    unit.run_pass(&pass::abi::Pass);
-    unit.run_pass(&pass::isel::Pass);
-    unit.run_pass(&pass::expand_builtins::Pass);
-    // unit.run_pass(&pass::spill::Pass);
-    unit.run_pass(&pass::regalloc::Pass);
+    unit.run_pass(&mut pass::abi::Pass);
+    unit.run_pass(&mut pass::isel::Pass);
+    unit.run_pass(&mut pass::expand_builtins::Pass);
+    // unit.run_pass(&mut pass::spill::Pass);
+    unit.run_pass(&mut pass::regalloc::Pass);
 
     // TODO
     // if(pat->show_intermediates)
