@@ -10,13 +10,13 @@ use bitflags::bitflags;
 use crate::{
     blk_arena::BlkArena,
     block::Block,
+    name::Name,
     ty::{Type, TypeS},
     val::Val,
 };
 
 pub struct Func<'arena> {
-    name: String,
-    mangled: Option<String>,
+    pub name: Name,
 
     ty: Type<'arena>,
     arg_names: Vec<String>,
@@ -41,10 +41,7 @@ bitflags! {
 #[allow(dead_code)]
 impl<'arena> Func<'arena> {
     pub fn name(&self) -> &str {
-        &self.name
-    }
-    pub fn mangled_name(&self) -> Option<&str> {
-        self.mangled.as_deref()
+        self.name.orig()
     }
     pub fn ty(&self) -> Type<'arena> {
         self.ty
@@ -105,8 +102,7 @@ impl<'arena> Func<'arena> {
         }
 
         Self {
-            name,
-            mangled: None,
+            name: Name::new(name),
             ty,
             arg_names,
             attr: Default::default(),
@@ -145,7 +141,6 @@ impl Debug for Func<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Func")
             .field("name", &self.name)
-            .field("mangled", &self.mangled)
             .field("ty", &self.ty)
             .field("arg_names", &self.arg_names)
             .field("attr", &self.attr)

@@ -4,7 +4,6 @@ pub struct Pass;
 
 impl super::Pass for Pass {
     fn run(&mut self, _unit: &mut Unit) {
-        todo!()
     }
 }
 

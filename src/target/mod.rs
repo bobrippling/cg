@@ -1,8 +1,13 @@
 #![allow(dead_code)]
 
-use std::str::FromStr;
+use std::{io::Write, str::FromStr};
 
-use crate::{regset::RegSet, size_align::{SizeAlign, Align}};
+use crate::{
+    global::Global,
+    regset::RegSet,
+    size_align::{Align, SizeAlign},
+    ty_uniq::TyUniq,
+};
 mod x86;
 
 #[derive(Debug)]
@@ -12,11 +17,12 @@ pub struct Target {
     pub abi: Abi,
 }
 
-#[derive(Debug)]
 pub struct Arch {
     pub ptr: SizeAlign,
     // instructions: ...
     op_isn_is_destructive: bool,
+
+    pub emit: fn(&mut Global, &Target, &TyUniq, &mut dyn Write) -> std::io::Result<()>,
 }
 
 #[derive(Debug)]
@@ -64,7 +70,7 @@ impl FromStr for Target {
         }
 
         match (sys, arch_abi) {
-            (Some(sys), Some((arch,abi))) => Ok(Target { arch, abi, sys }),
+            (Some(sys), Some((arch, abi))) => Ok(Target { arch, abi, sys }),
             (None, _) => Err("missing sysname".into()),
             (_, None) => Err("missing arch/abi".into()),
         }
@@ -80,10 +86,23 @@ impl Target {
         }
         uname.sysname = uname.sysname.to_lowercase();
 
-        let sys = uname.sysname.parse().map_err(|_| "couldn't parse system name")?;
+        let sys = uname
+            .sysname
+            .parse()
+            .map_err(|_| "couldn't parse system name")?;
         let (arch, abi) = Arch::parse(&uname.machine).ok_or("couldn't parse machine name")?;
 
         Ok(Target { arch, abi, sys })
+    }
+
+    pub fn emit(
+        &self,
+        g: &mut Global,
+        target: &Target,
+        types: &TyUniq,
+        fout: &mut dyn Write,
+    ) -> std::io::Result<()> {
+        (self.arch.emit)(g, target, types, fout)
     }
 }
 
@@ -92,13 +111,27 @@ impl Arch {
         match s {
             "x86_64" => Some((
                 Arch {
-                    ptr: SizeAlign { size: 8, align: Align::new(8).unwrap() },
+                    ptr: SizeAlign {
+                        size: 8,
+                        align: Align::new(8).unwrap(),
+                    },
                     op_isn_is_destructive: true,
+                    emit: x86::emit,
                 },
                 x86::ABI.clone(),
             )),
             _ => None,
         }
+    }
+}
+
+impl std::fmt::Debug for Arch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Arch")
+            .field("ptr", &self.ptr)
+            .field("op_isn_is_destructive", &self.op_isn_is_destructive)
+            .field("emit", &"...")
+            .finish()
     }
 }
 

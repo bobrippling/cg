@@ -1,6 +1,4 @@
-use std::io::Write;
-
-use crate::{target::Target, ty::Type, func::Func, variable::Var};
+use crate::{ty::Type, func::Func, variable::Var};
 
 #[derive(Debug)]
 pub enum Global<'arena> {
@@ -10,10 +8,6 @@ pub enum Global<'arena> {
 }
 
 impl<'arena> Global<'arena> {
-    pub fn emit(&self, _target: &Target, _out: &dyn Write) {
-        todo!()
-    }
-
     pub fn ty(&self) -> Type<'arena> {
         match self {
             &Global::Type {ty,..} => ty,
@@ -26,7 +20,7 @@ impl<'arena> Global<'arena> {
         match self {
             Global::Type { name, .. } => name.as_str(),
             Global::Func(f) => f.name(),
-            Global::Var(v) => &v.name,
+            Global::Var(v) => &v.name.orig(),
         }
     }
 

@@ -84,8 +84,8 @@ impl<'scope> Globals<'scope> {
         self.order.get(name).map(|&i| &self.entries[i])
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Global<'scope>> {
-        self.entries.iter()
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Global<'scope>> {
+        self.entries.iter_mut()
     }
 }
 

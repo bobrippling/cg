@@ -464,7 +464,7 @@ where
             flags |= InitFlags::INTERNAL;
         } else {
             return Ok(Var {
-                name,
+                name: name.into(),
                 ty,
                 init: None,
             });
@@ -487,7 +487,7 @@ where
         let init = InitTopLevel { init, flags };
 
         Ok(Var {
-            name,
+            name: name.into(),
             ty,
             init: Some(init),
         })

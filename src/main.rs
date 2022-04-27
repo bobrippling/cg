@@ -14,6 +14,7 @@ mod reg;
 mod regset;
 
 mod func;
+mod name;
 mod global;
 mod ty;
 mod ty_uniq;
@@ -187,20 +188,20 @@ fn main() -> Result<()> {
     // 	printf("------- %s -------\n", passes[j].spel);
     // 	function_dump(fn, stdout);
 
-    let (file, stdout);
-    let fout: &dyn Write = match opts.output {
+    let (mut file, mut stdout);
+    let fout: &mut dyn Write = match opts.output {
         Some(output) => {
             file = File::create(output)?;
-            &file
+            &mut file
         }
         None => {
             stdout = std::io::stdout();
-            &stdout
+            &mut stdout
         }
     };
 
-    for g in unit.globals.iter() {
-        g.emit(&target, fout);
+    for g in unit.globals.iter_mut() {
+        unit.target.emit(g, &unit.target, &unit.types, fout)?;
     }
 
     Ok(())
