@@ -188,15 +188,14 @@ fn main() -> Result<()> {
     // 	printf("------- %s -------\n", passes[j].spel);
     // 	function_dump(fn, stdout);
 
-    let (mut file, mut stdout);
-    let fout: &mut dyn Write = match opts.output {
+    let fout: Box<dyn Write> = match opts.output {
         Some(output) => {
-            file = File::create(output)?;
-            &mut file
+            let file = File::create(output)?;
+            Box::new(file)
         }
         None => {
-            stdout = std::io::stdout();
-            &mut stdout
+            let stdout = std::io::stdout();
+            Box::new(stdout)
         }
     };
 

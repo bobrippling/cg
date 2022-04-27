@@ -55,6 +55,17 @@ impl<'arena> Func<'arena> {
     pub fn entry(&self) -> Option<&'arena Block<'arena>> {
         self.entry
     }
+    pub fn exit_block(&self) -> &'arena Block<'arena> {
+        todo!()
+    }
+
+    pub fn get_stack_use(&self) -> u32 {
+        todo!()
+    }
+
+    pub fn blocks(&self) -> impl Iterator<Item = &'arena Block<'arena>> + '_ {
+        self.blocks.values().copied()
+    }
 }
 
 impl<'arena> Func<'arena> {

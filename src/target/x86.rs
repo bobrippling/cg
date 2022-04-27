@@ -4,6 +4,7 @@ use super::{Abi, Target};
 use crate::block::Block;
 use crate::func::{Func, FuncAttr};
 use crate::init::InitTopLevel;
+use crate::size_align::Align;
 use crate::ty_uniq::TyUniq;
 use crate::variable::Var;
 use crate::{global::Global, regset::RegSet};
@@ -39,25 +40,47 @@ pub static ABI: Abi = Abi {
 
 type Result = io::Result<()>;
 
-struct X86<'a, 'arena> {
-    out: &'a dyn Write,
+struct X86<'a, 'arena, Substate> {
+    out: Box<dyn Write>,
     target: &'a Target,
     types: &'a TyUniq<'arena>,
+
+    s: Substate,
+}
+
+struct X86PerFunc<'a, 'arena> {
+    func: &'a Func<'arena>,
+    exitblk: &'arena Block<'arena>,
+
+    stack: Stack,
+    max_align: Align,
+    scratch_reg_reserved: bool,
+}
+
+struct Stack {
+    current: u32,
+    call_spill_max: u32,
 }
 
 pub fn emit<'arena>(
-    g: &mut Global,
+    g: &mut Global<'arena>,
     target: &Target,
     types: &TyUniq<'arena>,
-    out: &mut dyn Write,
+    out: Box<dyn Write>,
 ) -> Result {
-    let x86 = X86 { out, target, types };
+    let mut x86 = X86 {
+        out,
+        target,
+        types,
+
+        s: (),
+    };
 
     match g {
         Global::Func(f) => {
             /* should have entry block, otherwise it's a forward decl */
             match f.entry() {
-                Some(entry) => x86.emit_func(f, entry),
+                Some(_) => x86.emit_func(f),
                 None => {
                     x86.comment(format!("forward decl {}", f.name.mangled(target)))?;
 
@@ -82,9 +105,30 @@ pub fn emit<'arena>(
     }
 }
 
-impl<'a, 'arena> X86<'a, 'arena> {
-    fn emit_func(&self, _f: &Func, _entry: &Block) -> Result {
-        todo!()
+impl<'a, 'arena> X86<'a, 'arena, ()> {
+    fn emit_func(&mut self, func: &Func<'arena>) -> Result {
+        let exit = func.exit_block();
+
+        let mut x86_per_func = X86 {
+            out: self.out,
+            target: self.target,
+            types: self.types,
+
+            s: X86PerFunc {
+                func,
+                exitblk: exit,
+                stack: Stack {
+                    current: func.get_stack_use(),
+                    call_spill_max: 0,
+                },
+                max_align: Align::new(1).unwrap(),
+                scratch_reg_reserved: false,
+            },
+        };
+
+        x86_per_func.emit();
+
+        Ok(())
     }
 
     fn emit_var(&self, _v: &Var, _init: &InitTopLevel) -> Result {
@@ -92,6 +136,40 @@ impl<'a, 'arena> X86<'a, 'arena> {
     }
 
     fn comment(&self, _comment: String) -> Result {
+        todo!()
+    }
+}
+
+impl<'a, 'arena> X86<'a, 'arena, X86PerFunc<'a, 'arena>> {
+    fn emit(&mut self) -> Result {
+        let mut out = Box::new(Vec::<u8>::new());
+        let saved_out = std::mem::replace(&mut self.out, out);
+
+        for b in self.s.func.blocks() {
+            self.emit_block1(b)?;
+            // function_blocks_traverse(func, x86_out_block1, octx);
+        }
+        self.emit_epilogue()?;
+
+        self.out = saved_out;
+
+        /* now we spit out the prologue first */
+        self.emit_prologue()?;
+
+        self.out.write_all(&out)
+    }
+
+    fn emit_epilogue(&mut self) -> Result {
+        // exit = self.exitblk
+        todo!()
+    }
+
+    fn emit_prologue(&mut self) -> Result {
+        // self.stack.current + self.stack.call_spill_max,
+        todo!()
+    }
+
+    fn emit_block1(&mut self, _block: &'arena Block<'arena>) -> Result {
         todo!()
     }
 }
@@ -1365,40 +1443,6 @@ static void x86_emit_prologue(
 		fprintf(octx->fout, "\tsub $%d, %%%csp\n", alloca_total, regch);
 }
 
-static void x86_out_fn(unit *unit, function *func, x86_octx *octx)
-{
-	block *const exit = function_exit_block(func, unit);
-	FILE *const saved_out = octx->fout;
-	FILE *const tmp_out = tmpfile();
-	if(!tmp_out)
-		die("tmpfile:");
-
-	octx->fout = tmp_out;
-	octx->exitblk = exit;
-	octx->func = func;
-
-	octx->stack.current = function_get_stack_use(func);
-
-	function_blocks_traverse(func, x86_out_block1, octx);
-	x86_emit_epilogue(octx, exit);
-
-	octx->fout = saved_out;
-
-	/* now we spit out the prologue first */
-	x86_emit_prologue(
-			func,
-			octx->stack.current + octx->stack.call_spill_max,
-			octx->max_align,
-			unit_target_info(unit),
-			octx);
-
-	if(cat_file(tmp_out, octx->fout) != 0)
-		die("cat file:");
-
-	if(fclose(tmp_out))
-		die("close:");
-}
-
 static void x86_emit_space(unsigned space, x86_octx *octx)
 {
 	if(space)
@@ -1558,9 +1602,5 @@ static void x86_out_var(variable_global *var, const struct target *target_info, 
 	}else{
 		fprintf(octx->fout, ".space %u\n", variable_size(inner));
 	}
-}
-
-void x86_out(unit *unit, global *g, FILE *ctx)
-{
 }
 */

@@ -22,7 +22,12 @@ pub struct Arch {
     // instructions: ...
     op_isn_is_destructive: bool,
 
-    pub emit: fn(&mut Global, &Target, &TyUniq, &mut dyn Write) -> std::io::Result<()>,
+    pub emit: for<'arena> fn(
+        &mut Global<'arena>,
+        &Target,
+        &TyUniq<'arena>,
+        Box<dyn Write>,
+    ) -> std::io::Result<()>,
 }
 
 #[derive(Debug)]
@@ -95,12 +100,12 @@ impl Target {
         Ok(Target { arch, abi, sys })
     }
 
-    pub fn emit(
+    pub fn emit<'arena>(
         &self,
-        g: &mut Global,
+        g: &mut Global<'arena>,
         target: &Target,
-        types: &TyUniq,
-        fout: &mut dyn Write,
+        types: &TyUniq<'arena>,
+        fout: Box<dyn Write>,
     ) -> std::io::Result<()> {
         (self.arch.emit)(g, target, types, fout)
     }
