@@ -199,9 +199,9 @@ fn main() -> Result<()> {
         }
     };
 
-    unit.globals.for_each(|global| {
-        global.emit(&target, fout);
-    });
+    for g in unit.globals.iter() {
+        g.emit(&target, fout);
+    }
 
     Ok(())
 }

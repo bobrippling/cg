@@ -20,8 +20,10 @@ pub struct Unit<'scope> {
     pub globals: Globals<'scope>,
 }
 
+#[derive(Default)]
 pub struct Globals<'scope> {
-    map: HashMap<String, Global<'scope>>,
+    order: HashMap<String, usize>,
+    entries: Vec<Global<'scope>>,
 }
 
 impl<'scope> Unit<'scope> {
@@ -34,9 +36,7 @@ impl<'scope> Unit<'scope> {
             target,
             types: TyUniq::new(target.arch.ptr, ty_arena),
             blk_arena,
-            globals: Globals {
-                map: Default::default(),
-            },
+            globals: Globals::default(),
         }
     }
 
@@ -66,25 +66,26 @@ impl<'scope> Unit<'scope> {
 }
 
 impl<'scope> Globals<'scope> {
-    pub fn for_each<F>(&self, _f: F)
-    where
-        F: FnMut(&Global),
-    {
-        // need to preserve insertion order?
-        todo!()
-    }
-
     #[cfg(test)]
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.entries.len()
     }
 
-    pub fn add(&mut self, g: Global<'scope>) -> Option<Global<'scope>> {
-        self.map.insert(g.name().to_string(), g)
+    pub fn add(&mut self, g: Global<'scope>) -> Option<&Global<'scope>> {
+        let name = g.name().to_string();
+
+        self.entries.push(g);
+
+        let old = self.order.insert(name, self.entries.len());
+        old.map(|i| &self.entries[i])
     }
 
     pub fn by_name(&self, name: &str) -> Option<&Global<'scope>> {
-        self.map.get(name)
+        self.order.get(name).map(|&i| &self.entries[i])
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Global<'scope>> {
+        self.entries.iter()
     }
 }
 
