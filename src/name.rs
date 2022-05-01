@@ -1,9 +1,11 @@
+use once_cell::unsync::OnceCell;
+
 use crate::target::Target;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Name {
     name: String,
-    mangled: Option<String>,
+    mangled: OnceCell<String>,
 }
 
 impl Name {
@@ -11,12 +13,19 @@ impl Name {
         &self.name
     }
 
-    pub fn mangled(&mut self, _target: &Target) -> &str {
-        todo!()
+    pub fn mangled(&self, target: &Target) -> &str {
+        if target.sys.leading_underscore {
+            self.mangled.get_or_init(|| format!("_{}", self.name))
+        } else {
+            self.orig()
+        }
     }
 
     pub fn new(name: String) -> Name {
-        Self { name, mangled: None }
+        Self {
+            name,
+            mangled: OnceCell::new(),
+        }
     }
 }
 

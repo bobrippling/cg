@@ -26,7 +26,7 @@ pub struct Arch {
         &mut Global<'arena>,
         &Target,
         &TyUniq<'arena>,
-        Box<dyn Write>,
+        &mut dyn Write,
     ) -> std::io::Result<()>,
 }
 
@@ -37,7 +37,7 @@ pub struct Sys {
     weak_directive_var: &'static str,
     weak_directive_func: &'static str,
     align_is_pow2: bool,
-    leading_underscore: bool,
+    pub leading_underscore: bool,
     pub pic: Pic,
 }
 
@@ -105,7 +105,7 @@ impl Target {
         g: &mut Global<'arena>,
         target: &Target,
         types: &TyUniq<'arena>,
-        fout: Box<dyn Write>,
+        fout: &mut dyn Write,
     ) -> std::io::Result<()> {
         (self.arch.emit)(g, target, types, fout)
     }

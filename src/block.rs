@@ -10,6 +10,8 @@ pub struct Block<'arena> {
     inner: RefCell<BlockInner<'arena>>,
 }
 
+pub type PBlock<'arena> = &'arena Block<'arena>;
+
 #[derive(Debug)]
 struct BlockInner<'arena> {
     isns: Vec<Isn<'arena>>,

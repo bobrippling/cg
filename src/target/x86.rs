@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 use super::{Abi, Target};
-use crate::block::Block;
+use crate::block::PBlock;
 use crate::func::{Func, FuncAttr};
 use crate::init::InitTopLevel;
 use crate::size_align::Align;
@@ -40,20 +40,22 @@ pub static ABI: Abi = Abi {
 
 type Result = io::Result<()>;
 
-struct X86<'a, 'arena, Substate> {
-    out: Box<dyn Write>,
+struct X86<'a, 'arena> {
     target: &'a Target,
     types: &'a TyUniq<'arena>,
-
-    s: Substate,
+    out: &'a mut dyn Write,
 }
 
-struct X86PerFunc<'a, 'arena> {
-    func: &'a Func<'arena>,
-    exitblk: &'arena Block<'arena>,
+struct X86PerFunc<'a, 'b, 'arena> {
+    x86: &'b mut X86<'a, 'arena>,
+
+    out: &'b mut dyn Write,
+
+    func: &'b Func<'arena>,
+    exitblk: PBlock<'arena>,
 
     stack: Stack,
-    max_align: Align,
+    max_align: Option<Align>,
     scratch_reg_reserved: bool,
 }
 
@@ -66,15 +68,9 @@ pub fn emit<'arena>(
     g: &mut Global<'arena>,
     target: &Target,
     types: &TyUniq<'arena>,
-    out: Box<dyn Write>,
+    out: &mut dyn Write,
 ) -> Result {
-    let mut x86 = X86 {
-        out,
-        target,
-        types,
-
-        s: (),
-    };
+    let mut x86 = X86 { target, types, out };
 
     match g {
         Global::Func(f) => {
@@ -105,28 +101,35 @@ pub fn emit<'arena>(
     }
 }
 
-impl<'a, 'arena> X86<'a, 'arena, ()> {
-    fn emit_func(&mut self, func: &Func<'arena>) -> Result {
+impl<'a, 'arena> X86<'a, 'arena> {
+    fn emit_func(&mut self, func: &mut Func<'arena>) -> Result {
         let exit = func.exit_block();
 
-        let mut x86_per_func = X86 {
-            out: self.out,
-            target: self.target,
-            types: self.types,
+        let mut prologue = Vec::new();
+        let mut body = Vec::new();
 
-            s: X86PerFunc {
-                func,
-                exitblk: exit,
-                stack: Stack {
-                    current: func.get_stack_use(),
-                    call_spill_max: 0,
-                },
-                max_align: Align::new(1).unwrap(),
-                scratch_reg_reserved: false,
+        let mut per_func = X86PerFunc {
+            x86: self,
+            out: &mut body,
+
+            func,
+            exitblk: exit,
+            stack: Stack {
+                current: func.get_stack_use(),
+                call_spill_max: 0,
             },
+            max_align: None,
+            scratch_reg_reserved: false,
         };
 
-        x86_per_func.emit();
+        per_func.emit()?;
+
+        /* now we spit out the prologue first */
+        per_func.out = &mut prologue;
+        per_func.emit_prologue()?;
+
+        self.out.write_all(&prologue)?;
+        self.out.write_all(&body)?;
 
         Ok(())
     }
@@ -140,36 +143,65 @@ impl<'a, 'arena> X86<'a, 'arena, ()> {
     }
 }
 
-impl<'a, 'arena> X86<'a, 'arena, X86PerFunc<'a, 'arena>> {
+impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
     fn emit(&mut self) -> Result {
-        let mut out = Box::new(Vec::<u8>::new());
-        let saved_out = std::mem::replace(&mut self.out, out);
-
-        for b in self.s.func.blocks() {
+        for b in self.func.blocks() {
             self.emit_block1(b)?;
-            // function_blocks_traverse(func, x86_out_block1, octx);
         }
         self.emit_epilogue()?;
 
-        self.out = saved_out;
-
-        /* now we spit out the prologue first */
-        self.emit_prologue()?;
-
-        self.out.write_all(&out)
+        Ok(())
     }
 
     fn emit_epilogue(&mut self) -> Result {
-        // exit = self.exitblk
-        todo!()
+        self.block_enter(self.exitblk)?;
+        write!(self.out, "\tleave\n\tret\n")
+    }
+
+    fn block_enter(&mut self, b: PBlock<'arena>) -> Result {
+        if let Some(l) = &*b.label() {
+            write!(self.out, "{}:\n", l)?;
+        }
+        Ok(())
     }
 
     fn emit_prologue(&mut self) -> Result {
-        // self.stack.current + self.stack.call_spill_max,
-        todo!()
+        write!(self.out, ".text\n")?;
+        let fname = self.func.name.mangled(self.x86.target);
+
+        if !self.func.attr().contains(FuncAttr::INTERNAL) {
+            write!(self.out, ".globl {}\n", fname)?;
+        }
+        write!(self.out, "{}:\n", fname)?;
+
+        let regch = self.regch() as char;
+        write!(
+            self.out,
+            "\tpush %{}bp\n\tmov %{}sp, %{}bp\n",
+            regch, regch, regch
+        )?;
+
+	let mut alloca_total = self.stack.current + self.stack.call_spill_max;
+	if let Some(align) = self.max_align {
+            alloca_total = (alloca_total + align.get()) & !(align.get() - 1);
+        }
+
+        if alloca_total != 0 {
+            write!(self.out, "\tsub ${}, %{}sp\n", alloca_total, regch)?;
+        }
+
+        Ok(())
     }
 
-    fn emit_block1(&mut self, _block: &'arena Block<'arena>) -> Result {
+    fn regch(&self) -> u8 {
+        match self.x86.target.arch.ptr.size {
+            4 => b'e',
+            8 => b'r',
+            _ => unreachable!(),
+        }
+    }
+
+    fn emit_block1(&mut self, _block: PBlock<'arena>) -> Result {
         todo!()
     }
 }
@@ -245,11 +277,6 @@ static int x86_target_switch(const struct target *target, int b32, int b64)
             assert(0 && "invalid pointer size for x86 backend");
     }
     return -1;
-}
-
-static char x86_target_regch(const struct target *target)
-{
-    return x86_target_switch(target, 'e', 'r');
 }
 
 static enum operand_category val_category(val *v, bool dereference)
@@ -353,13 +380,13 @@ void x86_comment(x86_octx *octx, const char *fmt, ...)
 {
     va_list l;
 
-    fprintf(octx->fout, "\t" X86_COMMENT_STR " ");
+    write!(self.out, "\t" X86_COMMENT_STR " ");
 
     va_start(l, fmt);
-    vfprintf(octx->fout, fmt, l);
+    vwrite!(self.out, fmt, l);
     va_end(l);
 
-    fprintf(octx->fout, "\n");
+    write!(self.out, "\n");
 }
 
 static const char *x86_type_suffix(type *t)
@@ -770,7 +797,7 @@ static bool emit_isn_try(
 	if(!x86_isn_suffix)
 		x86_isn_suffix = "";
 
-	fprintf(octx->fout, "\t%s%s ", isn->mnemonic, x86_isn_suffix);
+	write!(self.out, "\t%s%s ", isn->mnemonic, x86_isn_suffix);
 
 	for(j = 0; j < operand_count; j++){
 		type *operand_ty;
@@ -785,7 +812,7 @@ static bool emit_isn_try(
 				operands[j].dereference);
 
 		if(OPERAND_SHOW_TYPE)
-			fprintf(octx->fout, "{%s}", type_to_str(emit_vals[j]->ty));
+			write!(self.out, "{%s}", type_to_str(emit_vals[j]->ty));
 
 		fprintf(octx->fout, "%s%s",
 				val_str,
@@ -860,7 +887,7 @@ static void mov_deref_force(
 		&& loc_to->where == NAME_IN_REG
 		&& loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
 		{
-			fprintf(octx->fout, "\t#");
+			write!(self.out, "\t#");
 		}
 	}
 
@@ -1204,12 +1231,12 @@ static void x86_cmp(
 
 static void x86_jmp(x86_octx *octx, block *target)
 {
-	fprintf(octx->fout, "\tjmp %s\n", target->lbl);
+	write!(self.out, "\tjmp %s\n", target->lbl);
 }
 
 static void x86_jmp_comp(x86_octx *octx, val *target)
 {
-	fprintf(octx->fout, "\tjmp *%s\n", x86_val_str(target, 0, octx, val_type(target), DEREFERENCE_FALSE));
+	write!(self.out, "\tjmp *%s\n", x86_val_str(target, 0, octx, val_type(target), DEREFERENCE_FALSE));
 }
 
 static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
@@ -1232,7 +1259,7 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 				NULL);
 	}
 
-	fprintf(octx->fout, "\tjz %s\n", bf->lbl);
+	write!(self.out, "\tjz %s\n", bf->lbl);
 
 	x86_jmp(octx, bt);
 }
@@ -1242,7 +1269,7 @@ static void x86_block_enter(x86_octx *octx, block *blk)
 	if(!blk->lbl)
 		return;
 
-	fprintf(octx->fout, "%s:\n", blk->lbl);
+	write!(self.out, "%s:\n", blk->lbl);
 }
 
 static void x86_ptr2int(val *from, val *to, x86_octx *octx)
@@ -1303,7 +1330,7 @@ static void x86_out_block1(block *blk, void *vctx)
 
 			case ISN_RET:
 			{
-				fprintf(octx->fout, "\tjmp %s\n", octx->exitblk->lbl);
+				write!(self.out, "\tjmp %s\n", octx->exitblk->lbl);
 				break;
 			}
 
@@ -1401,52 +1428,18 @@ static void x86_out_block1(block *blk, void *vctx)
 			}
 
 			case ISN_ASM:
-				fprintf(octx->fout, "\t");
+				write!(self.out, "\t");
 				fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
-				fprintf(octx->fout, "\n");
+				write!(self.out, "\n");
 				break;
 		}
 	}
 }
 
-static void x86_emit_epilogue(x86_octx *octx, block *exit)
-{
-	x86_block_enter(octx, exit);
-	fprintf(octx->fout, "\tleave\n" "\tret\n");
-}
-
-static void x86_emit_prologue(
-		function *func,
-		unsigned alloca_total,
-		unsigned align,
-		const struct target *target,
-		x86_octx *octx)
-{
-	const char *fname;
-	char regch = x86_target_regch(target);
-
-	fprintf(octx->fout, ".text\n");
-	fname = function_name_mangled(func, target);
-	if((function_attributes(func) & function_attribute_internal) == 0)
-		fprintf(octx->fout, ".globl %s\n", fname);
-	fprintf(octx->fout, "%s:\n", fname);
-
-	fprintf(octx->fout, "\tpush %%%cbp\n"
-			"\tmov %%%csp, %%%cbp\n",
-			regch, regch, regch);
-
-	if(align){
-		alloca_total = (alloca_total + align) & ~(align - 1);
-	}
-
-	if(alloca_total)
-		fprintf(octx->fout, "\tsub $%d, %%%csp\n", alloca_total, regch);
-}
-
 static void x86_emit_space(unsigned space, x86_octx *octx)
 {
 	if(space)
-		fprintf(octx->fout, ".space %u\n", space);
+		write!(self.out, ".space %u\n", space);
 }
 
 static void x86_out_padding(size_t *const bytes, unsigned align, x86_octx *octx)
@@ -1495,9 +1488,9 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 
 		case init_str:
 		{
-			fprintf(octx->fout, ".ascii \"");
+			write!(self.out, ".ascii \"");
 			dump_escaped_string(&init->u.str, octx->fout);
-			fprintf(octx->fout, "\"\n");
+			write!(self.out, "\"\n");
 			break;
 		}
 
@@ -1543,7 +1536,7 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 
 		case init_ptr:
 		{
-			fprintf(octx->fout, ".%s ", x86_size_name(type_size(ty)));
+			write!(self.out, ".%s ", x86_size_name(type_size(ty)));
 
 			if(init->u.ptr.is_label){
 				long off = init->u.ptr.u.ident.label.offset;
@@ -1553,7 +1546,7 @@ static void x86_out_init(struct init *init, type *ty, x86_octx *octx)
 						off > 0 ? "+" : "-",
 						off > 0 ? off : -off);
 			}else{
-				fprintf(octx->fout, "%lu", init->u.ptr.u.integral);
+				write!(self.out, "%lu", init->u.ptr.u.integral);
 			}
 			fputc('\n', octx->fout);
 			break;
@@ -1566,7 +1559,7 @@ static void x86_out_align(unsigned align, const struct target *target, x86_octx 
 	if(target->sys.align_is_pow2)
 		align = log2i(align);
 
-	fprintf(octx->fout, ".align %u\n", align);
+	write!(self.out, ".align %u\n", align);
 }
 
 static void x86_out_var(variable_global *var, const struct target *target_info, x86_octx *octx)
@@ -1579,28 +1572,28 @@ static void x86_out_var(variable_global *var, const struct target *target_info, 
 /* TODO: use .bss for zero-init */
 
 	if(init_top && init_top->constant){
-		fprintf(octx->fout, "%s\n", target_info->sys.section_rodata);
+		write!(self.out, "%s\n", target_info->sys.section_rodata);
 
 	}else{
-		fprintf(octx->fout, ".data\n");
+		write!(self.out, ".data\n");
 	}
 
 	if(init_top){
 		if(!init_top->internal)
-			fprintf(octx->fout, ".globl %s\n", name);
+			write!(self.out, ".globl %s\n", name);
 
 		if(init_top->weak)
-			fprintf(octx->fout, "%s %s\n", target_info->sys.weak_directive_var, name);
+			write!(self.out, "%s %s\n", target_info->sys.weak_directive_var, name);
 	}
 
 	x86_out_align(type_align(var_ty), target_info, octx);
 
-	fprintf(octx->fout, "%s:\n", name);
+	write!(self.out, "%s:\n", name);
 
 	if(init_top){
 		x86_out_init(init_top->init, var_ty, octx);
 	}else{
-		fprintf(octx->fout, ".space %u\n", variable_size(inner));
+		write!(self.out, ".space %u\n", variable_size(inner));
 	}
 }
 */

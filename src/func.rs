@@ -5,7 +5,6 @@ use std::{
 };
 
 use bitflags::bitflags;
-// use untyped_arena::Arena as UntypedArena;
 
 use crate::{
     blk_arena::BlkArena,
@@ -22,11 +21,14 @@ pub struct Func<'arena> {
     arg_names: Vec<String>,
     attr: FuncAttr,
 
+    stackspace: u32,
+
     /// Contains an arena for both Blocks and Isns,
     /// which form a graph between each other
     arena: &'arena BlkArena<'arena>,
     blocks: HashMap<String, &'arena Block<'arena>>,
     entry: Option<&'arena Block<'arena>>,
+    exit: Option<&'arena Block<'arena>>,
     arg_vals: HashMap<usize, Rc<Val<'arena>>>,
 }
 
@@ -55,12 +57,14 @@ impl<'arena> Func<'arena> {
     pub fn entry(&self) -> Option<&'arena Block<'arena>> {
         self.entry
     }
-    pub fn exit_block(&self) -> &'arena Block<'arena> {
-        todo!()
+
+    pub fn exit_block(&mut self) -> &'arena Block<'arena> {
+        self.exit
+            .get_or_insert_with(|| self.arena.blks.alloc(Block::new()))
     }
 
     pub fn get_stack_use(&self) -> u32 {
-        todo!()
+        self.stackspace
     }
 
     pub fn blocks(&self) -> impl Iterator<Item = &'arena Block<'arena>> + '_ {
@@ -114,12 +118,17 @@ impl<'arena> Func<'arena> {
 
         Self {
             name: Name::new(name),
+
             ty,
             arg_names,
             attr: Default::default(),
+
+            stackspace: 0,
+
             arena,
             blocks: HashMap::new(),
             entry: None,
+            exit: None,
             arg_vals: Default::default(),
         }
     }
@@ -625,11 +634,6 @@ unsigned function_alloc_stack_space(function *f, type *for_ty)
     f->stackspace += sz;
     f->stackspace += gap_for_alignment(f->stackspace, align);
 
-    return f->stackspace;
-}
-
-unsigned function_get_stack_use(function *f)
-{
     return f->stackspace;
 }
 
