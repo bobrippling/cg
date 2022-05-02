@@ -9,7 +9,9 @@ use bitflags::bitflags;
 use crate::{
     blk_arena::BlkArena,
     block::Block,
+    lbl,
     name::Name,
+    target::Target,
     ty::{Type, TypeS},
     val::Val,
 };
@@ -20,6 +22,7 @@ pub struct Func<'arena> {
     ty: Type<'arena>,
     arg_names: Vec<String>,
     attr: FuncAttr,
+    target: &'arena Target, // not strictly 'arena, but easier
 
     stackspace: u32,
 
@@ -29,7 +32,10 @@ pub struct Func<'arena> {
     blocks: HashMap<String, &'arena Block<'arena>>,
     entry: Option<&'arena Block<'arena>>,
     exit: Option<&'arena Block<'arena>>,
+
     arg_vals: HashMap<usize, Rc<Val<'arena>>>,
+
+    uniq_counter: u32,
 }
 
 bitflags! {
@@ -59,8 +65,20 @@ impl<'arena> Func<'arena> {
     }
 
     pub fn exit_block(&mut self) -> &'arena Block<'arena> {
-        self.exit
-            .get_or_insert_with(|| self.arena.blks.alloc(Block::new()))
+        // can't use Option::get_or_insert_with() because of `mut self`
+        match self.exit {
+            Some(e) => e,
+            None => {
+                let b = self.new_block();
+                self.exit = Some(b);
+                b
+            }
+        }
+    }
+
+    fn new_block(&mut self) -> &'arena Block<'arena> {
+        let lbl = lbl::new_private(&mut self.uniq_counter, self.target.sys.lbl_priv_prefix);
+        self.arena.blks.alloc(Block::new_labelled(lbl))
     }
 
     pub fn get_stack_use(&self) -> u32 {
@@ -68,7 +86,7 @@ impl<'arena> Func<'arena> {
     }
 
     pub fn blocks(&self) -> impl Iterator<Item = &'arena Block<'arena>> + '_ {
-        self.blocks.values().copied()
+        std::iter::once(self.entry().unwrap()).chain(self.blocks.values().copied())
     }
 }
 
@@ -100,6 +118,7 @@ impl<'arena> Func<'arena> {
     pub fn new(
         name: String,
         ty: Type<'arena>,
+        target: &'arena Target,
         arg_names: Vec<String>,
         arena: &'arena BlkArena<'arena>,
     ) -> Self {
@@ -122,6 +141,7 @@ impl<'arena> Func<'arena> {
             ty,
             arg_names,
             attr: Default::default(),
+            target,
 
             stackspace: 0,
 
@@ -129,7 +149,10 @@ impl<'arena> Func<'arena> {
             blocks: HashMap::new(),
             entry: None,
             exit: None,
+
             arg_vals: Default::default(),
+
+            uniq_counter: 0,
         }
     }
 
@@ -141,19 +164,25 @@ impl<'arena> Func<'arena> {
     where
         'arena: 's,
     {
-        let mut inserted = false;
-
-        let b = self.blocks.entry(ident).or_insert_with(|| {
-            inserted = true;
-            self.arena.blks.alloc(Block::new())
-        });
-
-        (b, inserted)
+        match self.blocks.get(&ident) {
+            Some(b) => (*b, false),
+            None => {
+                let b = self.new_block();
+                self.blocks.insert(ident, b);
+                (b, true)
+            }
+        }
     }
 
-    pub fn set_entry(&mut self, entry: &'arena Block<'arena>) {
-        let old = self.entry.replace(entry);
-        assert!(old.is_none());
+    pub fn get_entry(&mut self) -> &'arena Block<'arena> {
+        match self.entry {
+            Some(b) => b,
+            None => {
+                let b = self.arena.blks.alloc(Block::new_entry());
+                self.entry = Some(b);
+                b
+            }
+        }
     }
 }
 

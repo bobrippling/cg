@@ -410,7 +410,7 @@ where
     where
         'scope: 's,
     {
-        let mut f: Func = Func::new(name, ty, toplvl_args, self.unit.blk_arena);
+        let mut f: Func = Func::new(name, ty, self.unit.target, toplvl_args, self.unit.blk_arena);
         let mut attr = FuncAttr::default();
 
         // look for weak (and other attributes)
@@ -433,8 +433,7 @@ where
         f.add_attr(attr);
 
         if self.accept(Token::Punctuation(Punctuation::LBrace))? {
-            let mut cur_blk: &Block = self.unit.blk_arena.blks.alloc(Block::new_entry());
-            f.set_entry(cur_blk);
+            let mut cur_blk: &Block = f.get_entry();
 
             loop {
                 if self.eof()? {

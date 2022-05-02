@@ -1,34 +1,12 @@
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-
-#include "mem.h"
-#include "lbl.h"
-
-char *lbl_new_private(unsigned *const counter, const char *prefix)
-{
-	const int n = strlen(prefix) + 32;
-	char *l = xmalloc(n);
-
-	int printed = xsnprintf(l, n, "%s%u", prefix, *counter);
-
-	assert(printed < n);
-
-	++*counter;
-
-	return l;
+pub fn new_private(counter: &mut u32, prefix: &str) -> String {
+	let s = format!("{}{}", prefix, *counter);
+	*counter += 1;
+	s
 }
 
-char *lbl_new_ident(const char *ident, const char *prefix)
-{
-	const int n = strlen(ident) + strlen(prefix) + 2;
-	char *l = xmalloc(n);
-
-	int printed = xsnprintf(l, n, "%s_%s", prefix, ident);
-
-	assert(printed < n);
-
-	return l;
+/*
+pub fn new_ident(ident: &str, prefix: &str) -> String {
+	format!("{}_{}", prefix, ident)
 }
 
 bool lbl_equal_to_ident(const char *lbl, const char *ident, const char *prefix)
@@ -46,3 +24,4 @@ bool lbl_equal_to_ident(const char *lbl, const char *ident, const char *prefix)
 
 	return true;
 }
+*/

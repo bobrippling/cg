@@ -1,6 +1,8 @@
 use std::{
     cell::{Ref, RefCell},
     rc::Weak,
+    hash::Hash,
+    ptr,
 };
 
 use crate::isn::Isn;
@@ -43,22 +45,20 @@ pub enum BlockKind<'arena> {
 }
 
 impl<'arena> Block<'arena> {
-    pub fn new() -> Self {
-        Block {
-            inner: RefCell::new(BlockInner {
-                isns: vec![],
-                label: None,
-                kind: BlockKind::Unknown,
-            }),
-        }
+    pub fn new_labelled(s: String) -> Self {
+        Self::new(Some(s), BlockKind::Unknown)
     }
 
     pub fn new_entry() -> Self {
+        Self::new(None, BlockKind::Entry)
+    }
+
+    fn new(label: Option<String>, kind: BlockKind<'arena>) -> Self {
         Block {
             inner: RefCell::new(BlockInner {
                 isns: vec![],
-                label: None,
-                kind: BlockKind::Entry,
+                label,
+                kind,
             }),
         }
     }
@@ -96,7 +96,6 @@ impl<'arena> Block<'arena> {
         self.inner.borrow_mut().isns.push(isn);
     }
 
-    #[cfg(test)]
     pub fn isns(&self) -> Ref<Vec<Isn<'arena>>> {
         self.from_inner(|inner| &inner.isns)
     }
@@ -115,6 +114,19 @@ impl<'arena> Block<'arena> {
         };
     }
 }
+
+impl Hash for Block<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state);
+    }
+}
+
+impl PartialEq for Block<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self, other)
+    }
+}
+impl Eq for Block<'_> {}
 
 /*
 #include <stdio.h>

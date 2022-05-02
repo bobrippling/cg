@@ -32,7 +32,7 @@ pub struct Arch {
 
 #[derive(Debug)]
 pub struct Sys {
-    lbl_priv_prefix: &'static str,
+    pub lbl_priv_prefix: &'static str,
     section_rodata: &'static str,
     weak_directive_var: &'static str,
     weak_directive_func: &'static str,

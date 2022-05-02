@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use std::io::{self, Write};
 
 use super::{Abi, Target};
 use crate::block::PBlock;
 use crate::func::{Func, FuncAttr};
 use crate::init::InitTopLevel;
+use crate::isn::Isn;
 use crate::size_align::Align;
 use crate::ty_uniq::TyUniq;
 use crate::variable::Var;
@@ -53,6 +55,7 @@ struct X86PerFunc<'a, 'b, 'arena> {
 
     func: &'b Func<'arena>,
     exitblk: PBlock<'arena>,
+    emitted: HashSet<PBlock<'arena>>,
 
     stack: Stack,
     max_align: Option<Align>,
@@ -114,6 +117,8 @@ impl<'a, 'arena> X86<'a, 'arena> {
 
             func,
             exitblk: exit,
+            emitted: HashSet::new(),
+
             stack: Stack {
                 current: func.get_stack_use(),
                 call_spill_max: 0,
@@ -174,15 +179,15 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
         }
         write!(self.out, "{}:\n", fname)?;
 
-        let regch = self.regch() as char;
+        let regch = self.regch();
         write!(
             self.out,
             "\tpush %{}bp\n\tmov %{}sp, %{}bp\n",
             regch, regch, regch
         )?;
 
-	let mut alloca_total = self.stack.current + self.stack.call_spill_max;
-	if let Some(align) = self.max_align {
+        let mut alloca_total = self.stack.current + self.stack.call_spill_max;
+        if let Some(align) = self.max_align {
             alloca_total = (alloca_total + align.get()) & !(align.get() - 1);
         }
 
@@ -193,16 +198,140 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
         Ok(())
     }
 
-    fn regch(&self) -> u8 {
+    fn regch(&self) -> char {
         match self.x86.target.arch.ptr.size {
-            4 => b'e',
-            8 => b'r',
+            4 => 'e',
+            8 => 'r',
             _ => unreachable!(),
         }
     }
 
-    fn emit_block1(&mut self, _block: PBlock<'arena>) -> Result {
-        todo!()
+    fn emit_block1(&mut self, b: PBlock<'arena>) -> Result {
+        if !self.emitted.insert(b) {
+            return Ok(());
+        }
+
+        self.block_enter(b)?;
+
+        for isn in &*b.isns() {
+            use Isn::*;
+            match isn {
+                Jmp(dest) => self.jmp(dest),
+                Ret(_v) => {
+                    write!(
+                        self.out,
+                        "\tjmp {}\n",
+                        self.exitblk.label().as_ref().unwrap()
+                    )
+                } /*
+                  case ISN_ALLOCA:
+                      break;
+
+                  case ISN_IMPLICIT_USE_START:
+                  case ISN_IMPLICIT_USE_END:
+                      break;
+
+                  case ISN_STORE:
+                  {
+                      x86_mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
+                      break;
+                  }
+
+                  case ISN_LOAD:
+                  {
+                      x86_mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
+                      break;
+                  }
+
+                  case ISN_ELEM:
+                      emit_elem(i, octx);
+                      break;
+
+                  case ISN_PTRADD:
+                  case ISN_PTRSUB:
+                      x86_op(
+                          i->type == ISN_PTRADD ? op_add : op_sub,
+                          i->u.ptraddsub.lhs,
+                          i->u.ptraddsub.rhs,
+                          i->u.ptraddsub.out,
+                          octx);
+                      break;
+
+                  case ISN_OP:
+                      x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, octx);
+                      break;
+
+                  case ISN_CMP:
+                      x86_cmp(i->u.cmp.cmp,
+                          i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
+                          octx);
+                      break;
+
+                  case ISN_EXT_TRUNC:
+                      x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
+                      break;
+
+                  case ISN_INT2PTR:
+                  case ISN_PTR2INT:
+                      x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
+                      break;
+
+                  case ISN_PTRCAST:
+                      x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
+                      break;
+
+                  case ISN_COPY:
+                  {
+                      x86_mov(i->u.copy.from, i->u.copy.to, octx);
+                      break;
+                  }
+
+                  case ISN_MEMCPY:
+                      break;
+
+                  case ISN_JMP_COMPUTED:
+                  {
+                      x86_jmp_comp(octx, i->u.jmpcomp.target);
+                      break;
+                  }
+
+                  case ISN_LABEL:
+                      break;
+
+                  case ISN_BR:
+                  {
+                      x86_branch(
+                          i->u.branch.cond,
+                          i->u.branch.t,
+                          i->u.branch.f,
+                          octx);
+                      break;
+                  }
+
+                  case ISN_CALL:
+                  {
+                      x86_emit_call(blk, i,
+                          i->u.call.into,
+                          i->u.call.fn,
+                          &i->u.call.args,
+                          octx);
+                      break;
+                  }
+
+                  case ISN_ASM:
+                      write!(self.out, "\t");
+                      fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
+                      write!(self.out, "\n");
+                      break;
+                          */
+            }?;
+        }
+
+        Ok(())
+    }
+
+    fn jmp(&mut self, target: PBlock<'_>) -> Result {
+        write!(self.out, "\tjmp {}\n", target.label().as_ref().unwrap())
     }
 }
 
@@ -1229,11 +1358,6 @@ static void x86_cmp(
 	val_release(zero);
 }
 
-static void x86_jmp(x86_octx *octx, block *target)
-{
-	write!(self.out, "\tjmp %s\n", target->lbl);
-}
-
 static void x86_jmp_comp(x86_octx *octx, val *target)
 {
 	write!(self.out, "\tjmp *%s\n", x86_val_str(target, 0, octx, val_type(target), DEREFERENCE_FALSE));
@@ -1262,14 +1386,6 @@ static void x86_branch(val *cond, block *bt, block *bf, x86_octx *octx)
 	write!(self.out, "\tjz %s\n", bf->lbl);
 
 	x86_jmp(octx, bt);
-}
-
-static void x86_block_enter(x86_octx *octx, block *blk)
-{
-	if(!blk->lbl)
-		return;
-
-	write!(self.out, "%s:\n", blk->lbl);
 }
 
 static void x86_ptr2int(val *from, val *to, x86_octx *octx)
@@ -1301,139 +1417,6 @@ static void x86_ptrcast(val *from, val *to, x86_octx *octx)
 	assert(sz_from == sz_to);
 
 	x86_mov(from, to, octx);
-}
-
-static void x86_out_block1(block *blk, void *vctx)
-{
-	x86_octx *const octx = vctx;
-	isn *head = block_first_isn(blk);
-	isn *i;
-	unsigned idx;
-
-	if(blk->emitted)
-		return;
-	blk->emitted = 1;
-
-	x86_block_enter(octx, blk);
-
-	for(i = head, idx = 0; i; i = i->next, idx++){
-		if(i->skip)
-			continue;
-
-		switch(i->type){
-			case ISN_ALLOCA:
-				break;
-
-			case ISN_IMPLICIT_USE_START:
-			case ISN_IMPLICIT_USE_END:
-				break;
-
-			case ISN_RET:
-			{
-				write!(self.out, "\tjmp %s\n", octx->exitblk->lbl);
-				break;
-			}
-
-			case ISN_STORE:
-			{
-				x86_mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
-				break;
-			}
-
-			case ISN_LOAD:
-			{
-				x86_mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
-				break;
-			}
-
-			case ISN_ELEM:
-				emit_elem(i, octx);
-				break;
-
-			case ISN_PTRADD:
-			case ISN_PTRSUB:
-				x86_op(
-						i->type == ISN_PTRADD ? op_add : op_sub,
-						i->u.ptraddsub.lhs,
-						i->u.ptraddsub.rhs,
-						i->u.ptraddsub.out,
-						octx);
-				break;
-
-			case ISN_OP:
-				x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, octx);
-				break;
-
-			case ISN_CMP:
-				x86_cmp(i->u.cmp.cmp,
-						i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
-						octx);
-				break;
-
-			case ISN_EXT_TRUNC:
-				x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
-				break;
-
-			case ISN_INT2PTR:
-			case ISN_PTR2INT:
-				x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
-				break;
-
-			case ISN_PTRCAST:
-				x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
-				break;
-
-			case ISN_COPY:
-			{
-				x86_mov(i->u.copy.from, i->u.copy.to, octx);
-				break;
-			}
-
-			case ISN_MEMCPY:
-				break;
-
-			case ISN_JMP:
-			{
-				x86_jmp(octx, i->u.jmp.target);
-				break;
-			}
-
-			case ISN_JMP_COMPUTED:
-			{
-				x86_jmp_comp(octx, i->u.jmpcomp.target);
-				break;
-			}
-
-			case ISN_LABEL:
-				break;
-
-			case ISN_BR:
-			{
-				x86_branch(
-						i->u.branch.cond,
-						i->u.branch.t,
-						i->u.branch.f,
-						octx);
-				break;
-			}
-
-			case ISN_CALL:
-			{
-				x86_emit_call(blk, i,
-						i->u.call.into,
-						i->u.call.fn,
-						&i->u.call.args,
-						octx);
-				break;
-			}
-
-			case ISN_ASM:
-				write!(self.out, "\t");
-				fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
-				write!(self.out, "\n");
-				break;
-		}
-	}
 }
 
 static void x86_emit_space(unsigned space, x86_octx *octx)

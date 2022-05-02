@@ -25,6 +25,7 @@ mod init;
 
 mod block;
 mod isn;
+mod lbl;
 
 mod pass;
 
