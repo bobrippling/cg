@@ -1,5 +1,5 @@
 use std::{
-    cell::{Ref, RefCell},
+    cell::{Ref, RefCell, RefMut},
     rc::Weak,
     hash::Hash,
     ptr,
@@ -98,6 +98,11 @@ impl<'arena> Block<'arena> {
 
     pub fn isns(&self) -> Ref<Vec<Isn<'arena>>> {
         self.from_inner(|inner| &inner.isns)
+    }
+
+    pub fn isns_mut(&self) -> RefMut<Vec<Isn<'arena>>> {
+        let r = self.inner.borrow_mut();
+        RefMut::map(r, |inner| &mut inner.isns)
     }
 
     pub fn set_jmp(&self, _block: &Block) {

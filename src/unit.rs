@@ -4,6 +4,7 @@ use std::io::Read;
 use typed_arena::Arena;
 
 use crate::blk_arena::BlkArena;
+use crate::func::Func;
 use crate::global::Global;
 use crate::parse::{ParseError, Parser};
 use crate::pass::Pass;
@@ -86,6 +87,13 @@ impl<'scope> Globals<'scope> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Global<'scope>> {
         self.entries.iter_mut()
+    }
+
+    pub fn funcs(&mut self) -> impl Iterator<Item = &mut Func<'scope>> {
+        self.entries.iter_mut().filter_map(|g| match g {
+            Global::Func(f) => Some(f),
+            _ => None,
+        })
     }
 }
 

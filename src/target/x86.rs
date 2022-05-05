@@ -6,38 +6,28 @@ use crate::block::PBlock;
 use crate::func::{Func, FuncAttr};
 use crate::init::InitTopLevel;
 use crate::isn::Isn;
+use crate::reg::{Class, Reg};
 use crate::size_align::Align;
 use crate::ty_uniq::TyUniq;
+use crate::val::Val;
 use crate::variable::Var;
 use crate::{global::Global, regset::RegSet};
 // use reg::{Class, Reg};
 
+const RAX: Reg = Reg::new(0, Class::Int);
+const RBX: Reg = Reg::new(1, Class::Int);
+const RCX: Reg = Reg::new(2, Class::Int);
+const RDX: Reg = Reg::new(3, Class::Int);
+const RDI: Reg = Reg::new(4, Class::Int);
+const RSI: Reg = Reg::new(5, Class::Int);
+const R8: Reg = Reg::new(6, Class::Int);
+const R9: Reg = Reg::new(7, Class::Int);
+
 pub static ABI: Abi = Abi {
-    scratch_regs: RegSet {},
-    /*
-    regt_make(0, 0), /* eax */
-    regt_make(2, 0), /* ecx */
-    regt_make(3, 0), /* edx */
-    regt_make(4, 0), /* esi */
-    regt_make(5, 0)  /* edi */
-    */
-    ret_regs: RegSet {},
-    /*
-    regt_make(0, 0), /* rax */
-    regt_make(3, 0)  /* rdx */
-    */
-    arg_regs: RegSet {},
-    /*
-    regt_make(4, 0), /* rdi */
-    regt_make(5, 0), /* rsi */
-    regt_make(3, 0), /* rdx */
-    regt_make(2, 0)  /* rcx */
-    // TODO: r8, r9
-    */
-    callee_saves: RegSet {},
-    /*
-    regt_make(1, 0) /* rbx */
-    */
+    scratch_regs: RegSet::new(&[RAX, RCX, RDX, RSI, RDI]),
+    ret_regs: RegSet::new(&[RAX, RDX]),
+    arg_regs: RegSet::new(&[RDI, RSI, RDX, RCX, R8, R9]),
+    callee_saves: RegSet::new(&[RBX]),
 };
 
 type Result = io::Result<()>;
@@ -223,7 +213,9 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
                         "\tjmp {}\n",
                         self.exitblk.label().as_ref().unwrap()
                     )
-                } /*
+                }
+                Copy { from, to } => self.mov(&*from, &*to),
+                /*
                   case ISN_ALLOCA:
                       break;
 
@@ -280,12 +272,6 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
                       x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
                       break;
 
-                  case ISN_COPY:
-                  {
-                      x86_mov(i->u.copy.from, i->u.copy.to, octx);
-                      break;
-                  }
-
                   case ISN_MEMCPY:
                       break;
 
@@ -332,6 +318,10 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
 
     fn jmp(&mut self, target: PBlock<'_>) -> Result {
         write!(self.out, "\tjmp {}\n", target.label().as_ref().unwrap())
+    }
+
+    fn mov(&mut self, _from: &Val, _to: &Val) -> Result {
+        todo!()
     }
 }
 

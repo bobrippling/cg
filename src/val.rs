@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::{global::Global, ty::Type, ty_uniq::TyUniq};
+use crate::{global::Global, ty::Type, ty_uniq::TyUniq, reg::Reg};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Location;
@@ -54,6 +54,10 @@ impl<'a> Val<'a> {
     }
 
     pub fn new_local(_name: String, _ty: Type<'a>, _alloca: bool) -> Self {
+        todo!()
+    }
+
+    pub fn new_reg(_reg: Reg, _ty: Type<'a>) -> Self {
         todo!()
     }
 }

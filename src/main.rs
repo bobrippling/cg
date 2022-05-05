@@ -178,7 +178,7 @@ fn main() -> Result<()> {
     };
 
     /* ensure the final passes are: */
-    unit.run_pass(&mut pass::abi::Pass);
+    unit.run_pass(&mut pass::abi::Pass::new());
     unit.run_pass(&mut pass::isel::Pass);
     unit.run_pass(&mut pass::expand_builtins::Pass);
     // unit.run_pass(&mut pass::spill::Pass);

@@ -50,6 +50,10 @@ macro_rules! primitives {
                 }
             }
 
+            pub fn is_float(self) -> bool {
+		!self.is_integral()
+            }
+
             pub fn size_align(self) -> SizeAlign {
                 match self {
                     $(Primitive::$member => SizeAlign {
@@ -90,6 +94,8 @@ pub trait TypeQueries<'t>: Sized {
     fn is_fn(self) -> bool;
     fn is_struct(self) -> bool;
     fn is_void(self) -> bool;
+    fn is_integral(self) -> bool;
+    fn is_float(self) -> bool;
 
     fn can_return_to(self, to: Type<'t>) -> bool;
 }
@@ -178,6 +184,14 @@ impl<'t> TypeQueries<'t> for Type<'t> {
         matches!(self, TypeS::Void { .. })
     }
 
+    fn is_integral(self) -> bool {
+        matches!(self, TypeS::Primitive(p) if p.is_integral())
+    }
+
+    fn is_float(self) -> bool {
+        matches!(self, TypeS::Primitive(p) if p.is_float())
+    }
+
     fn can_return_to(self, to: Type<'t>) -> bool {
         if to.is_struct() {
             self.deref().map(|pointee| pointee == to).unwrap_or(false)
@@ -219,6 +233,14 @@ impl<'t> TypeQueries<'t> for Option<Type<'t>> {
 
     fn is_void(self) -> bool {
         self.map(TypeQueries::is_void).unwrap_or(false)
+    }
+
+    fn is_integral(self) -> bool {
+	self.map(TypeQueries::is_integral).unwrap_or(false)
+    }
+
+    fn is_float(self) -> bool {
+	self.map(TypeQueries::is_float).unwrap_or(false)
     }
 
     fn can_return_to(self, to: Type<'t>) -> bool {

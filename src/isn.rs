@@ -6,6 +6,7 @@ use crate::{block::Block, val::Val};
 pub enum Isn<'a> {
     Jmp(&'a Block<'a>),
     Ret(Rc<Val<'a>>),
+    Copy { from: Rc<Val<'a>>, to: Rc<Val<'a>> },
 }
 
 /*

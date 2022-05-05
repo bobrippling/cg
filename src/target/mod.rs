@@ -49,10 +49,10 @@ pub struct Pic {
 
 #[derive(Debug, Clone)]
 pub struct Abi {
-    scratch_regs: RegSet,
-    ret_regs: RegSet,
-    arg_regs: RegSet,
-    callee_saves: RegSet,
+    pub scratch_regs: RegSet,
+    pub ret_regs: RegSet,
+    pub arg_regs: RegSet,
+    pub callee_saves: RegSet,
 }
 
 impl FromStr for Target {
