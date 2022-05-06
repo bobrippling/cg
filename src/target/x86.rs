@@ -216,100 +216,100 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
                 }
                 Copy { from, to } => self.mov(&*from, &*to),
                 /*
-                  case ISN_ALLOCA:
-                      break;
+                case ISN_ALLOCA:
+                    break;
 
-                  case ISN_IMPLICIT_USE_START:
-                  case ISN_IMPLICIT_USE_END:
-                      break;
+                case ISN_IMPLICIT_USE_START:
+                case ISN_IMPLICIT_USE_END:
+                    break;
 
-                  case ISN_STORE:
-                  {
-                      x86_mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
-                      break;
-                  }
+                case ISN_STORE:
+                {
+                    x86_mov_deref(i->u.store.from, i->u.store.lval, octx, false, true);
+                    break;
+                }
 
-                  case ISN_LOAD:
-                  {
-                      x86_mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
-                      break;
-                  }
+                case ISN_LOAD:
+                {
+                    x86_mov_deref(i->u.load.lval, i->u.load.to, octx, true, false);
+                    break;
+                }
 
-                  case ISN_ELEM:
-                      emit_elem(i, octx);
-                      break;
+                case ISN_ELEM:
+                    emit_elem(i, octx);
+                    break;
 
-                  case ISN_PTRADD:
-                  case ISN_PTRSUB:
-                      x86_op(
-                          i->type == ISN_PTRADD ? op_add : op_sub,
-                          i->u.ptraddsub.lhs,
-                          i->u.ptraddsub.rhs,
-                          i->u.ptraddsub.out,
-                          octx);
-                      break;
+                case ISN_PTRADD:
+                case ISN_PTRSUB:
+                    x86_op(
+                        i->type == ISN_PTRADD ? op_add : op_sub,
+                        i->u.ptraddsub.lhs,
+                        i->u.ptraddsub.rhs,
+                        i->u.ptraddsub.out,
+                        octx);
+                    break;
 
-                  case ISN_OP:
-                      x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, octx);
-                      break;
+                case ISN_OP:
+                    x86_op(i->u.op.op, i->u.op.lhs, i->u.op.rhs, i->u.op.res, octx);
+                    break;
 
-                  case ISN_CMP:
-                      x86_cmp(i->u.cmp.cmp,
-                          i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
-                          octx);
-                      break;
+                case ISN_CMP:
+                    x86_cmp(i->u.cmp.cmp,
+                        i->u.cmp.lhs, i->u.cmp.rhs, i->u.cmp.res,
+                        octx);
+                    break;
 
-                  case ISN_EXT_TRUNC:
-                      x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
-                      break;
+                case ISN_EXT_TRUNC:
+                    x86_ext(i->u.ext.from, i->u.ext.to, i->u.ext.sign, octx);
+                    break;
 
-                  case ISN_INT2PTR:
-                  case ISN_PTR2INT:
-                      x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
-                      break;
+                case ISN_INT2PTR:
+                case ISN_PTR2INT:
+                    x86_ptr2int(i->u.ptr2int.from, i->u.ptr2int.to, octx);
+                    break;
 
-                  case ISN_PTRCAST:
-                      x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
-                      break;
+                case ISN_PTRCAST:
+                    x86_ptrcast(i->u.ptrcast.from, i->u.ptrcast.to, octx);
+                    break;
 
-                  case ISN_MEMCPY:
-                      break;
+                case ISN_MEMCPY:
+                    break;
 
-                  case ISN_JMP_COMPUTED:
-                  {
-                      x86_jmp_comp(octx, i->u.jmpcomp.target);
-                      break;
-                  }
+                case ISN_JMP_COMPUTED:
+                {
+                    x86_jmp_comp(octx, i->u.jmpcomp.target);
+                    break;
+                }
 
-                  case ISN_LABEL:
-                      break;
+                case ISN_LABEL:
+                    break;
 
-                  case ISN_BR:
-                  {
-                      x86_branch(
-                          i->u.branch.cond,
-                          i->u.branch.t,
-                          i->u.branch.f,
-                          octx);
-                      break;
-                  }
+                case ISN_BR:
+                {
+                    x86_branch(
+                        i->u.branch.cond,
+                        i->u.branch.t,
+                        i->u.branch.f,
+                        octx);
+                    break;
+                }
 
-                  case ISN_CALL:
-                  {
-                      x86_emit_call(blk, i,
-                          i->u.call.into,
-                          i->u.call.fn,
-                          &i->u.call.args,
-                          octx);
-                      break;
-                  }
+                case ISN_CALL:
+                {
+                    x86_emit_call(blk, i,
+                        i->u.call.into,
+                        i->u.call.fn,
+                        &i->u.call.args,
+                        octx);
+                    break;
+                }
 
-                  case ISN_ASM:
-                      write!(self.out, "\t");
-                      fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
-                      write!(self.out, "\n");
-                      break;
-                          */
+                case ISN_ASM:
+                    write!(self.out, "\t");
+                    fwrite(i->u.as.str, sizeof(i->u.as.str[0]), i->u.as.len, octx->fout);
+                    write!(self.out, "\n");
+                    break;
+                        */
             }?;
         }
 
@@ -320,8 +320,46 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
         write!(self.out, "\tjmp {}\n", target.label().as_ref().unwrap())
     }
 
-    fn mov(&mut self, _from: &Val, _to: &Val) -> Result {
+    fn mov(&mut self, from: &Val, to: &Val) -> Result {
+        self.mov_deref((from, false), (to, false))
+    }
+
+    fn mov_deref(&mut self, from: (&Val, bool), to: (&Val, bool)) -> Result {
+        self.mov_deref_force(from, to, false)
+    }
+
+    fn mov_deref_force(&mut self, from: (&Val, bool), to: (&Val, bool), force: bool) -> Result {
         todo!()
+        /*
+        const struct backend_isn *chosen_isn = &x86_isn_mov;
+
+        if(!force && !deref_from && !deref_to){
+            struct location *loc_from, *loc_to;
+
+            loc_from = val_location(from);
+            loc_to = val_location(to);
+
+            if(loc_from && loc_to
+            && loc_from->where == NAME_IN_REG
+            && loc_to->where == NAME_IN_REG
+            && loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
+            {
+                write!(self.out, "\t#");
+            }
+        }
+
+        /* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
+         * we actually want its address*/
+        if(!deref_from && must_lea_val(from)){
+            chosen_isn = &x86_isn_lea;
+            deref_from = true;
+        }
+
+        emit_isn_binary(chosen_isn, octx,
+                from, deref_from,
+                to, deref_to,
+                NULL);
+        */
     }
 }
 
@@ -985,55 +1023,6 @@ static void emit_isn_binary(
 	operands[1].dereference = deref_rhs;
 
 	x86_emit_isn(isn, octx, operands, 2, x86_isn_suffix);
-}
-
-static void mov_deref_force(
-		val *from, val *to,
-		x86_octx *octx,
-		bool deref_from, bool deref_to,
-		bool const force)
-{
-	const struct backend_isn *chosen_isn = &x86_isn_mov;
-
-	if(!force && !deref_from && !deref_to){
-		struct location *loc_from, *loc_to;
-
-		loc_from = val_location(from);
-		loc_to = val_location(to);
-
-		if(loc_from && loc_to
-		&& loc_from->where == NAME_IN_REG
-		&& loc_to->where == NAME_IN_REG
-		&& loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
-		{
-			write!(self.out, "\t#");
-		}
-	}
-
-	/* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
-	 * we actually want its address*/
-	if(!deref_from && must_lea_val(from)){
-		chosen_isn = &x86_isn_lea;
-		deref_from = true;
-	}
-
-	emit_isn_binary(chosen_isn, octx,
-			from, deref_from,
-			to, deref_to,
-			NULL);
-}
-
-void x86_mov_deref(
-		val *from, val *to,
-		x86_octx *octx,
-		bool deref_from, bool deref_to)
-{
-	mov_deref_force(from, to, octx, deref_from, deref_to, 0);
-}
-
-void x86_mov(val *from, val *to, x86_octx *octx)
-{
-	x86_mov_deref(from, to, octx, false, false);
 }
 
 static bool elem_get_offset(val *maybe_int, type *elem_ty, long *const offset)
