@@ -1,14 +1,39 @@
 #![allow(dead_code)]
 
-use crate::{global::Global, ty::Type, ty_uniq::TyUniq, reg::Reg};
+use crate::{global::Global, reg::Reg, ty::Type, ty_uniq::TyUniq};
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Location;
+pub struct Location {
+    constraint: Constraint,
+    loc: Loc,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Loc {
+    Reg(Reg),
+    AnyReg(Reg),
+    Spilt { offset: u32 },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Constraint {
+    Reg,
+    Const,
+    Mem,
+}
 
 #[derive(Debug)]
 pub struct Val<'arena> {
     ty: Type<'arena>,
 
+    /*
+    enum val_flags
+    {
+        ABI = 1 << 0,
+        ARG = 1 << 1,
+        SPILL = 1 << 2
+    } flags;
+    */
     kind: ValKind, /*<'arena>*/
 }
 
@@ -18,8 +43,8 @@ pub enum ValKind /*<'arena>*/ {
     // Global(&'arena Global<'arena>),
     Label(String),
     Undef,
-    Local { loc: Location, name: String },
-    Alloca { loc: Location, name: String },
+    Local { loc: Option<Location>, name: String },
+    Alloca { loc: u32, name: String },
 }
 
 impl<'a> Val<'a> {
@@ -38,10 +63,7 @@ impl<'a> Val<'a> {
     pub fn new_argument(name: String, ty: Type<'a>) -> Self {
         Self {
             ty,
-            kind: ValKind::Local {
-                loc: Location,
-                name,
-            },
+            kind: ValKind::Local { loc: None, name },
         }
     }
 
@@ -57,8 +79,17 @@ impl<'a> Val<'a> {
         todo!()
     }
 
-    pub fn new_reg(_reg: Reg, _ty: Type<'a>) -> Self {
-        todo!()
+    pub fn new_reg(reg: Reg, ty: Type<'a>) -> Self {
+        Self {
+            ty,
+            kind: ValKind::Local {
+                loc: Some(Location {
+                    constraint: Constraint::Reg,
+                    loc: Loc::Reg(reg),
+                }),
+                name: "".into(),
+            },
+        }
     }
 }
 
@@ -67,9 +98,14 @@ impl<'a> Val<'a> {
         self.ty
     }
 
-    pub fn location(&self) -> Option<&Location> {
+    pub fn location(&self) -> Option<Loc> {
         match &self.kind {
-            ValKind::Local { loc, .. } | ValKind::Alloca { loc, .. } => Some(loc),
+            ValKind::Local { loc: Some(loc), .. } => {
+                Some(loc.loc.clone())
+            },
+            ValKind::Alloca { loc, .. } => {
+                Some(Loc::Spilt { offset: *loc })
+            },
             _ => None,
         }
     }

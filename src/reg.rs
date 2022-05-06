@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Reg {
     idx: u32,
     class: Class,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Class {
     Int,
     Float,
