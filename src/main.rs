@@ -19,6 +19,7 @@ mod global;
 mod ty;
 mod ty_uniq;
 mod val;
+mod location;
 mod variable;
 
 mod init;

@@ -2,26 +2,6 @@
 
 use crate::{global::Global, reg::Reg, ty::Type, ty_uniq::TyUniq};
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Location {
-    constraint: Constraint,
-    loc: Loc,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Loc {
-    Reg(Reg),
-    AnyReg(Reg),
-    Spilt { offset: u32 },
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Constraint {
-    Reg,
-    Const,
-    Mem,
-}
-
 #[derive(Debug)]
 pub struct Val<'arena> {
     ty: Type<'arena>,
@@ -43,7 +23,7 @@ pub enum ValKind /*<'arena>*/ {
     // Global(&'arena Global<'arena>),
     Label(String),
     Undef,
-    Local { loc: Option<Location>, name: String },
+    Local { /*loc: Option<Location>,*/ name: String },
     Alloca { loc: u32, name: String },
 }
 
@@ -63,7 +43,7 @@ impl<'a> Val<'a> {
     pub fn new_argument(name: String, ty: Type<'a>) -> Self {
         Self {
             ty,
-            kind: ValKind::Local { loc: None, name },
+            kind: ValKind::Local { /*loc: None,*/ name },
         }
     }
 
@@ -83,10 +63,10 @@ impl<'a> Val<'a> {
         Self {
             ty,
             kind: ValKind::Local {
-                loc: Some(Location {
+                /*loc: todo!() Some(Location {
                     constraint: Constraint::Reg,
                     loc: Loc::Reg(reg),
-                }),
+                }),*/
                 name: "".into(),
             },
         }
@@ -98,7 +78,8 @@ impl<'a> Val<'a> {
         self.ty
     }
 
-    pub fn location(&self) -> Option<Loc> {
+    /*
+    pub fn location(&self) -> Option<Location> {
         match &self.kind {
             ValKind::Local { loc: Some(loc), .. } => {
                 Some(loc.loc.clone())
@@ -109,6 +90,7 @@ impl<'a> Val<'a> {
             _ => None,
         }
     }
+    */
 }
 
 /*

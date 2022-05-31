@@ -1,3 +1,28 @@
+// use crate::reg::Reg;
+
+// TODO: retype/structure this
+
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct Location {
+//     constraint: Constraint,
+//     loc: Loc,
+// }
+
+// #[derive(Debug, PartialEq, Eq, Clone)]
+// pub enum Location {
+//     Reg(Reg),
+//     AnyReg(Reg),
+//     Spilt { offset: u32 },
+// }
+
+// #[derive(Debug, PartialEq, Eq)]
+// enum Constraint {
+//     Reg,
+//     Const,
+//     Mem,
+// }
+
+/*
 #include <string.h>
 #include <assert.h>
 
@@ -47,3 +72,4 @@ const char *location_constraint_to_str(enum location_constraint c)
 
 	return buf;
 }
+*/

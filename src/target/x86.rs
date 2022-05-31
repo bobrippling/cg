@@ -1,3 +1,5 @@
+mod isn;
+
 use std::collections::HashSet;
 use std::io::{self, Write};
 
@@ -329,23 +331,31 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
     }
 
     fn mov_deref_force(&mut self, from: (&Val, bool), to: (&Val, bool), force: bool) -> Result {
-        todo!()
-        /*
-        const struct backend_isn *chosen_isn = &x86_isn_mov;
+	todo!()
+	/*
+	let isn = X86Isn::Mov(Mov {
+	    from, to,
+	});
 
-        if(!force && !deref_from && !deref_to){
-            struct location *loc_from, *loc_to;
+	let(deref_from,deref_to) = (from.1, to.1);
 
-            loc_from = val_location(from);
-            loc_to = val_location(to);
+        if !force && !deref_from && !deref_to {
+            let loc_from = 3;
+            let loc_to = to.location();
 
-            if(loc_from && loc_to
+	    if let (Some(loc_from), Some(loc_to)) = (from.location(), to.location()) {
+		if loc_from. loc_from == loc_to {
+
+		}
+	    }
+	    /*
             && loc_from->where == NAME_IN_REG
             && loc_to->where == NAME_IN_REG
             && loc_from->u.reg == loc_to->u.reg) /* FIXME: regt_equal */
             {
                 write!(self.out, "\t#");
             }
+	    */
         }
 
         /* if we're x86_mov:ing from a non-lvalue (i.e. array, struct [alloca])
@@ -359,7 +369,7 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
                 from, deref_from,
                 to, deref_to,
                 NULL);
-        */
+	*/
     }
 }
 
