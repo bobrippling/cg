@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::rc::Rc;
 
 use crate::{func::Func, isn::Isn, target::Target, ty::TypeQueries, unit::Unit, val::Val};

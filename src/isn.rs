@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
-use crate::{block::Block, val::Val};
+use crate::val::Val;
 
 #[derive(Debug)]
 pub enum Isn<'a> {
-    Jmp(&'a Block<'a>),
     Ret(Rc<Val<'a>>),
     Copy { from: Rc<Val<'a>>, to: Rc<Val<'a>> },
 }

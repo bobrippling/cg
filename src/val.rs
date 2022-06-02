@@ -59,7 +59,7 @@ impl<'a> Val<'a> {
         todo!()
     }
 
-    pub fn new_reg(reg: Reg, ty: Type<'a>) -> Self {
+    pub fn new_reg(_reg: Reg, ty: Type<'a>) -> Self {
         Self {
             ty,
             kind: ValKind::Local {

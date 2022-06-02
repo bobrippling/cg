@@ -701,7 +701,6 @@ where
 
                     if from.is_unknown_ending() {
                         /* current block is fall-thru */
-                        from.add_isn(Isn::Jmp(this_block));
                         from.set_jmp(this_block);
                     }
                 } else {

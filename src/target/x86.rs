@@ -208,7 +208,7 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
         for isn in &*b.isns() {
             use Isn::*;
             match isn {
-                Jmp(dest) => self.jmp(dest),
+                // Jmp(dest) => self.jmp(dest),
                 Ret(_v) => {
                     write!(
                         self.out,
@@ -330,7 +330,7 @@ impl<'a, 'b, 'arena> X86PerFunc<'a, 'b, 'arena> {
         self.mov_deref_force(from, to, false)
     }
 
-    fn mov_deref_force(&mut self, from: (&Val, bool), to: (&Val, bool), force: bool) -> Result {
+    fn mov_deref_force(&mut self, _from: (&Val, bool), _to: (&Val, bool), _force: bool) -> Result {
 	todo!()
 	/*
 	let isn = X86Isn::Mov(Mov {

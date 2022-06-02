@@ -27,6 +27,7 @@ mod init;
 mod block;
 mod isn;
 mod lbl;
+mod dag;
 
 mod pass;
 
@@ -178,10 +179,13 @@ fn main() -> Result<()> {
         None => process::exit(0),
     };
 
+    unit.run_pass(&mut pass::expand_builtins::Pass);
+
+    unit.run_pass(&mut pass::to_dag::Pass);
+
     /* ensure the final passes are: */
     unit.run_pass(&mut pass::abi::Pass::new());
     unit.run_pass(&mut pass::isel::Pass);
-    unit.run_pass(&mut pass::expand_builtins::Pass);
     // unit.run_pass(&mut pass::spill::Pass);
     unit.run_pass(&mut pass::regalloc::Pass);
 

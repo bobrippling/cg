@@ -5,7 +5,7 @@ use std::{
     ptr,
 };
 
-use crate::isn::Isn;
+use crate::{isn::Isn, dag::Dag};
 
 #[derive(Debug)]
 pub struct Block<'arena> {
@@ -18,6 +18,8 @@ pub type PBlock<'arena> = &'arena Block<'arena>;
 struct BlockInner<'arena> {
     isns: Vec<Isn<'arena>>,
     label: Option<String>, /* None if entry block */
+
+    dag: Option<Dag>,
 
     // val_lifetimes: HashMap<Val, Lifetime>,
     // predecessors: Vec<Weak<Block>>,
@@ -57,6 +59,7 @@ impl<'arena> Block<'arena> {
         Block {
             inner: RefCell::new(BlockInner {
                 isns: vec![],
+                dag: None,
                 label,
                 kind,
             }),
@@ -117,6 +120,11 @@ impl<'arena> Block<'arena> {
         } else {
             BlockKind::Exit
         };
+    }
+
+    pub fn set_dag(&self, dag: Dag) {
+        let old = self.inner.borrow_mut().dag.replace(dag);
+        assert!(old.is_none());
     }
 }
 
