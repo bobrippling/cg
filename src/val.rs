@@ -3,8 +3,9 @@
 use crate::{global::Global, reg::Reg, ty::Type, ty_uniq::TyUniq};
 
 #[derive(Debug)]
-pub struct Val<'arena> {
+pub struct Val<'arena, 'scope> {
     ty: Type<'arena>,
+    src: ValSrc<'scope>,
 
     /*
     enum val_flags
@@ -25,6 +26,12 @@ pub enum ValKind /*<'arena>*/ {
     Undef,
     Local { /*loc: Option<Location>,*/ name: String },
     Alloca { loc: u32, name: String },
+}
+
+pub enum ValSrc {
+    Block(&'scope Block<'scope>),
+    Arg,
+    Lit,
 }
 
 impl<'a> Val<'a> {

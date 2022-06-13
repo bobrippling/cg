@@ -54,7 +54,7 @@ pub struct Parser<'scope, R, SemaErr> {
     pub tok: Tokeniser<'scope, R>,
     pub unit: Unit<'scope>,
     pub sema_error: SemaErr,
-    pub names2vals: HashMap<String, Rc<Val<'scope>>>,
+    pub names2vals: HashMap<String, (Rc<Val<'scope>>, &'arena Block<'arena>)>,
 }
 
 impl<'scope, R, SemaErr> Parser<'scope, R, SemaErr>
@@ -831,7 +831,7 @@ where
 
             let v = Val::new_argument(name.clone(), arg_ty);
 
-            let v = self.map_val(name, v);
+            let v = self.map_val(name, v, ValSrc::Arg);
             func.register_arg_val(idx, Rc::clone(&v));
 
             return Ok(v);
@@ -861,8 +861,8 @@ where
         Ok(self.map_val(name, v))
     }
 
-    fn map_val(&mut self, name: String, v: Val<'scope>) -> Rc<Val<'scope>> {
-        Rc::clone(self.names2vals.entry(name).or_insert_with(|| Rc::new(v)))
+    fn map_val(&mut self, name: String, v: Val<'scope>, src: ValSrc) -> Rc<Val<'scope>> {
+        Rc::clone(self.names2vals.entry(name).or_insert_with(|| (Rc::new(v), src))
     }
 }
 
