@@ -1,0 +1,8 @@
+compiler backend instruction selection
+	https://sourcecodeartisan.com/2020/11/17/llvm-backend-4.html
+	https://www.cs.cornell.edu/courses/cs412/2005sp/lectures/lec31.pdf
+	https://courses.cs.cornell.edu/cs4120/2022sp/notes/
+	https://github.com/freewilll/wcc
+		https://www.complang.tuwien.ac.at/Diplomarbeiten/falbesoner14.pdf
+	https://brrt-to-the-future.blogspot.com/2019/03/reverse-linear-scan-allocation-is.html?m=1
+		https://www.mattkeeter.com/blog/2022-10-04-ssra/
